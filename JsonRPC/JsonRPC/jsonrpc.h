@@ -75,7 +75,7 @@ public:
 		exception,
 		skip
 	};
-	using mthd = std::function<void* (jsonrpc& jsonrpc, rpcmessage msg)>;
+	using mthd = std::function<void(jsonrpc& jsonrpc, const rpcmessage& msg)>;
 private:
 	std::istream& m_in;
 	std::ostream& m_out;
@@ -133,12 +133,17 @@ public:
 		std::string message;
 		{
 			std::lock_guard ____lock(m_read_mutex);
+			if (m_qin.empty())
+			{
+				return false;
+			}
 			message = m_qin.back();
 			m_qin.pop();
 		}
 		auto res = rpcmessage::deserialize(nlohmann::json::parse(message, nullptr, true, false));
 		auto mthd = m_methods[res.method];
 		mthd(*this, res);
+		return true;
 	}
 	void send(const rpcmessage& msg)
 	{
