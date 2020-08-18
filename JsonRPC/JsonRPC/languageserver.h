@@ -1,10 +1,11 @@
-#pragma once
+﻿#pragma once
 #include "jsonrpc.h"
 
 #include <optional>
 #include <string>
 #include <nlohmann/json.hpp>
 #include <vector>
+#include <variant>
 
 namespace lsp
 {
@@ -212,166 +213,544 @@ namespace lsp
              */
             SourceOrganizeImports
         };
+        enum class text_document_sync_kind
+        {
+            /**
+            * Documents should not be synced at all.
+            */
+            None = 0,
+
+            /**
+            * Documents are synced by always sending the full content
+            * of the document.
+            */
+            Full = 1,
+
+            /**
+            * Documents are synced by sending the full content on open.
+            * After that only incremental updates to the document are
+            * send.
+            */
+            Incremental = 2
+        };
+        enum class initialize_error
+        {
+            unknownProtocolVersion = 1
+        };
+        /*
+        * A document filter denotes a document through properties like language, scheme or pattern.
+        * An example is a filter that applies to TypeScript files on disk.
+        * Another example is a filter the applies to JSON files with name package.json:
+        */
+        struct document_filter {
+            /**
+             * A language id, like `typescript`.
+             */
+            std::string language;
+
+            /**
+             * A Uri [scheme](#Uri.scheme), like `file` or `untitled`.
+             */
+            std::string scheme;
+
+            /**
+             * A glob pattern, like `*.{ts,js}`.
+             *
+             * Glob patterns can have the following syntax:
+             * - `*` to match one or more characters in a path segment
+             * - `?` to match on one character in a path segment
+             * - `**` to match any number of path segments, including none
+             * - `{}` to group conditions (e.g. `**​/*.{ts,js}` matches all TypeScript and JavaScript files)
+             * - `[]` to declare a range of characters to match in a path segment (e.g., `example.[0-9]` to match on `example.0`, `example.1`, …)
+             * - `[!...]` to negate a range of characters to match in a path segment (e.g., `example.[!0-9]` to match on `example.a`, `example.b`, but not `example.0`)
+             */
+            std::string pattern;
+        };
         namespace responses
         {
-            struct server_capabilities
+            struct initialize_error
             {
                 /**
-                 * Defines how text documents are synced. Is either a detailed structure defining each notification or
-                 * for backwards compatibility the TextDocumentSyncKind number. If omitted it defaults to `TextDocumentSyncKind.None`.
+                 * Indicates whether the client execute the following retry logic:
+                 * (1) show the message provided by the ResponseError to the user
+                 * (2) user selects retry or cancel
+                 * (3) if user selected retry the initialize method is sent again.
                  */
-                textDocumentSync ? : TextDocumentSyncOptions | number;
-
-                /**
-                 * The server provides completion support.
-                 */
-                completionProvider ? : CompletionOptions;
-
-                /**
-                 * The server provides hover support.
-                 */
-                hoverProvider ? : boolean | HoverOptions;
-
-                /**
-                 * The server provides signature help support.
-                 */
-                signatureHelpProvider ? : SignatureHelpOptions;
-
-                /**
-                 * The server provides go to declaration support.
-                 *
-                 * @since 3.14.0
-                 */
-                declarationProvider ? : boolean | DeclarationOptions | DeclarationRegistrationOptions;
-
-                /**
-                 * The server provides goto definition support.
-                 */
-                definitionProvider ? : boolean | DefinitionOptions;
-
-                /**
-                 * The server provides goto type definition support.
-                 *
-                 * @since 3.6.0
-                 */
-                typeDefinitionProvider ? : boolean | TypeDefinitionOptions | TypeDefinitionRegistrationOptions;
-
-                /**
-                 * The server provides goto implementation support.
-                 *
-                 * @since 3.6.0
-                 */
-                implementationProvider ? : boolean | ImplementationOptions | ImplementationRegistrationOptions;
-
-                /**
-                 * The server provides find references support.
-                 */
-                referencesProvider ? : boolean | ReferenceOptions;
-
-                /**
-                 * The server provides document highlight support.
-                 */
-                documentHighlightProvider ? : boolean | DocumentHighlightOptions;
-
-                /**
-                 * The server provides document symbol support.
-                 */
-                documentSymbolProvider ? : boolean | DocumentSymbolOptions;
-
-                /**
-                 * The server provides code actions. The `CodeActionOptions` return type is only
-                 * valid if the client signals code action literal support via the property
-                 * `textDocument.codeAction.codeActionLiteralSupport`.
-                 */
-                codeActionProvider ? : boolean | CodeActionOptions;
-
-                /**
-                 * The server provides code lens.
-                 */
-                codeLensProvider ? : CodeLensOptions;
-
-                /**
-                 * The server provides document link support.
-                 */
-                documentLinkProvider ? : DocumentLinkOptions;
-
-                /**
-                 * The server provides color provider support.
-                 *
-                 * @since 3.6.0
-                 */
-                colorProvider ? : boolean | DocumentColorOptions | DocumentColorRegistrationOptions;
-
-                /**
-                 * The server provides document formatting.
-                 */
-                documentFormattingProvider ? : boolean | DocumentFormattingOptions;
-
-                /**
-                 * The server provides document range formatting.
-                 */
-                documentRangeFormattingProvider ? : boolean | DocumentRangeFormattingOptions;
-
-                /**
-                 * The server provides document formatting on typing.
-                 */
-                documentOnTypeFormattingProvider ? : DocumentOnTypeFormattingOptions;
-
-                /**
-                 * The server provides rename support. RenameOptions may only be
-                 * specified if the client states that it supports
-                 * `prepareSupport` in its initial `initialize` request.
-                 */
-                renameProvider ? : boolean | RenameOptions;
-
-                /**
-                 * The server provides folding provider support.
-                 *
-                 * @since 3.10.0
-                 */
-                foldingRangeProvider ? : boolean | FoldingRangeOptions | FoldingRangeRegistrationOptions;
-
-                /**
-                 * The server provides execute command support.
-                 */
-                executeCommandProvider ? : ExecuteCommandOptions;
-
-                /**
-                 * The server provides selection range support.
-                 *
-                 * @since 3.15.0
-                 */
-                selectionRangeProvider ? : boolean | SelectionRangeOptions | SelectionRangeRegistrationOptions;
-
-                /**
-                 * The server provides workspace symbol support.
-                 */
-                workspaceSymbolProvider ? : boolean;
-
-                /**
-                 * Workspace specific server capabilities
-                 */
-                workspace ? : {
-                    /**
-                     * The server supports workspace folder.
-                     *
-                     * @since 3.6.0
-                     */
-                    workspaceFolders ? : WorkspaceFoldersServerCapabilities;
-                }
-
-                /**
-                 * Experimental server capabilities.
-                 */
-                experimental ? : any;
-            };
-            struct server_info
-            {
-                std::string name;
-                std::optional<std::string> version;
+                bool retry;
             };
             struct initialize_result
             {
+                struct server_capabilities
+                {
+                    struct text_document_sync_options
+                    {
+                        /**
+                         * Open and close notifications are sent to the server. If omitted open close notification should not
+                         * be sent.
+                         */
+                        std::optional<bool> openClose;
+
+                        /**
+                         * Change notifications are sent to the server. See TextDocumentSyncKind.None, TextDocumentSyncKind.Full
+                         * and TextDocumentSyncKind.Incremental. If omitted it defaults to TextDocumentSyncKind.None.
+                         */
+                        std::optional<text_document_sync_kind> change;
+                    };
+                    struct completion_options
+                    {
+                        /**
+                         * Most tools trigger completion request automatically without explicitly requesting
+                         * it using a keyboard shortcut (e.g. Ctrl+Space). Typically they do so when the user
+                         * starts to type an identifier. For example if the user types `c` in a JavaScript file
+                         * code complete will automatically pop up present `console` besides others as a
+                         * completion item. Characters that make up identifiers don't need to be listed here.
+                         *
+                         * If code complete should automatically be trigger on characters not being valid inside
+                         * an identifier (for example `.` in JavaScript) list them in `triggerCharacters`.
+                         */
+                        std::optional<std::vector<std::string>> triggerCharacters;
+
+                        /**
+                         * The list of all possible characters that commit a completion. This field can be used
+                         * if clients don't support individual commit characters per completion item. See
+                         * `ClientCapabilities.textDocument.completion.completionItem.commitCharactersSupport`.
+                         *
+                         * If a server provides both `allCommitCharacters` and commit characters on an individual
+                         * completion item the ones on the completion item win.
+                         *
+                         * @since 3.2.0
+                         */
+                        std::optional<std::vector<std::string>> allCommitCharacters;
+
+                        /**
+                         * The server provides support to resolve additional
+                         * information for a completion item.
+                         */
+                        std::optional<bool> resolveProvider;
+                    };
+                    struct hover_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                    };
+                    struct signature_help_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * The characters that trigger signature help
+                         * automatically.
+                         */
+                        std::optional<std::vector<std::string>> triggerCharacters;
+
+                        /**
+                         * List of characters that re-trigger signature help.
+                         *
+                         * These trigger characters are only active when signature help is already showing. All trigger characters
+                         * are also counted as re-trigger characters.
+                         *
+                         * @since 3.15.0
+                         */
+                        std::optional<std::vector<std::string>> retriggerCharacters;
+                    };
+                    struct declaration_registration_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * The id used to register the request. The id can be used to deregister
+                         * the request again. See also Registration#id.
+                         */
+                        std::optional<std::string> id;
+                        /**
+                         * A document selector to identify the scope of the registration. If set to null
+                         * the document selector provided on the client side will be used.
+                         */
+                        std::optional<document_filter> documentSelector;
+                    };
+                    struct definition_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                    };
+                    struct type_definition_registration_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * A document selector to identify the scope of the registration. If set to null
+                         * the document selector provided on the client side will be used.
+                         */
+                        std::optional<document_filter> documentSelector;
+                        /**
+                         * The id used to register the request. The id can be used to deregister
+                         * the request again. See also Registration#id.
+                         */
+                        std::optional<std::string> id;
+                    };
+                    struct implementation_registration_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * A document selector to identify the scope of the registration. If set to null
+                         * the document selector provided on the client side will be used.
+                         */
+                        std::optional<document_filter> documentSelector;
+                        /**
+                         * The id used to register the request. The id can be used to deregister
+                         * the request again. See also Registration#id.
+                         */
+                        std::optional<std::string> id;
+                    };
+                    struct reference_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                    };
+                    struct document_highlight_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                    };
+                    struct document_symbol_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                    };
+                    struct code_action_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * CodeActionKinds that this server may return.
+                         *
+                         * The list of kinds may be generic, such as `CodeActionKind.Refactor`, or the server
+                         * may list out every specific kind they provide.
+                         */
+                        std::optional<std::vector<code_action_kind>> codeActionKinds;
+                    };
+                    struct code_lens_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * Code lens has a resolve provider as well.
+                         */
+                        std::optional<bool> resolveProvider;
+                    };
+                    struct document_link_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * Code lens has a resolve provider as well.
+                         */
+                        std::optional<bool> resolveProvider;
+                    };
+                    struct document_color_registration_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * A document selector to identify the scope of the registration. If set to null
+                         * the document selector provided on the client side will be used.
+                         */
+                        std::optional<document_filter> documentSelector;
+                        /**
+                         * The id used to register the request. The id can be used to deregister
+                         * the request again. See also Registration#id.
+                         */
+                        std::optional<std::string> id;
+                    };
+                    struct document_formatting_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                    };
+                    struct document_range_formatting_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                    };
+                    struct document_on_type_formatting_options {
+                        /**
+                         * A character on which formatting should be triggered, like `}`.
+                         */
+                        std::string firstTriggerCharacter;
+
+                        /**
+                         * More trigger characters.
+                         */
+                        std::optional<std::vector<std::string>> moreTriggerCharacter;
+                    };
+                    struct rename_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * Renames should be checked and tested before being executed.
+                         */
+                        std::optional<bool> prepareProvider;
+                    };
+                    struct folding_range_registration_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * A document selector to identify the scope of the registration. If set to null
+                         * the document selector provided on the client side will be used.
+                         */
+                        std::optional<document_filter> documentSelector;
+                        /**
+                         * The id used to register the request. The id can be used to deregister
+                         * the request again. See also Registration#id.
+                         */
+                        std::optional<std::string> id;
+                    };
+                    struct execute_command_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * The commands to be executed on the server.
+                         */
+                        std::optional<std::vector<std::string>> commands;
+                    };
+                    struct selection_range_registration_options
+                    {
+                        std::optional<bool> workDoneProgress;
+                        /**
+                         * A document selector to identify the scope of the registration. If set to null
+                         * the document selector provided on the client side will be used.
+                         */
+                        std::optional<document_filter> documentSelector;
+                        /**
+                         * The id used to register the request. The id can be used to deregister
+                         * the request again. See also Registration#id.
+                         */
+                        std::optional<std::string> id;
+                    };
+                    struct workspace_folders_server_capabilities
+                    {
+                        /**
+                         * The server has support for workspace folders
+                         */
+                        std::optional<bool> supported;
+
+                        /**
+                         * Whether the server wants to receive workspace folder
+                         * change notifications.
+                         *
+                         * If a string is provided, the string is treated as an ID
+                         * under which the notification is registered on the client
+                         * side. The ID can be used to unregister for these events
+                         * using the `client/unregisterCapability` request.
+                         */
+                        std::optional<std::variant<std::string, bool>> changeNotifications;
+                    };
+                    struct Workspace
+                    {
+                        /**
+                         * The server supports workspace folder.
+                         *
+                         * @since 3.6.0
+                         */
+                        std::optional<workspace_folders_server_capabilities> workspaceFolders;
+                    };
+                    /**
+                     * Defines how text documents are synced. Is either a detailed structure defining each notification or
+                     * for backwards compatibility the TextDocumentSyncKind number. If omitted it defaults to `TextDocumentSyncKind.None`.
+                     *
+                     * Implementors note: Technically, this should support `TextDocumentSyncOptions | number` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<text_document_sync_options> textDocumentSync;
+
+                    /**
+                     * The server provides completion support.
+                     */
+                    std::optional<completion_options> completionProvider;
+
+                    /**
+                     * The server provides hover support.
+                     *
+                     * Implementors note: Technically, this should support `boolean | HoverOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<hover_options> hoverProvider;
+
+                    /**
+                     * The server provides signature help support.
+                     */
+                    std::optional<signature_help_options> signatureHelpProvider;
+
+                    /**
+                     * The server provides go to declaration support.
+                     *
+                     * @since 3.14.0
+                     *
+                     * Implementors note: Technically, this should support `boolean | DeclarationOptions | DeclarationRegistrationOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<declaration_registration_options> declarationProvider;
+
+                    /**
+                     * The server provides goto definition support.
+                     *
+                     * Implementors note: Technically, this should support `boolean | DefinitionOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<definition_options> definitionProvider;
+
+                    /**
+                     * The server provides goto type definition support.
+                     *
+                     * @since 3.6.0
+                     *
+                     * Implementors note: Technically, this should support `boolean | TypeDefinitionOptions | TypeDefinitionRegistrationOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<type_definition_registration_options> typeDefinitionProvider;;
+
+                    /**
+                     * The server provides goto implementation support.
+                     *
+                     * @since 3.6.0
+                     *
+                     * Implementors note: Technically, this should support `boolean | ImplementationOptions | ImplementationRegistrationOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<implementation_registration_options> implementationProvider;
+
+                    /**
+                     * The server provides find references support.
+                     *
+                     * Implementors note: Technically, this should support `boolean | ReferenceOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<reference_options> referencesProvider;
+
+                    /**
+                     * The server provides document highlight support.
+                     *
+                     * Implementors note: Technically, this should support `boolean | DocumentHighlightOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<document_highlight_options> documentHighlightProvider;
+
+                    /**
+                     * The server provides document symbol support.
+                     *
+                     * Implementors note: Technically, this should support `boolean | DocumentSymbolOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<document_symbol_options> documentSymbolProvider;
+
+                    /**
+                     * The server provides code actions. The `CodeActionOptions` return type is only
+                     * valid if the client signals code action literal support via the property
+                     * `textDocument.codeAction.codeActionLiteralSupport`.
+                     *
+                     * Implementors note: Technically, this should support `boolean | CodeActionOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<code_action_options> codeActionProvider;
+
+                    /**
+                     * The server provides code lens.
+                     */
+                    std::optional<code_lens_options> codeLensProvider;
+
+                    /**
+                     * The server provides document link support.
+                     */
+                    std::optional<document_link_options> documentLinkProvider;
+
+                    /**
+                     * The server provides color provider support.
+                     *
+                     * @since 3.6.0
+                     *
+                     * Implementors note: Technically, this should support `boolean | DocumentColorOptions | DocumentColorRegistrationOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<document_color_registration_options> colorProvider;
+
+                    /**
+                     * The server provides document formatting.
+                     *
+                     * Implementors note: Technically, this should support `boolean | DocumentFormattingOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<document_formatting_options> documentFormattingProvider;
+
+                    /**
+                     * The server provides document range formatting.
+                     *
+                     * Implementors note: Technically, this should support `boolean | DocumentRangeFormattingOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<document_range_formatting_options> documentRangeFormattingProvider;
+
+                    /**
+                     * The server provides document formatting on typing.
+                     */
+                    std::optional<document_on_type_formatting_options> documentOnTypeFormattingProvider;
+
+                    /**
+                     * The server provides rename support. RenameOptions may only be
+                     * specified if the client states that it supports
+                     * `prepareSupport` in its initial `initialize` request.
+                     *
+                     * Implementors note: Technically, this should support `boolean | RenameOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<rename_options> renameProvider;
+
+                    /**
+                     * The server provides folding provider support.
+                     *
+                     * @since 3.10.0
+                     *
+                     * Implementors note: Technically, this should support `boolean | FoldingRangeOptions | FoldingRangeRegistrationOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<folding_range_registration_options> foldingRangeProvider;
+
+                    /**
+                     * The server provides execute command support.
+                     */
+                    std::optional<execute_command_options> executeCommandProvider;
+
+                    /**
+                     * The server provides selection range support.
+                     *
+                     * @since 3.15.0
+                     *
+                     * Implementors note: Technically, this should support `boolean | SelectionRangeOptions | SelectionRangeRegistrationOptions` for backwards compatibility ... but we ignore that simply because
+                     *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                     *                    a server.
+                     */
+                    std::optional<selection_range_registration_options> selectionRangeProvider;
+
+                    /**
+                     * The server provides workspace symbol support.
+                     */
+                    std::optional<bool> workspaceSymbolProvider;
+
+                    /**
+                     * Workspace specific server capabilities
+                     */
+                    std::optional<Workspace> workspace;
+
+                    /**
+                     * Experimental server capabilities.
+                     */
+                    std::optional<nlohmann::json> experimental;
+                };
+                struct server_info
+                {
+                    std::string name;
+                    std::optional<std::string> version;
+                };
                 /**
                 * The capabilities the language server provides.
                 */
