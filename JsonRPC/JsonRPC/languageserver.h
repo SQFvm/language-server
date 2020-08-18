@@ -85,6 +85,133 @@ namespace lsp
             message,
             verbose
         };
+        enum class completion_item_tag
+        {
+            Deprecated = 1
+        };
+        enum class markup_kind
+        {
+            /**
+             * Plain text is supported as a content format
+             * Value String: "plaintext"
+             */
+            PlainText,
+            /**
+             * Markdown is supported as a content format
+             * Value String: "markdown
+             */
+            Markdown
+        };
+        enum class completion_item_kind {
+            Text = 1,
+            Method = 2,
+            Function = 3,
+            Constructor = 4,
+            Field = 5,
+            Variable = 6,
+            Class = 7,
+            Interface = 8,
+            Module = 9,
+            Property = 10,
+            Unit = 11,
+            Value = 12,
+            Enum = 13,
+            Keyword = 14,
+            Snippet = 15,
+            Color = 16,
+            File = 17,
+            Reference = 18,
+            Folder = 19,
+            EnumMember = 20,
+            Constant = 21,
+            Struct = 22,
+            Event = 23,
+            Operator = 24,
+            TypeParameter = 25
+        };
+        enum class diagnostic_tag
+        {
+            /**
+             * Unused or unnecessary code.
+             *
+             * Clients are allowed to render diagnostics with this tag faded out instead of having
+             * an error squiggle.
+             */
+            Unnecessary = 1,
+            /**
+             * Deprecated or obsolete code.
+             *
+             * Clients are allowed to rendered diagnostics with this tag strike through.
+             */
+            Deprecated = 2
+        };
+        enum class code_action_kind {
+            /**
+             * Empty kind.
+             */
+            Empty,
+
+            /**
+             * Base kind for quickfix actions: 'quickfix'.
+             */
+            QuickFix,
+
+            /**
+             * Base kind for refactoring actions: 'refactor'.
+             */
+            Refactor,
+
+            /**
+             * Base kind for refactoring extraction actions: 'refactor.extract'.
+             *
+             * Example extract actions:
+             *
+             * - Extract method
+             * - Extract function
+             * - Extract variable
+             * - Extract interface from class
+             * - ...
+             */
+            RefactorExtract,
+
+            /**
+             * Base kind for refactoring inline actions: 'refactor.inline'.
+             *
+             * Example inline actions:
+             *
+             * - Inline function
+             * - Inline variable
+             * - Inline constant
+             * - ...
+             */
+            RefactorInline,
+
+            /**
+             * Base kind for refactoring rewrite actions: 'refactor.rewrite'.
+             *
+             * Example rewrite actions:
+             *
+             * - Convert JavaScript function to class
+             * - Add or remove parameter
+             * - Encapsulate field
+             * - Make method static
+             * - Move method to base class
+             * - ...
+             */
+            RefactorRewrite,
+
+            /**
+             * Base kind for source actions: `source`.
+             *
+             * Source code actions apply to the entire file.
+             */
+            Source,
+
+            /**
+             * Base kind for an organize imports source action: `source.organizeImports`.
+             */
+            SourceOrganizeImports
+        };
         namespace client
         { // See https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize
             struct client_info
@@ -153,91 +280,440 @@ namespace lsp
             };
             struct text_document_sync_client_capabilities
             {
+                /*
+                   Whether text document synchronization supports dynamic registration.
+                */
+                std::optional<bool> dynamicRegistration;
 
+                /*
+                   The client supports sending will save notifications.
+                */
+                std::optional<bool> willSave;
+
+                /*
+                   The client supports sending a will save request and
+                   waits for a response providing text edits which will
+                   be applied to the document before it is saved.
+                */
+                std::optional<bool> willSaveWaitUntil;
+
+                /*
+                   The client supports did save notifications.
+                */
+                std::optional<bool> didSave;
             };
             struct completion_client_capabilities
             {
+                struct CompletionItem
+                {
+                    struct TagSupport
+                    {
+                        /**
+                         * The tags supported by the client.
+                         */
+                        std::optional<std::vector<completion_item_tag>> valueSet;
+                    };
+                    /**
+                     * Client supports snippets as insert text.
+                     *
+                     * A snippet can define tab stops and placeholders with `$1`, `$2`
+                     * and `${3:foo}`. `$0` defines the final tab stop, it defaults to
+                     * the end of the snippet. Placeholders with equal identifiers are linked,
+                     * that is typing in one will update others too.
+                     */
+                    std::optional<bool> snippetSupport;
+
+                    /**
+                     * Client supports commit characters on a completion item.
+                     */
+                    std::optional<bool> commitCharactersSupport;
+
+                    /**
+                    * Client supports the follow content formats for the documentation
+                    * property. The order describes the preferred format of the client.
+                    */
+                    std::optional<std::vector<markup_kind>> documentationFormat;
+
+                    /**
+                     * Client supports the deprecated property on a completion item.
+                     */
+                    std::optional<bool>deprecatedSupport ;
+
+                    /**
+                     * Client supports the preselect property on a completion item.
+                     */
+                    std::optional<bool>preselectSupport ;
+
+                    /**
+                     * Client supports the tag property on a completion item. Clients supporting
+                     * tags have to handle unknown tags gracefully. Clients especially need to
+                     * preserve unknown tags when sending a completion item back to the server in
+                     * a resolve call.
+                     *
+                     * @since 3.15.0
+                     */
+                    std::optional<TagSupport> tagSupport;
+                }; 
+                
+                struct CompletionItemKind {
+                    /*
+                       The completion item kind values the client supports. When this
+                       property exists the client also guarantees that it will
+                       handle values outside its set gracefully and falls back
+                       to a default value when unknown.
+                      
+                       If this property is not present the client only supports
+                       the completion items kinds from `Text` to `Reference` as defined in
+                       the initial version of the protocol.
+                    */
+                    std::optional<std::vector<completion_item_kind>> valueSet;
+                };
+                /*
+                   The client supports the following `CompletionItem` specific
+                   capabilities.
+                */
+                std::optional<bool> dynamicRegistration;
+                /*
+                   The client supports the following `CompletionItem` specific
+                   capabilities.
+                */
+                std::optional<CompletionItem> completionItem;
+                /*
+                   The client supports the following `CompletionItem` specific
+                   capabilities.
+                */
+                std::optional<CompletionItemKind> completionItemKind;
+                /*
+                   The client supports to send additional context information for a
+                   `textDocument/completion` request.
+                */
+                std::optional<bool> contextSupport;
 
             };
             struct hover_client_capabilities
             {
+                /**
+                 * Whether hover supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
 
+                /**
+                 * Client supports the follow content formats for the content
+                 * property. The order describes the preferred format of the client.
+                 */
+                std::optional<std::vector<markup_kind>> contentFormat;
             };
             struct signature_help_client_capabilities
             {
+                struct SignatureInformation
+                {
+                    struct ParameterInformation
+                    {
+                        /**
+                         * The client supports processing label offsets instead of a
+                         * simple label string.
+                         *
+                         * @since 3.14.0
+                         */
+                        std::optional<bool> labelOffsetSupport;
+                    };
+                    /**
+                     * Client supports the follow content formats for the documentation
+                     * property. The order describes the preferred format of the client.
+                     */
+                    std::optional<std::vector<markup_kind>> documentationFormat;
 
+                    /**
+                     * Client capabilities specific to parameter information.
+                     */
+                    std::optional<ParameterInformation> parameterInformation;
+                };
+                /**
+	             * Whether signature help supports dynamic registration.
+	             */
+                std::optional<bool> dynamicRegistration;
+
+	            /**
+	             * The client supports the following `SignatureInformation`
+	             * specific properties.
+	             */
+                std::optional<SignatureInformation> signatureInformation;
+
+	            /**
+	             * The client supports to send additional context information for a
+	             * `textDocument/signatureHelp` request. A client that opts into
+	             * contextSupport will also support the `retriggerCharacters` on
+	             * `SignatureHelpOptions`.
+	             *
+	             * @since 3.15.0
+	             */
+                std::optional<bool> contextSupport;
             };
             struct declaration_client_capabilities
             {
+                /**
+                 * Whether declaration supports dynamic registration. If this is set to `true`
+                 * the client supports the new `DeclarationRegistrationOptions` return value
+                 * for the corresponding server capability as well.
+                 */
+                std::optional<bool> dynamicRegistration;
 
+                /**
+                 * The client supports additional metadata in the form of declaration links.
+                 */
+                std::optional<bool> linkSupport;
             };
             struct definition_client_capabilities
             {
+                /**
+                 * Whether definition supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
 
+                /**
+                 * The client supports additional metadata in the form of definition links.
+                 *
+                 * @since 3.14.0
+                 */
+                std::optional<bool> linkSupport;
             };
             struct type_definition_client_capabilities
             {
+                /**
+                 * Whether implementation supports dynamic registration. If this is set to `true`
+                 * the client supports the new `TypeDefinitionRegistrationOptions` return value
+                 * for the corresponding server capability as well.
+                 */
+                std::optional<bool> dynamicRegistration;
 
+                /**
+                 * The client supports additional metadata in the form of definition links.
+                 *
+                 * @since 3.14.0
+                 */
+                std::optional<bool> linkSupport;
             };
             struct implementation_client_capabilities
             {
+                /**
+                 * Whether implementation supports dynamic registration. If this is set to `true`
+                 * the client supports the new `ImplementationRegistrationOptions` return value
+                 * for the corresponding server capability as well.
+                 */
+                std::optional<bool> dynamicRegistration;
 
+                /**
+                 * The client supports additional metadata in the form of definition links.
+                 *
+                 * @since 3.14.0
+                 */
+                std::optional<bool> linkSupport;
             };
             struct reference_client_capabilities
             {
-
+                /**
+                 * Whether references supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
             };
             struct document_highlight_client_capabilities
             {
-
+                /**
+                 * Whether document highlight supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
             };
             struct document_symbol_client_capabilities
             {
+                struct SymbolKind
+                {
+                    /**
+                     * The symbol kind values the client supports. When this
+                     * property exists the client also guarantees that it will
+                     * handle values outside its set gracefully and falls back
+                     * to a default value when unknown.
+                     *
+                     * If this property is not present the client only supports
+                     * the symbol kinds from `File` to `Array` as defined in
+                     * the initial version of the protocol.
+                     */
+                    std::optional<std::vector<symbol_kind>> valueSet;
+                };
 
+                /**
+                 * Whether document symbol supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
+
+                /**
+                 * Specific capabilities for the `SymbolKind` in the `textDocument/documentSymbol` request.
+                 */
+                std::optional<SymbolKind> symbolKind;
+
+                /**
+                 * The client supports hierarchical document symbols.
+                 */
+                std::optional<bool> hierarchicalDocumentSymbolSupport;
             };
             struct code_action_client_capabilities
             {
+                struct CodeActionLiteralSupport
+                {
+                    /**
+                     * The code action kind is supported with the following value
+                     * set.
+                     */
+                    struct
+                    {
+                        /**
+                         * The code action kind values the client supports. When this
+                         * property exists the client also guarantees that it will
+                         * handle values outside its set gracefully and falls back
+                         * to a default value when unknown.
+                         */
+                        std::vector<code_action_kind> valueSet;
+                    } codeActionKind;
+                };
+                /**
+                 * Whether code action supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
 
+                /**
+                 * The client supports code action literals as a valid
+                 * response of the `textDocument/codeAction` request.
+                 *
+                 * @since 3.8.0
+                 */
+                std::optional<CodeActionLiteralSupport> codeActionLiteralSupport;
+
+                /**
+                 * Whether code action supports the `isPreferred` property.
+                 * @since 3.15.0
+                 */
+                std::optional<bool> isPreferredSupport;
             };
             struct code_lens_client_capabilities
             {
-
+                /**
+                 * Whether code lens supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
             };
             struct document_link_client_capabilities
             {
+                /**
+                 * Whether document link supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
 
+                /**
+                 * Whether the client supports the `tooltip` property on `DocumentLink`.
+                 *
+                 * @since 3.15.0
+                 */
+                std::optional<bool> tooltipSupport;
             };
             struct document_color_client_capabilities
             {
-
+                /**
+                 * Whether document color supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
             };
             struct document_formatting_client_capabilities
             {
-
+                /**
+                 * Whether formatting supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
             };
             struct document_range_formatting_client_capabilities
             {
-
+                /**
+                 * Whether formatting supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
             };
             struct document_on_type_formatting_client_capabilities
             {
-
+                /**
+                 * Whether on type formatting supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
             };
             struct rename_client_capabilities
             {
+                /**
+                 * Whether rename supports dynamic registration.
+                 */
+                std::optional<bool> dynamicRegistration;
 
+                /**
+                 * Client supports testing for validity of rename operations
+                 * before execution.
+                 *
+                 * @since version 3.12.0
+                 */
+                std::optional<bool> prepareSupport;
             };
             struct publish_diagnostics_client_capabilities
             {
+                struct TagSupport
+                {
+                    /**
+                     * The tags supported by the client.
+                     */
+                    std::optional<std::vector<diagnostic_tag>> valueSet;
+                };
+                /**
+                 * Whether the clients accepts diagnostics with related information.
+                 */
+                std::optional<bool> relatedInformation;
 
+                /**
+                 * Client supports the tag property to provide meta data about a diagnostic.
+                 * Clients supporting tags have to handle unknown tags gracefully.
+                 *
+                 * @since 3.15.0
+                 */
+                std::optional<TagSupport> tagSupport;
+
+                /**
+                 * Whether the client interprets the version property of the
+                 * `textDocument/publishDiagnostics` notification's parameter.
+                 *
+                 * @since 3.15.0
+                 */
+                std::optional<bool> versionSupport;
             };
             struct folding_range_client_capabilities
             {
-
+                /**
+                 * Whether implementation supports dynamic registration for folding range providers. If this is set to `true`
+                 * the client supports the new `FoldingRangeRegistrationOptions` return value for the corresponding server
+                 * capability as well.
+                 */
+                std::optional<bool> dynamicRegistration;
+                /**
+                 * The maximum number of folding ranges that the client prefers to receive per document. The value serves as a
+                 * hint, servers are free to follow the limit.
+                 */
+                std::optional<size_t> rangeLimit;
+                /**
+                 * If set, the client signals that it only supports folding complete lines. If set, client will
+                 * ignore specified `startCharacter` and `endCharacter` properties in a FoldingRange.
+                 */
+                std::optional<bool> lineFoldingOnly;
             };
             struct selection_range_client_capabilities
             {
-
+                /**
+                 * Whether implementation supports dynamic registration for selection range providers. If this is set to `true`
+                 * the client supports the new `SelectionRangeRegistrationOptions` return value for the corresponding server
+                 * capability as well.
+                 */
+                std::optional<bool> dynamicRegistration;
             };
             /*
                Text document specific client capabilities.
@@ -491,7 +967,6 @@ namespace lsp
                 */
                 std::optional<std::vector<workspace_folder>> workspaceFolders;
             };
-
         }
     }
     class server
