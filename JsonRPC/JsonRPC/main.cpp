@@ -23,19 +23,23 @@ class sqf_language_server : public lsp::server
 {
 
 	// Inherited via server
-	virtual lsp::data::responses::initialize_result on_initialize(const lsp::data::requests::initialize_params& params) override
+	virtual lsp::data::initialize_result on_initialize(const lsp::data::initialize_params& params) override
 	{
 		// Prepare server capabilities
-		lsp::data::responses::initialize_result res;
-		res.serverInfo = lsp::data::responses::initialize_result::server_info{};
+		lsp::data::initialize_result res;
+		res.serverInfo = lsp::data::initialize_result::server_info{};
 		res.serverInfo->name = "SQF-VM Language Server";
 		res.serverInfo->version = "0.1.0";
-		res.capabilities.colorProvider = lsp::data::responses::initialize_result::server_capabilities::document_color_registration_options{ };
+		res.capabilities.colorProvider = lsp::data::initialize_result::server_capabilities::document_color_registration_options{ };
 		res.capabilities.colorProvider->documentSelector = lsp::data::document_filter{ };
 		res.capabilities.colorProvider->documentSelector->language = "sqf";
-		res.capabilities.textDocumentSync = lsp::data::responses::initialize_result::server_capabilities::text_document_sync_options{};
+		res.capabilities.textDocumentSync = lsp::data::initialize_result::server_capabilities::text_document_sync_options{};
 		res.capabilities.textDocumentSync->change = lsp::data::text_document_sync_kind::Full;
 		res.capabilities.textDocumentSync->openClose = true;
+		res.capabilities.foldingRangeProvider = lsp::data::initialize_result::server_capabilities::folding_range_registration_options{};
+		res.capabilities.foldingRangeProvider->documentSelector = lsp::data::document_filter{ };
+		res.capabilities.foldingRangeProvider->documentSelector->language = "sqf";
+		res.capabilities.completionProvider = lsp::data::initialize_result::server_capabilities::completion_options{};
 
 		// prepare sqfvm
 		sqfvm.fileio(std::make_unique<sqf::fileio::impl_default>());
