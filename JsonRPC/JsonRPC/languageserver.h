@@ -4072,6 +4072,7 @@ namespace lsp
             rpc.register_method("shutdown", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 { 
+                    kill();
                     on_shutdown();
                 });
             rpc.register_method("textDocument/didOpen", 
@@ -4141,8 +4142,14 @@ namespace lsp
 
         void kill() { m_die = true; }
 
+        // Methods that must be overriden by clients
+    private:
         virtual lsp::data::initialize_result on_initialize(const lsp::data::initialize_params& params) = 0;
         virtual void on_shutdown() = 0;
+
+
+        // Methods that can be overriden by implementing clients
+    private:
         virtual void on_textDocument_didOpen(const lsp::data::did_open_text_document_params& params) {}
         virtual void on_textDocument_didChange(const lsp::data::did_change_text_document_params& params) {}
         virtual void on_textDocument_willSave(const lsp::data::will_save_text_document_params& params) {}
@@ -4152,6 +4159,7 @@ namespace lsp
         virtual std::optional<lsp::data::completion_list> on_textDocument_completion(const lsp::data::completion_params& params) { return {}; }
         virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(const lsp::data::folding_range_params& params) { return {}; }
 
+    public:
         void textDocument_publishDiagnostics(const lsp::data::publish_diagnostics_params& params)
         {
             rpc.send({ {}, params.to_json() });

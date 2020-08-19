@@ -62,6 +62,19 @@ class sqf_language_server : public lsp::server
 	}
 	virtual void on_shutdown() override {}
 
+	virtual void on_textDocument_didOpen(const lsp::data::did_open_text_document_params& params) override
+	{
+
+	}
+	virtual void on_textDocument_didChange(const lsp::data::did_change_text_document_params& params) override
+	{
+
+	}
+	virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(const lsp::data::folding_range_params& params) override
+	{
+		return {};
+	}
+
 public:
 	class QueueLogger : public Logger {
 	public:
