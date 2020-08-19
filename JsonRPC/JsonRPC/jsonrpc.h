@@ -98,11 +98,12 @@ public:
         m_out(sout),
         m_read_terminate(new bool(false)),
         m_write_terminate(new bool(false)),
-        m_read_thread(&method_read, this),
-        m_write_thread(&method_write, this),
+        m_read_thread(&jsonrpc::method_read, this),
+        m_write_thread(&jsonrpc::method_write, this),
         m_destruct_strategy(destruct),
         m_parse_error_strategy(parse_error)
-    { }
+    {
+    }
     ~jsonrpc()
     {
         *m_read_terminate = true;
@@ -169,7 +170,7 @@ private:
         while (!*terminate)
         {
             // Read Message
-            auto read = m_in.read(buffer, buffersize).gcount();
+            auto read = m_in.readsome(buffer, buffersize);
             if (read == 0)
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -238,7 +239,7 @@ private:
 
             {
                 std::lock_guard ____lock(m_write_mutex);
-                queue_empty = !m_qout.empty();
+                queue_empty = m_qout.empty();
             }
             if (queue_empty)
             {

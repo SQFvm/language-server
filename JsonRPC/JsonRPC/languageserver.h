@@ -12,54 +12,64 @@ namespace lsp
     namespace data
     {
         template<typename T>
-        void from_json(const nlohmann::json& node, const char* key, T& t)
+        void from_json(const nlohmann::json& node, T& t)
         {
-            t = T::from_json(node[key]);
+            t = T::from_json(node);
         }
-        template<typename T>
-        void from_json(const nlohmann::json& node, const char* key, std::vector<T>& t)
+        template<>
+        void from_json<bool>(const nlohmann::json& node, bool& t)
         {
-            t = std::vector();
-            for (auto subnode : node[key])
-            {
-                t.push_back(T::from_json(subnode));
-            }
+            t = node;
         }
-        template<typename T>
-        void from_json(const nlohmann::json& node, const char* key, std::optional<T>& opt)
+        template<>
+        void from_json<int>(const nlohmann::json& node, int& t)
         {
-            if (node.contains(key))
-            {
-                opt = T::from_json(node);
-            }
-            else
-            {
-                opt = {};
-            }
+            t = node;
+        }
+        template<>
+        void from_json<size_t>(const nlohmann::json& node,  size_t& t)
+        {
+            t = node;
+        }
+        template<>
+        void from_json<uint64_t>(const nlohmann::json& node, uint64_t& t)
+        {
+            t = node;
+        }
+        template<>
+        void from_json<std::string>(const nlohmann::json& node, std::string& t)
+        {
+            t = node;
         }
         template<typename T>
         nlohmann::json to_json(const T& t)
         {
             return t.to_json();
         }
-        template<typename T>
-        nlohmann::json to_json(std::vector<T>& ts)
+        template<>
+        nlohmann::json to_json<bool>(const bool& t)
         {
-            nlohmann::json json;
-            for (auto t : ts)
-            {
-                json.push_back(T::from_json(subnode));
-            }
-            return json;
+            return { t };
         }
-        template<typename T>
-        nlohmann::json to_json(std::optional<T>& opt)
+        template<>
+        nlohmann::json to_json<int>(const int& t)
         {
-            if (opt.has_value())
-            {
-                return to_json(*opt);
-            }
-            return nlohmann::json(nullptr);
+            return { t };
+        }
+        template<>
+        nlohmann::json to_json<size_t>(const size_t& t)
+        {
+            return { t };
+        }
+        template<>
+        nlohmann::json to_json<uint64_t>(const uint64_t& t)
+        {
+            return { t };
+        }
+        template<>
+        nlohmann::json to_json<std::string>(const std::string& t)
+        {
+            return { t };
         }
 
 
@@ -94,10 +104,10 @@ namespace lsp
                 );
         }
         template<>
-        void from_json<resource_operations>(const nlohmann::json& node, const char* key, resource_operations& t)
+        void from_json<resource_operations>(const nlohmann::json& node,  resource_operations& t)
         {
             t = resource_operations::Empty;
-            for (auto resourceOperationJson : node[key])
+            for (auto resourceOperationJson : node)
             {
                 std::string resourceOperationString = resourceOperationJson;
                 if (resourceOperationString == "create") { t = t | resource_operations::Create; }
@@ -141,11 +151,11 @@ namespace lsp
             undo
         };
         template<>
-        void from_json<failure_handling>(const nlohmann::json& node, const char* key, failure_handling& t)
+        void from_json<failure_handling>(const nlohmann::json& node,  failure_handling& t)
         {
 
             t = failure_handling::empty;
-            std::string actual = node[key];
+            std::string actual = node;
             if (actual == "abort") { t = failure_handling::abort; return; }
             if (actual == "transactional") { t = failure_handling::transactional; return; }
             if (actual == "textOnlyTransactional") { t = failure_handling::textOnlyTransactional; return; }
@@ -193,9 +203,9 @@ namespace lsp
             TypeParameter = 26
         };
         template<>
-        void from_json<symbol_kind>(const nlohmann::json& node, const char* key, symbol_kind& t)
+        void from_json<symbol_kind>(const nlohmann::json& node,  symbol_kind& t)
         {
-            t = static_cast<symbol_kind>(node[key].get<int>());
+            t = static_cast<symbol_kind>(node.get<int>());
         }
         template<>
         nlohmann::json to_json<symbol_kind>(const symbol_kind& t)
@@ -210,11 +220,11 @@ namespace lsp
             verbose
         };
         template<>
-        void from_json<trace_mode>(const nlohmann::json& node, const char* key, trace_mode& t)
+        void from_json<trace_mode>(const nlohmann::json& node,  trace_mode& t)
         {
 
             t = trace_mode::off;
-            std::string actual = node[key];
+            std::string actual = node;
             if (actual == "message") { t = trace_mode::message; return; }
             if (actual == "verbose") { t = trace_mode::verbose; return; }
         }
@@ -235,9 +245,9 @@ namespace lsp
             Deprecated = 1
         };
         template<>
-        void from_json<completion_item_tag>(const nlohmann::json& node, const char* key, completion_item_tag& t)
+        void from_json<completion_item_tag>(const nlohmann::json& node,  completion_item_tag& t)
         {
-            t = static_cast<completion_item_tag>(node[key].get<int>());
+            t = static_cast<completion_item_tag>(node.get<int>());
         }
         template<>
         nlohmann::json to_json<completion_item_tag>(const completion_item_tag& t)
@@ -259,11 +269,11 @@ namespace lsp
             Markdown
         };
         template<>
-        void from_json<markup_kind>(const nlohmann::json& node, const char* key, markup_kind& t)
+        void from_json<markup_kind>(const nlohmann::json& node,  markup_kind& t)
         {
 
             t = markup_kind::PlainText;
-            std::string actual = node[key];
+            std::string actual = node;
             if (actual == "plaintext") { t = markup_kind::PlainText; return; }
             if (actual == "markdown") { t = markup_kind::Markdown; return; }
         }
@@ -306,9 +316,9 @@ namespace lsp
             TypeParameter = 25
         };
         template<>
-        void from_json<completion_item_kind>(const nlohmann::json& node, const char* key, completion_item_kind& t)
+        void from_json<completion_item_kind>(const nlohmann::json& node,  completion_item_kind& t)
         {
-            t = static_cast<completion_item_kind>(node[key].get<int>());
+            t = static_cast<completion_item_kind>(node.get<int>());
         }
         template<>
         nlohmann::json to_json<completion_item_kind>(const completion_item_kind& t)
@@ -333,9 +343,9 @@ namespace lsp
             Deprecated = 2
         };
         template<>
-        void from_json<diagnostic_tag>(const nlohmann::json& node, const char* key, diagnostic_tag& t)
+        void from_json<diagnostic_tag>(const nlohmann::json& node,  diagnostic_tag& t)
         {
-            t = static_cast<diagnostic_tag>(node[key].get<int>());
+            t = static_cast<diagnostic_tag>(node.get<int>());
         }
         template<>
         nlohmann::json to_json<diagnostic_tag>(const diagnostic_tag& t)
@@ -411,11 +421,11 @@ namespace lsp
             SourceOrganizeImports
         };
         template<>
-        void from_json<code_action_kind>(const nlohmann::json& node, const char* key, code_action_kind& t)
+        void from_json<code_action_kind>(const nlohmann::json& node,  code_action_kind& t)
         {
 
             t = code_action_kind::Empty;
-            std::string actual = node[key];
+            std::string actual = node;
             if (actual == "quickfix") { t = code_action_kind::QuickFix; return; }
             if (actual == "refactor") { t = code_action_kind::Refactor; return; }
             if (actual == "refactor.extract") { t = code_action_kind::RefactorExtract; return; }
@@ -461,9 +471,9 @@ namespace lsp
             Incremental = 2
         };
         template<>
-        void from_json<text_document_sync_kind>(const nlohmann::json& node, const char* key, text_document_sync_kind& t)
+        void from_json<text_document_sync_kind>(const nlohmann::json& node,  text_document_sync_kind& t)
         {
-            t = static_cast<text_document_sync_kind>(node[key].get<int>());
+            t = static_cast<text_document_sync_kind>(node.get<int>());
         }
         template<>
         nlohmann::json to_json<text_document_sync_kind>(const text_document_sync_kind& t)
@@ -476,15 +486,71 @@ namespace lsp
             unknownProtocolVersion = 1
         };
         template<>
-        void from_json<initialize_error>(const nlohmann::json& node, const char* key, initialize_error& t)
+        void from_json<initialize_error>(const nlohmann::json& node,  initialize_error& t)
         {
-            t = static_cast<initialize_error>(node[key].get<int>());
+            t = static_cast<initialize_error>(node.get<int>());
         }
         template<>
         nlohmann::json to_json<initialize_error>(const initialize_error& t)
         {
             return static_cast<int>(t);
         }
+
+
+        template<typename T>
+        void from_json(const nlohmann::json& node, std::vector<T>& ts)
+        {
+            ts = std::vector<T>();
+            for (auto subnode : node)
+            {
+                T t;
+                from_json(subnode, t);
+                ts.push_back(t);
+            }
+        }
+        template<typename T>
+        void from_json(const nlohmann::json& node, const char* key, T& t)
+        {
+            from_json(node[key], t);
+        }
+        template<typename T>
+        void from_json(const nlohmann::json& node, const char* key, std::optional<T>& opt)
+        {
+            if (node.contains(key))
+            {
+                T t;
+                from_json(node, key, t);
+                opt = t;
+            }
+            else
+            {
+                opt = {};
+            }
+        }
+
+        template<typename T>
+        nlohmann::json to_json(const std::vector<T>& ts)
+        {
+            nlohmann::json json;
+            for (auto t : ts)
+            {
+                json.push_back(to_json(t));
+            }
+            return json;
+        }
+        template<typename T>
+        nlohmann::json to_json(const std::optional<T>& t)
+        {
+            if (t.has_value())
+            {
+                return to_json(t.value());
+            }
+            else
+            {
+                return { nullptr };
+            }
+        }
+
         /*
         * A document filter denotes a document through properties like language, scheme or pattern.
         * An example is a filter that applies to TypeScript files on disk.
@@ -513,6 +579,23 @@ namespace lsp
              * - `[!...]` to negate a range of characters to match in a path segment (e.g., `example.[!0-9]` to match on `example.a`, `example.b`, but not `example.0`)
              */
             std::string pattern;
+
+            static document_filter from_json(const nlohmann::json& node)
+            {
+                document_filter res;
+                data::from_json(node, "language", res.language);
+                data::from_json(node, "scheme", res.scheme);
+                data::from_json(node, "pattern", res.pattern);
+                return res;
+            }
+            nlohmann::json to_json() const
+            {
+                nlohmann::json json;
+                json["language"] = data::to_json(language);
+                json["scheme"] = data::to_json(scheme);
+                json["pattern"] = data::to_json(pattern);
+                return json;
+            }
         };
         namespace responses
         {
@@ -1123,8 +1206,10 @@ namespace lsp
                          * under which the notification is registered on the client
                          * side. The ID can be used to unregister for these events
                          * using the `client/unregisterCapability` request.
+                         * 
+                         * Implementors note: For simplicity (on my end ...), the option to use a string here was removed.
                          */
-                        std::optional<std::variant<std::string, bool>> changeNotifications;
+                        std::optional<bool> changeNotifications;
 
                         static workspace_folders_server_capabilities from_json(const nlohmann::json& node)
                         {
@@ -1396,7 +1481,7 @@ namespace lsp
                         data::from_json(node, "selectionRangeProvider", res.selectionRangeProvider);
                         data::from_json(node, "workspaceSymbolProvider", res.workspaceSymbolProvider);
                         data::from_json(node, "workspace", res.workspace);
-                        data::from_json(node, "experimental", res.experimental);
+                        res.experimental = node["experimental"];
                         return res;
                     }
                     nlohmann::json to_json() const
@@ -1426,7 +1511,7 @@ namespace lsp
                         json["selectionRangeProvider"] = data::to_json(selectionRangeProvider);
                         json["workspaceSymbolProvider"] = data::to_json(workspaceSymbolProvider);
                         json["workspace"] = data::to_json(workspace);
-                        json["experimental"] = data::to_json(experimental);
+                        if (experimental.has_value()) { json["experimental"] = *experimental; }
                         return json;
                     }
                 };
@@ -1791,6 +1876,19 @@ namespace lsp
                            the initial version of the protocol.
                         */
                         std::optional<std::vector<completion_item_kind>> valueSet;
+
+                        static CompletionItemKind from_json(const nlohmann::json& node)
+                        {
+                            CompletionItemKind res;
+                            data::from_json(node, "valueSet", res.valueSet);
+                            return res;
+                        }
+                        nlohmann::json to_json() const
+                        {
+                            nlohmann::json json;
+                            json["valueSet"] = data::to_json(valueSet);
+                            return json;
+                        }
                     };
                     /*
                        The client supports the following `CompletionItem` specific
@@ -1813,6 +1911,24 @@ namespace lsp
                     */
                     std::optional<bool> contextSupport;
 
+                    static completion_client_capabilities from_json(const nlohmann::json& node)
+                    {
+                        completion_client_capabilities res;
+                        data::from_json(node, "dynamicRegistration", res.dynamicRegistration);
+                        data::from_json(node, "completionItem", res.completionItem);
+                        data::from_json(node, "completionItemKind", res.completionItemKind);
+                        data::from_json(node, "contextSupport", res.contextSupport);
+                        return res;
+                    }
+                    nlohmann::json to_json() const
+                    {
+                        nlohmann::json json;
+                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        json["completionItem"] = data::to_json(completionItem);
+                        json["completionItemKind"] = data::to_json(completionItemKind);
+                        json["contextSupport"] = data::to_json(contextSupport);
+                        return json;
+                    }
                 };
                 struct hover_client_capabilities
                 {
@@ -2204,6 +2320,23 @@ namespace lsp
                      * @since 3.15.0
                      */
                     std::optional<bool> isPreferredSupport;
+
+                    static code_action_client_capabilities from_json(const nlohmann::json& node)
+                    {
+                        code_action_client_capabilities res;
+                        data::from_json(node, "dynamicRegistration", res.dynamicRegistration);
+                        data::from_json(node, "codeActionLiteralSupport", res.codeActionLiteralSupport);
+                        data::from_json(node, "isPreferredSupport", res.isPreferredSupport);
+                        return res;
+                    }
+                    nlohmann::json to_json() const
+                    {
+                        nlohmann::json json;
+                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        json["codeActionLiteralSupport"] = data::to_json(codeActionLiteralSupport);
+                        json["isPreferredSupport"] = data::to_json(isPreferredSupport);
+                        return json;
+                    }
                 };
                 struct code_lens_client_capabilities
                 {
@@ -2773,7 +2906,7 @@ namespace lsp
                         client_capabilities res;
                         data::from_json(node, "workspace", res.workspace);
                         data::from_json(node, "textDocument", res.textDocument);
-                        data::from_json(node, "experimental", res.experimental);
+                        res.experimental = node["experimental"];
                         return res;
                     }
                     nlohmann::json to_json() const
@@ -2781,7 +2914,7 @@ namespace lsp
                         nlohmann::json json;
                         json["workspace"] = data::to_json(workspace);
                         json["textDocument"] = data::to_json(textDocument);
-                        json["experimental"] = data::to_json(experimental);
+                        if (experimental.has_value()) { json["experimental"] = *experimental; }
                         return json;
                     }
                 };
@@ -2866,7 +2999,7 @@ namespace lsp
                     data::from_json(node, "clientInfo", res.clientInfo);
                     data::from_json(node, "rootPath", res.rootPath);
                     data::from_json(node, "rootUri", res.rootUri);
-                    data::from_json(node, "initializationOptions", res.initializationOptions);
+                    res.initializationOptions = node["initializationOptions"];
                     data::from_json(node, "capabilities", res.capabilities);
                     data::from_json(node, "trace", res.trace);
                     data::from_json(node, "workspaceFolders", res.workspaceFolders);
@@ -2879,7 +3012,7 @@ namespace lsp
                     json["clientInfo"] = data::to_json(clientInfo);
                     json["rootPath"] = data::to_json(rootPath);
                     json["rootUri"] = data::to_json(rootUri);
-                    json["initializationOptions"] = data::to_json(initializationOptions);
+                    json["initializationOptions"] = initializationOptions;
                     json["capabilities"] = data::to_json(capabilities);
                     json["trace"] = data::to_json(trace);
                     json["workspaceFolders"] = data::to_json(workspaceFolders);
@@ -2930,6 +3063,6 @@ namespace lsp
 
         void kill() { m_die = true; }
 
-        virtual data::responses::initialize_result on_initialize(const data::requests::initialize_params& params) = 0;
+        virtual lsp::data::responses::initialize_result on_initialize(const lsp::data::requests::initialize_params& params) = 0;
     };
 }
