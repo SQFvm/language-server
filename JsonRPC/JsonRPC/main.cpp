@@ -1,10 +1,31 @@
 #include "languageserver.h"
 
+
+#include <runtime/runtime.h>
+#include <operators/ops_config.h>
+#include <operators/ops_diag.h>
+#include <operators/ops_generic.h>
+#include <operators/ops_group.h>
+#include <operators/ops_logic.h>
+#include <operators/ops_markers.h>
+#include <operators/ops_math.h>
+#include <operators/ops_namespace.h>
+#include <operators/ops_object.h>
+#include <operators/ops_sqfvm.h>
+#include <operators/ops_string.h>
+
+#include <parser/config/default.h>
+#include <parser/sqf/default.h>
+#include <parser/preprocessor/default.h>
+#include <fileio/default.h>
+
 class sqf_language_server : public lsp::server
 {
+
 	// Inherited via server
 	virtual lsp::data::responses::initialize_result on_initialize(const lsp::data::requests::initialize_params& params) override
 	{
+		// Prepare server capabilities
 		lsp::data::responses::initialize_result res;
 		res.serverInfo = lsp::data::responses::initialize_result::server_info{};
 		res.serverInfo->name = "SQF-VM Language Server";
@@ -15,9 +36,64 @@ class sqf_language_server : public lsp::server
 		res.capabilities.textDocumentSync = lsp::data::responses::initialize_result::server_capabilities::text_document_sync_options{};
 		res.capabilities.textDocumentSync->change = lsp::data::text_document_sync_kind::Full;
 		res.capabilities.textDocumentSync->openClose = true;
+
+		// prepare sqfvm
+		sqfvm.fileio(std::make_unique<sqf::fileio::impl_default>());
+		sqfvm.parser_config(std::make_unique<sqf::parser::config::impl_default>(logger));
+		sqfvm.parser_preprocessor(std::make_unique<sqf::parser::preprocessor::impl_default>(logger));
+		sqfvm.parser_sqf(std::make_unique<sqf::parser::sqf::impl_default>(logger));
+		sqf::operators::ops_config(sqfvm);
+		sqf::operators::ops_diag(sqfvm);
+		sqf::operators::ops_generic(sqfvm);
+		sqf::operators::ops_group(sqfvm);
+		sqf::operators::ops_logic(sqfvm);
+		sqf::operators::ops_markers(sqfvm);
+		sqf::operators::ops_math(sqfvm);
+		sqf::operators::ops_namespace(sqfvm);
+		sqf::operators::ops_object(sqfvm);
+		sqf::operators::ops_sqfvm(sqfvm);
+		sqf::operators::ops_string(sqfvm);
+
 		return res;
 	}
 	virtual void on_shutdown() override {}
+
+public:
+	class QueueLogger : public Logger {
+	public:
+		QueueLogger() : Logger() {}
+		std::queue<std::string> infos;
+		std::queue<std::string> warnings;
+		std::queue<std::string> errors;
+		std::queue<std::string> other;
+
+		virtual void log(loglevel level, std::string_view message) override
+		{
+			std::stringstream sstream;
+			switch (level)
+			{
+			case loglevel::fatal:
+			case loglevel::error:
+				errors.push(std::string(message));
+				break;
+			case loglevel::warning:
+				warnings.push(std::string(message));
+				break;
+			case loglevel::info:
+				errors.push(std::string(message));
+				break;
+			case loglevel::verbose:
+			case loglevel::trace:
+			default:
+				other.push(std::string(message));
+				break;
+			}
+
+		}
+	};
+	QueueLogger logger;
+	sqf::runtime::runtime sqfvm;
+	sqf_language_server() : logger(), sqfvm(logger, {}) {}
 };
 
 int main(int argc, char** argv)

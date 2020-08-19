@@ -27,11 +27,6 @@ namespace lsp
             t = node;
         }
         template<>
-        void from_json<size_t>(const nlohmann::json& node,  size_t& t)
-        {
-            t = node;
-        }
-        template<>
         void from_json<uint64_t>(const nlohmann::json& node, uint64_t& t)
         {
             t = node;
@@ -53,11 +48,6 @@ namespace lsp
         }
         template<>
         nlohmann::json to_json<int>(const int& t)
-        {
-            return t;
-        }
-        template<>
-        nlohmann::json to_json<size_t>(const size_t& t)
         {
             return t;
         }
