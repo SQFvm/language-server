@@ -49,27 +49,27 @@ namespace lsp
         template<>
         nlohmann::json to_json<bool>(const bool& t)
         {
-            return { t };
+            return t;
         }
         template<>
         nlohmann::json to_json<int>(const int& t)
         {
-            return { t };
+            return t;
         }
         template<>
         nlohmann::json to_json<size_t>(const size_t& t)
         {
-            return { t };
+            return t;
         }
         template<>
         nlohmann::json to_json<uint64_t>(const uint64_t& t)
         {
-            return { t };
+            return t;
         }
         template<>
         nlohmann::json to_json<std::string>(const std::string& t)
         {
-            return { t };
+            return t;
         }
 
 
@@ -516,7 +516,7 @@ namespace lsp
         template<typename T>
         void from_json(const nlohmann::json& node, const char* key, std::optional<T>& opt)
         {
-            if (node.contains(key))
+            if (node.contains(key) && !node[key].is_null())
             {
                 T t;
                 from_json(node, key, t);
@@ -547,8 +547,21 @@ namespace lsp
             }
             else
             {
-                return { nullptr };
+                return nullptr;
             }
+        }
+        template<typename T>
+        void set_json(nlohmann::json& json, const char* key, const std::optional<T>& t)
+        {
+            if (t.has_value())
+            {
+                json[key] = to_json(t.value());
+            }
+        }
+        template<typename T>
+        void set_json(nlohmann::json& json, const char* key, const T& t)
+        {
+            json[key] = to_json(t);
         }
 
         /*
@@ -591,9 +604,9 @@ namespace lsp
             nlohmann::json to_json() const
             {
                 nlohmann::json json;
-                json["language"] = data::to_json(language);
-                json["scheme"] = data::to_json(scheme);
-                json["pattern"] = data::to_json(pattern);
+                data::set_json(json, "language", language);
+                data::set_json(json, "scheme", scheme);
+                data::set_json(json, "pattern", pattern);
                 return json;
             }
         };
@@ -652,8 +665,8 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["openClose"] = data::to_json(openClose);
-                            json["change"] = data::to_json(change);
+                            data::set_json(json, "openClose", openClose);
+                            data::set_json(json, "change", change);
                             return json;
                         }
                     };
@@ -700,9 +713,9 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["triggerCharacters"] = data::to_json(triggerCharacters);
-                            json["allCommitCharacters"] = data::to_json(allCommitCharacters);
-                            json["resolveProvider"] = data::to_json(resolveProvider);
+                            data::set_json(json, "triggerCharacters", triggerCharacters);
+                            data::set_json(json, "allCommitCharacters", allCommitCharacters);
+                            data::set_json(json, "resolveProvider", resolveProvider);
                             return json;
                         }
                     };
@@ -719,7 +732,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
                             return json;
                         }
                     };
@@ -753,9 +766,9 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["triggerCharacters"] = data::to_json(triggerCharacters);
-                            json["retriggerCharacters"] = data::to_json(retriggerCharacters);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "triggerCharacters", triggerCharacters);
+                            data::set_json(json, "retriggerCharacters", retriggerCharacters);
                             return json;
                         }
                     };
@@ -784,9 +797,9 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["id"] = data::to_json(id);
-                            json["documentSelector"] = data::to_json(documentSelector);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "id", id);
+                            data::set_json(json, "documentSelector", documentSelector);
                             return json;
                         }
                     };
@@ -803,7 +816,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
                             return json;
                         }
                     };
@@ -832,9 +845,9 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["documentSelector"] = data::to_json(documentSelector);
-                            json["id"] = data::to_json(id);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "documentSelector", documentSelector);
+                            data::set_json(json, "id", id);
                             return json;
                         }
                     };
@@ -863,9 +876,9 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["documentSelector"] = data::to_json(documentSelector);
-                            json["id"] = data::to_json(id);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "documentSelector", documentSelector);
+                            data::set_json(json, "id", id);
                             return json;
                         }
                     };
@@ -882,7 +895,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
                             return json;
                         }
                     };
@@ -899,7 +912,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
                             return json;
                         }
                     };
@@ -916,7 +929,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
                             return json;
                         }
                     };
@@ -941,8 +954,8 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["codeActionKinds"] = data::to_json(codeActionKinds);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "codeActionKinds", codeActionKinds);
                             return json;
                         }
                     };
@@ -964,8 +977,8 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["resolveProvider"] = data::to_json(resolveProvider);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "resolveProvider", resolveProvider);
                             return json;
                         }
                     };
@@ -987,8 +1000,8 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["resolveProvider"] = data::to_json(resolveProvider);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "resolveProvider", resolveProvider);
                             return json;
                         }
                     };
@@ -1017,9 +1030,9 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["documentSelector"] = data::to_json(documentSelector);
-                            json["id"] = data::to_json(id);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "documentSelector", documentSelector);
+                            data::set_json(json, "id", id);
                             return json;
                         }
                     };
@@ -1036,7 +1049,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
                             return json;
                         }
                     };
@@ -1053,7 +1066,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
                             return json;
                         }
                     };
@@ -1078,8 +1091,8 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["firstTriggerCharacter"] = data::to_json(firstTriggerCharacter);
-                            json["moreTriggerCharacter"] = data::to_json(moreTriggerCharacter);
+                            data::set_json(json, "firstTriggerCharacter", firstTriggerCharacter);
+                            data::set_json(json, "moreTriggerCharacter", moreTriggerCharacter);
                             return json;
                         }
                     };
@@ -1101,8 +1114,8 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["prepareProvider"] = data::to_json(prepareProvider);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "prepareProvider", prepareProvider);
                             return json;
                         }
                     };
@@ -1131,9 +1144,9 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["documentSelector"] = data::to_json(documentSelector);
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "documentSelector", documentSelector);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
                             return json;
                         }
                     };
@@ -1155,8 +1168,8 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["commands"] = data::to_json(commands);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "commands", commands);
                             return json;
                         }
                     };
@@ -1185,9 +1198,9 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
-                            json["documentSelector"] = data::to_json(documentSelector);
-                            json["id"] = data::to_json(id);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
+                            data::set_json(json, "documentSelector", documentSelector);
+                            data::set_json(json, "id", id);
                             return json;
                         }
                     };
@@ -1221,8 +1234,8 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["supported"] = data::to_json(supported);
-                            json["changeNotifications"] = data::to_json(changeNotifications);
+                            data::set_json(json, "supported", supported);
+                            data::set_json(json, "changeNotifications", changeNotifications);
                             return json;
                         }
                     };
@@ -1244,7 +1257,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workspaceFolders"] = data::to_json(workspaceFolders);
+                            data::set_json(json, "workspaceFolders", workspaceFolders);
                             return json;
                         }
                     };
@@ -1481,36 +1494,36 @@ namespace lsp
                         data::from_json(node, "selectionRangeProvider", res.selectionRangeProvider);
                         data::from_json(node, "workspaceSymbolProvider", res.workspaceSymbolProvider);
                         data::from_json(node, "workspace", res.workspace);
-                        res.experimental = node["experimental"];
+                        res.experimental = node.contains("experimental") ? node["experimental"] : nlohmann::json(nullptr);
                         return res;
                     }
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["textDocumentSync"] = data::to_json(textDocumentSync);
-                        json["completionProvider"] = data::to_json(completionProvider);
-                        json["hoverProvider"] = data::to_json(hoverProvider);
-                        json["signatureHelpProvider"] = data::to_json(signatureHelpProvider);
-                        json["declarationProvider"] = data::to_json(declarationProvider);
-                        json["definitionProvider"] = data::to_json(definitionProvider);
-                        json["typeDefinitionProvider"] = data::to_json(typeDefinitionProvider);
-                        json["implementationProvider"] = data::to_json(implementationProvider);
-                        json["referencesProvider"] = data::to_json(referencesProvider);
-                        json["documentHighlightProvider"] = data::to_json(documentHighlightProvider);
-                        json["documentSymbolProvider"] = data::to_json(documentSymbolProvider);
-                        json["codeActionProvider"] = data::to_json(codeActionProvider);
-                        json["codeLensProvider"] = data::to_json(codeLensProvider);
-                        json["documentLinkProvider"] = data::to_json(documentLinkProvider);
-                        json["colorProvider"] = data::to_json(colorProvider);
-                        json["documentFormattingProvider"] = data::to_json(documentFormattingProvider);
-                        json["documentRangeFormattingProvider"] = data::to_json(documentRangeFormattingProvider);
-                        json["documentOnTypeFormattingProvider"] = data::to_json(documentOnTypeFormattingProvider);
-                        json["renameProvider"] = data::to_json(renameProvider);
-                        json["foldingRangeProvider"] = data::to_json(foldingRangeProvider);
-                        json["executeCommandProvider"] = data::to_json(executeCommandProvider);
-                        json["selectionRangeProvider"] = data::to_json(selectionRangeProvider);
-                        json["workspaceSymbolProvider"] = data::to_json(workspaceSymbolProvider);
-                        json["workspace"] = data::to_json(workspace);
+                        data::set_json(json, "textDocumentSync", textDocumentSync);
+                        data::set_json(json, "completionProvider", completionProvider);
+                        data::set_json(json, "hoverProvider", hoverProvider);
+                        data::set_json(json, "signatureHelpProvider", signatureHelpProvider);
+                        data::set_json(json, "declarationProvider", declarationProvider);
+                        data::set_json(json, "definitionProvider", definitionProvider);
+                        data::set_json(json, "typeDefinitionProvider", typeDefinitionProvider);
+                        data::set_json(json, "implementationProvider", implementationProvider);
+                        data::set_json(json, "referencesProvider", referencesProvider);
+                        data::set_json(json, "documentHighlightProvider", documentHighlightProvider);
+                        data::set_json(json, "documentSymbolProvider", documentSymbolProvider);
+                        data::set_json(json, "codeActionProvider", codeActionProvider);
+                        data::set_json(json, "codeLensProvider", codeLensProvider);
+                        data::set_json(json, "documentLinkProvider", documentLinkProvider);
+                        data::set_json(json, "colorProvider", colorProvider);
+                        data::set_json(json, "documentFormattingProvider", documentFormattingProvider);
+                        data::set_json(json, "documentRangeFormattingProvider", documentRangeFormattingProvider);
+                        data::set_json(json, "documentOnTypeFormattingProvider", documentOnTypeFormattingProvider);
+                        data::set_json(json, "renameProvider", renameProvider);
+                        data::set_json(json, "foldingRangeProvider", foldingRangeProvider);
+                        data::set_json(json, "executeCommandProvider", executeCommandProvider);
+                        data::set_json(json, "selectionRangeProvider", selectionRangeProvider);
+                        data::set_json(json, "workspaceSymbolProvider", workspaceSymbolProvider);
+                        data::set_json(json, "workspace", workspace);
                         if (experimental.has_value()) { json["experimental"] = *experimental; }
                         return json;
                     }
@@ -1530,8 +1543,8 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["name"] = data::to_json(name);
-                        json["version"] = data::to_json(version);
+                        data::set_json(json, "name", name);
+                        data::set_json(json, "version", version);
                         return json;
                     }
                 };
@@ -1557,8 +1570,8 @@ namespace lsp
                 nlohmann::json to_json() const
                 {
                     nlohmann::json json;
-                    json["capabilities"] = data::to_json(capabilities);
-                    json["serverInfo"] = data::to_json(serverInfo);
+                    data::set_json(json, "capabilities", capabilities);
+                    data::set_json(json, "serverInfo", serverInfo);
                     return json;
                 }
             };
@@ -1621,9 +1634,9 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["documentChanges"] = data::to_json(documentChanges);
-                        json["resourceOperations"] = data::to_json(resourceOperations);
-                        json["failureHandling"] = data::to_json(failureHandling);
+                        data::set_json(json, "documentChanges", documentChanges);
+                        data::set_json(json, "resourceOperations", resourceOperations);
+                        data::set_json(json, "failureHandling", failureHandling);
                         return json;
                     }
                 };
@@ -1643,7 +1656,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -1665,7 +1678,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -1684,7 +1697,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["valueSet"] = data::to_json(valueSet);
+                            data::set_json(json, "valueSet", valueSet);
                             return json;
                         }
                     };
@@ -1707,8 +1720,8 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["symbolKind"] = data::to_json(symbolKind);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "symbolKind", symbolKind);
                         return json;
                     }
                 };
@@ -1728,7 +1741,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -1768,10 +1781,10 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["willSave"] = data::to_json(willSave);
-                        json["willSaveWaitUntil"] = data::to_json(willSaveWaitUntil);
-                        json["didSave"] = data::to_json(didSave);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "willSave", willSave);
+                        data::set_json(json, "willSaveWaitUntil", willSaveWaitUntil);
+                        data::set_json(json, "didSave", didSave);
                         return json;
                     }
                 };
@@ -1795,7 +1808,7 @@ namespace lsp
                             nlohmann::json to_json() const
                             {
                                 nlohmann::json json;
-                                json["valueSet"] = data::to_json(valueSet);
+                                data::set_json(json, "valueSet", valueSet);
                                 return json;
                             }
                         };
@@ -1854,12 +1867,12 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["snippetSupport"] = data::to_json(snippetSupport);
-                            json["commitCharactersSupport"] = data::to_json(commitCharactersSupport);
-                            json["documentationFormat"] = data::to_json(documentationFormat);
-                            json["deprecatedSupport"] = data::to_json(deprecatedSupport);
-                            json["preselectSupport"] = data::to_json(preselectSupport);
-                            json["tagSupport"] = data::to_json(tagSupport);
+                            data::set_json(json, "snippetSupport", snippetSupport);
+                            data::set_json(json, "commitCharactersSupport", commitCharactersSupport);
+                            data::set_json(json, "documentationFormat", documentationFormat);
+                            data::set_json(json, "deprecatedSupport", deprecatedSupport);
+                            data::set_json(json, "preselectSupport", preselectSupport);
+                            data::set_json(json, "tagSupport", tagSupport);
                             return json;
                         }
                     };
@@ -1886,7 +1899,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["valueSet"] = data::to_json(valueSet);
+                            data::set_json(json, "valueSet", valueSet);
                             return json;
                         }
                     };
@@ -1923,10 +1936,10 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["completionItem"] = data::to_json(completionItem);
-                        json["completionItemKind"] = data::to_json(completionItemKind);
-                        json["contextSupport"] = data::to_json(contextSupport);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "completionItem", completionItem);
+                        data::set_json(json, "completionItemKind", completionItemKind);
+                        data::set_json(json, "contextSupport", contextSupport);
                         return json;
                     }
                 };
@@ -1953,8 +1966,8 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["contentFormat"] = data::to_json(contentFormat);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "contentFormat", contentFormat);
                         return json;
                     }
                 };
@@ -1980,7 +1993,7 @@ namespace lsp
                             nlohmann::json to_json() const
                             {
                                 nlohmann::json json;
-                                json["labelOffsetSupport"] = data::to_json(labelOffsetSupport);
+                                data::set_json(json, "labelOffsetSupport", labelOffsetSupport);
                                 return json;
                             }
                         };
@@ -2005,8 +2018,8 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["documentationFormat"] = data::to_json(documentationFormat);
-                            json["parameterInformation"] = data::to_json(parameterInformation);
+                            data::set_json(json, "documentationFormat", documentationFormat);
+                            data::set_json(json, "parameterInformation", parameterInformation);
                             return json;
                         }
                     };
@@ -2042,9 +2055,9 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["signatureInformation"] = data::to_json(signatureInformation);
-                        json["contextSupport"] = data::to_json(contextSupport);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "signatureInformation", signatureInformation);
+                        data::set_json(json, "contextSupport", contextSupport);
                         return json;
                     }
                 };
@@ -2072,8 +2085,8 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["linkSupport"] = data::to_json(linkSupport);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "linkSupport", linkSupport);
                         return json;
                     }
                 };
@@ -2101,8 +2114,8 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["linkSupport"] = data::to_json(linkSupport);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "linkSupport", linkSupport);
                         return json;
                     }
                 };
@@ -2132,8 +2145,8 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["linkSupport"] = data::to_json(linkSupport);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "linkSupport", linkSupport);
                         return json;
                     }
                 };
@@ -2163,8 +2176,8 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["linkSupport"] = data::to_json(linkSupport);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "linkSupport", linkSupport);
                         return json;
                     }
                 };
@@ -2184,7 +2197,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -2204,7 +2217,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -2233,7 +2246,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["valueSet"] = data::to_json(valueSet);
+                            data::set_json(json, "valueSet", valueSet);
                             return json;
                         }
                     };
@@ -2264,9 +2277,9 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["symbolKind"] = data::to_json(symbolKind);
-                        json["hierarchicalDocumentSymbolSupport"] = data::to_json(hierarchicalDocumentSymbolSupport);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "symbolKind", symbolKind);
+                        data::set_json(json, "hierarchicalDocumentSymbolSupport", hierarchicalDocumentSymbolSupport);
                         return json;
                     }
                 };
@@ -2332,9 +2345,9 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["codeActionLiteralSupport"] = data::to_json(codeActionLiteralSupport);
-                        json["isPreferredSupport"] = data::to_json(isPreferredSupport);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "codeActionLiteralSupport", codeActionLiteralSupport);
+                        data::set_json(json, "isPreferredSupport", isPreferredSupport);
                         return json;
                     }
                 };
@@ -2354,7 +2367,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -2382,8 +2395,8 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["tooltipSupport"] = data::to_json(tooltipSupport);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "tooltipSupport", tooltipSupport);
                         return json;
                     }
                 };
@@ -2403,7 +2416,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -2423,7 +2436,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -2443,7 +2456,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -2463,7 +2476,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -2492,8 +2505,8 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["prepareSupport"] = data::to_json(prepareSupport);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "prepareSupport", prepareSupport);
                         return json;
                     }
                 };
@@ -2515,7 +2528,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["valueSet"] = data::to_json(valueSet);
+                            data::set_json(json, "valueSet", valueSet);
                             return json;
                         }
                     };
@@ -2551,9 +2564,9 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["relatedInformation"] = data::to_json(relatedInformation);
-                        json["tagSupport"] = data::to_json(tagSupport);
-                        json["versionSupport"] = data::to_json(versionSupport);
+                        data::set_json(json, "relatedInformation", relatedInformation);
+                        data::set_json(json, "tagSupport", tagSupport);
+                        data::set_json(json, "versionSupport", versionSupport);
                         return json;
                     }
                 };
@@ -2587,9 +2600,9 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
-                        json["rangeLimit"] = data::to_json(rangeLimit);
-                        json["lineFoldingOnly"] = data::to_json(lineFoldingOnly);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
+                        data::set_json(json, "rangeLimit", rangeLimit);
+                        data::set_json(json, "lineFoldingOnly", lineFoldingOnly);
                         return json;
                     }
                 };
@@ -2611,7 +2624,7 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["dynamicRegistration"] = data::to_json(dynamicRegistration);
+                        data::set_json(json, "dynamicRegistration", dynamicRegistration);
                         return json;
                     }
                 };
@@ -2770,28 +2783,28 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["synchronization"] = data::to_json(synchronization);
-                        json["completion"] = data::to_json(completion);
-                        json["hover"] = data::to_json(hover);
-                        json["signatureHelp"] = data::to_json(signatureHelp);
-                        json["declaration"] = data::to_json(declaration);
-                        json["definition"] = data::to_json(definition);
-                        json["typeDefinition"] = data::to_json(typeDefinition);
-                        json["implementation"] = data::to_json(implementation);
-                        json["references"] = data::to_json(references);
-                        json["documentHighlight"] = data::to_json(documentHighlight);
-                        json["documentSymbol"] = data::to_json(documentSymbol);
-                        json["codeAction"] = data::to_json(codeAction);
-                        json["codeLens"] = data::to_json(codeLens);
-                        json["documentLink"] = data::to_json(documentLink);
-                        json["colorProvider"] = data::to_json(colorProvider);
-                        json["formatting"] = data::to_json(formatting);
-                        json["rangeFormatting"] = data::to_json(rangeFormatting);
-                        json["onTypeFormatting"] = data::to_json(onTypeFormatting);
-                        json["rename"] = data::to_json(rename);
-                        json["publishDiagnostics"] = data::to_json(publishDiagnostics);
-                        json["foldingRange"] = data::to_json(foldingRange);
-                        json["selectionRange"] = data::to_json(selectionRange);
+                        data::set_json(json, "synchronization", synchronization);
+                        data::set_json(json, "completion", completion);
+                        data::set_json(json, "hover", hover);
+                        data::set_json(json, "signatureHelp", signatureHelp);
+                        data::set_json(json, "declaration", declaration);
+                        data::set_json(json, "definition", definition);
+                        data::set_json(json, "typeDefinition", typeDefinition);
+                        data::set_json(json, "implementation", implementation);
+                        data::set_json(json, "references", references);
+                        data::set_json(json, "documentHighlight", documentHighlight);
+                        data::set_json(json, "documentSymbol", documentSymbol);
+                        data::set_json(json, "codeAction", codeAction);
+                        data::set_json(json, "codeLens", codeLens);
+                        data::set_json(json, "documentLink", documentLink);
+                        data::set_json(json, "colorProvider", colorProvider);
+                        data::set_json(json, "formatting", formatting);
+                        data::set_json(json, "rangeFormatting", rangeFormatting);
+                        data::set_json(json, "onTypeFormatting", onTypeFormatting);
+                        data::set_json(json, "rename", rename);
+                        data::set_json(json, "publishDiagnostics", publishDiagnostics);
+                        data::set_json(json, "foldingRange", foldingRange);
+                        data::set_json(json, "selectionRange", selectionRange);
                         return json;
                     }
                 };
@@ -2854,14 +2867,14 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["applyEdit"] = data::to_json(applyEdit);
-                            json["workspaceEdit"] = data::to_json(workspaceEdit);
-                            json["didChangeConfiguration"] = data::to_json(didChangeConfiguration);
-                            json["didChangeWatchedFiles"] = data::to_json(didChangeWatchedFiles);
-                            json["symbol"] = data::to_json(symbol);
-                            json["executeCommand"] = data::to_json(executeCommand);
-                            json["workspaceFolders"] = data::to_json(workspaceFolders);
-                            json["configuration"] = data::to_json(configuration);
+                            data::set_json(json, "applyEdit", applyEdit);
+                            data::set_json(json, "workspaceEdit", workspaceEdit);
+                            data::set_json(json, "didChangeConfiguration", didChangeConfiguration);
+                            data::set_json(json, "didChangeWatchedFiles", didChangeWatchedFiles);
+                            data::set_json(json, "symbol", symbol);
+                            data::set_json(json, "executeCommand", executeCommand);
+                            data::set_json(json, "workspaceFolders", workspaceFolders);
+                            data::set_json(json, "configuration", configuration);
                             return json;
                         }
                     };
@@ -2884,7 +2897,7 @@ namespace lsp
                         nlohmann::json to_json() const
                         {
                             nlohmann::json json;
-                            json["workDoneProgress"] = data::to_json(workDoneProgress);
+                            data::set_json(json, "workDoneProgress", workDoneProgress);
                             return json;
                         }
                     };
@@ -2906,14 +2919,14 @@ namespace lsp
                         client_capabilities res;
                         data::from_json(node, "workspace", res.workspace);
                         data::from_json(node, "textDocument", res.textDocument);
-                        res.experimental = node["experimental"];
+                        res.experimental = node.contains("experimental") ? node["experimental"] : nlohmann::json(nullptr);
                         return res;
                     }
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["workspace"] = data::to_json(workspace);
-                        json["textDocument"] = data::to_json(textDocument);
+                        data::set_json(json, "workspace", workspace);
+                        data::set_json(json, "textDocument", textDocument);
                         if (experimental.has_value()) { json["experimental"] = *experimental; }
                         return json;
                     }
@@ -2940,8 +2953,8 @@ namespace lsp
                     nlohmann::json to_json() const
                     {
                         nlohmann::json json;
-                        json["uri"] = data::to_json(uri);
-                        json["name"] = data::to_json(name);
+                        data::set_json(json, "uri", uri);
+                        data::set_json(json, "name", name);
                         return json;
                     }
                 };
@@ -2999,7 +3012,7 @@ namespace lsp
                     data::from_json(node, "clientInfo", res.clientInfo);
                     data::from_json(node, "rootPath", res.rootPath);
                     data::from_json(node, "rootUri", res.rootUri);
-                    res.initializationOptions = node["initializationOptions"];
+                    res.initializationOptions = node.contains("initializationOptions") ? node["initializationOptions"] : nlohmann::json(nullptr);
                     data::from_json(node, "capabilities", res.capabilities);
                     data::from_json(node, "trace", res.trace);
                     data::from_json(node, "workspaceFolders", res.workspaceFolders);
@@ -3008,14 +3021,14 @@ namespace lsp
                 nlohmann::json to_json() const
                 {
                     nlohmann::json json;
-                    json["processId"] = data::to_json(processId);
-                    json["clientInfo"] = data::to_json(clientInfo);
-                    json["rootPath"] = data::to_json(rootPath);
-                    json["rootUri"] = data::to_json(rootUri);
+                    data::set_json(json, "processId", processId);
+                    data::set_json(json, "clientInfo", clientInfo);
+                    data::set_json(json, "rootPath", rootPath);
+                    data::set_json(json, "rootUri", rootUri);
                     json["initializationOptions"] = initializationOptions;
-                    json["capabilities"] = data::to_json(capabilities);
-                    json["trace"] = data::to_json(trace);
-                    json["workspaceFolders"] = data::to_json(workspaceFolders);
+                    data::set_json(json, "capabilities", capabilities);
+                    data::set_json(json, "trace", trace);
+                    data::set_json(json, "workspaceFolders", workspaceFolders);
                     return json;
                 }
             };
@@ -3047,6 +3060,11 @@ namespace lsp
                     auto res = on_initialize(params);
                     rpc.send({ msg.id, res.to_json() });
                 });
+            rpc.register_method("shutdown", 
+                [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
+                { 
+                    on_shutdown();
+                });
         }
 
         void listen()
@@ -3064,5 +3082,6 @@ namespace lsp
         void kill() { m_die = true; }
 
         virtual lsp::data::responses::initialize_result on_initialize(const lsp::data::requests::initialize_params& params) = 0;
+        virtual void on_shutdown() = 0;
     };
 }

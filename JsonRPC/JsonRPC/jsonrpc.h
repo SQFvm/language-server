@@ -11,14 +11,15 @@
 #include <string_view>
 #include <charconv>
 #include <functional>
+#include <variant>
 
 #include <nlohmann/json.hpp>
 
-#define buffersize 2048
-// Class to handle JSON-RPC
-//template<size_t buffersize>
 class jsonrpc
 {
+    static constexpr size_t buffersize = 1;
+    static constexpr const char* newline = "\n";
+    static constexpr const char* double_newline = "\n\n";
 public:
     struct rpcmessage
     {
@@ -58,7 +59,7 @@ public:
         {
             rpcmessage res;
             res.protocol_version = json.contains("jsonrpc") ? json["jsonrpc"].get<std::string>() : std::string();
-            res.id = json.contains("id") ? json["id"].get<std::string>() : std::string();
+            res.id = json.contains("id") ? (json["id"].is_string() ? json["id"].get<std::string>() : json["id"].dump()) : std::string();
             res.method = json.contains("method") ? json["method"].get<std::string>() : std::string();
             res.result = json.contains("result") ? json["result"] : nlohmann::json(nullptr);
             res.params = json.contains("params") ? json["params"] : nlohmann::json(nullptr);
@@ -128,7 +129,7 @@ public:
 
 
     // Attempts to handle a single input message.
-    // Returns true if a message was handled and false if not.
+    // Returns true if a message was dequeued and false if not.
     bool handle_single_message()
     {
         std::string message;
@@ -142,7 +143,10 @@ public:
             m_qin.pop();
         }
         auto res = rpcmessage::deserialize(nlohmann::json::parse(message, nullptr, true, false));
-        auto mthd = m_methods[res.method];
+        
+        auto iter = m_methods.find(res.method);
+        if (iter == m_methods.end()) { return true; }
+        auto mthd = iter->second;
         mthd(*this, res);
         return true;
     }
@@ -170,7 +174,7 @@ private:
         while (!*terminate)
         {
             // Read Message
-            auto read = m_in.readsome(buffer, buffersize);
+            auto read = m_in.read(buffer, buffersize).gcount();
             if (read == 0)
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -187,11 +191,14 @@ private:
                 {
                     auto content_length_find_res = whole.find("Content-Length:");
                     if (std::string_view::npos == content_length_find_res) { /* abort and read more */ continue; }
+                    auto content_length_end_find_res = whole.find("\n", content_length_find_res);
+                    if (std::string_view::npos == content_length_end_find_res) { /* abort and read more */ continue; }
+
                     auto content_length_str_start = content_length_find_res + std::strlen("Content-Length:");
                     for (; content_length_str_start < whole.size() && whole[content_length_str_start] == ' '; content_length_str_start++) { /* find number start */ }
                     auto content_length_str_end = content_length_str_start;
                     for (; content_length_str_end < whole.size() && whole[content_length_str_end] >= '0' && whole[content_length_str_end] <= '9'; content_length_str_end++) { /* find number end */ }
-                    auto content_length_str = whole.substr(content_length_str_end, content_length_str_end - content_length_str_start);
+                    auto content_length_str = whole.substr(content_length_str_start, content_length_str_end - content_length_str_start);
                     auto content_length_res = std::from_chars(content_length_str.data(), content_length_str.data() + content_length_str.size(), content_length);
                     if (content_length_res.ec == std::errc::invalid_argument)
                     {
@@ -208,9 +215,9 @@ private:
 
                 // Find content-start (indicated by double-newline)
                 {
-                    auto endlendl_find_res = whole.find("\r\n\r\n");
+                    auto endlendl_find_res = whole.find(double_newline);
                     if (std::string_view::npos == endlendl_find_res) { /* abort and read more */ continue; }
-                    whole = whole.substr(endlendl_find_res + 4);
+                    whole = whole.substr(endlendl_find_res + 2);
                 }
 
                 // Read the message & erase from buffer
@@ -258,10 +265,10 @@ private:
 
                 // Send message over m_out
                 m_out << 
-                    "Content-Length: " << msg.length() << "\r\n" <<
-                    "Content-Type: application/json-rpc;charset=utf-8" << "\r\n" <<
-                    "\r\n" <<
+                    "Content-Length: " << msg.length() << newline <<
+                    "Content-Type: application/json-rpc;charset=utf-8" << double_newline <<
                     msg;
+                m_out.flush();
             }
         }
 
