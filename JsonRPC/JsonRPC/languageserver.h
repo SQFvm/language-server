@@ -709,10 +709,11 @@ namespace lsp
         struct uri : public ::x39::uri
         {
             uri() : ::x39::uri() {}
+            uri(const std::string& input) : ::x39::uri(input) {}
             uri(std::string_view input) : ::x39::uri(input) {}
             static uri from_json(const nlohmann::json& node)
             {
-                return { node };
+                return node;
             }
             nlohmann::json to_json() const
             {
