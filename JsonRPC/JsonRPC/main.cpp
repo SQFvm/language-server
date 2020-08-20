@@ -21,10 +21,11 @@
 
 class sqf_language_server : public lsp::server
 {
-
+	lsp::data::initialize_params client;
 	// Inherited via server
 	virtual lsp::data::initialize_result on_initialize(const lsp::data::initialize_params& params) override
 	{
+		client = params;
 		// Prepare server capabilities
 		lsp::data::initialize_result res;
 		res.serverInfo = lsp::data::initialize_result::server_info{};

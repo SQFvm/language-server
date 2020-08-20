@@ -9,7 +9,7 @@ import * as fs from "fs";
 
 // Defines the search path of your language server DLL. (.NET Core)
 const languageServerPaths = [
-    "../JsonRPC/Debug/JsonRPC.exe",
+    "../JsonRPC/x64/Debug/JsonRPC.exe",
 ]
 
 let client: languageClient.LanguageClient | undefined;

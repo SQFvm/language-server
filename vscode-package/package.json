@@ -1,5 +1,5 @@
 {
-    "name": "sqf-vm-ls",
+    "name": "sqf-vm-language-server",
     "displayName": "SQF-VM Language Server",
     "description": "",
     "version": "0.1.0",
