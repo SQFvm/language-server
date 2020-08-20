@@ -28,10 +28,10 @@ public:
 	class QueueLogger : public Logger {
 	public:
 		QueueLogger() : Logger() {}
-		std::queue<std::string> infos;
-		std::queue<std::string> warnings;
-		std::queue<std::string> errors;
-		std::queue<std::string> other;
+		std::vector<std::string> infos;
+		std::vector<std::string> warnings;
+		std::vector<std::string> errors;
+		std::vector<std::string> other;
 
 		virtual void log(loglevel level, std::string_view message) override
 		{
@@ -40,21 +40,58 @@ public:
 			{
 			case loglevel::fatal:
 			case loglevel::error:
-				errors.push(std::string(message));
+				errors.push_back(std::string(message));
 				break;
 			case loglevel::warning:
-				warnings.push(std::string(message));
+				warnings.push_back(std::string(message));
 				break;
 			case loglevel::info:
-				errors.push(std::string(message));
+				errors.push_back(std::string(message));
 				break;
 			case loglevel::verbose:
 			case loglevel::trace:
 			default:
-				other.push(std::string(message));
+				other.push_back(std::string(message));
 				break;
 			}
 
+		}
+		void report(sqf_language_server& ls)
+		{
+			lsp::data::publish_diagnostics_params params;
+			for (auto it : infos)
+			{
+				lsp::data::diagnostics diag;
+				diag.severity = lsp::data::diagnostic_severity::Information;
+				diag.message = it;
+				params.diagnostics.push_back(diag);
+			}
+			infos.clear();
+			for (auto it : warnings)
+			{
+				lsp::data::diagnostics diag;
+				diag.severity = lsp::data::diagnostic_severity::Warning;
+				diag.message = it;
+				params.diagnostics.push_back(diag);
+			}
+			warnings.clear();
+			for (auto it : errors)
+			{
+				lsp::data::diagnostics diag;
+				diag.severity = lsp::data::diagnostic_severity::Error;
+				diag.message = it;
+				params.diagnostics.push_back(diag);
+			}
+			errors.clear();
+			for (auto it : other)
+			{
+				lsp::data::diagnostics diag;
+				diag.severity = lsp::data::diagnostic_severity::Hint;
+				diag.message = it;
+				params.diagnostics.push_back(diag);
+			}
+			other.clear();
+			ls.textDocument_publishDiagnostics(params);
 		}
 	};
 	class text_document
@@ -93,11 +130,21 @@ public:
 			case sqf::parser::sqf::impl_default::nodetype::ARRAY:
 			case sqf::parser::sqf::impl_default::nodetype::CODE:
 			{
+				// todo: find a way to force vscode into using offsets instead of lines
 				lsp::data::folding_range frange;
 				frange.startCharacter = current.offset;
-				frange.startLine = current.line;
+				frange.startLine = current.line - 1; // lines start at 0
 				frange.endCharacter = current.offset + current.length;
-				frange.endLine = current.children.empty() ? current.line : current.children.back().line;
+
+				// find current nodes, last child in tree and set its line as end.
+				sqf::parser::sqf::impl_default::astnode* prev = &current;
+				sqf::parser::sqf::impl_default::astnode* node = &current;
+				while (node)
+				{
+					prev = node;
+					node = node->children.empty() ? nullptr : &node->children.back();
+				}
+				frange.endLine = prev->line;
 				m_foldings.push_back(frange);
 			} break;
 			}
@@ -199,15 +246,31 @@ protected:
 				}
 			}
 		}
+		logger.report(*this);
 	}
 
-	virtual void on_textDocument_didOpen(const lsp::data::did_open_text_document_params& params) override
-	{
-
-	}
 	virtual void on_textDocument_didChange(const lsp::data::did_change_text_document_params& params) override
 	{
-
+		auto& uri = params.textDocument.uri;
+		std::string dpath;
+		dpath.reserve(uri.host().length() + 1 + uri.path().length());
+		dpath.append(uri.host());
+		dpath.append("/");
+		dpath.append(uri.path());
+		std::filesystem::path data_path(dpath);
+		data_path = data_path.lexically_normal();
+		auto findRes = text_documents.find(data_path.string());
+		if (findRes != text_documents.end())
+		{
+			auto& doc = findRes->second;
+			doc.reread(sqfvm);
+		}
+		else
+		{
+			auto fpath = data_path.string();
+			text_documents[fpath] = { sqfvm, fpath };
+		}
+		logger.report(*this);
 	}
 	virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(const lsp::data::folding_range_params& params) override
 	{
