@@ -19,9 +19,116 @@
 #include <parser/preprocessor/default.h>
 #include <fileio/default.h>
 
+#include <unordered_map>
+#include <filesystem>
+
 class sqf_language_server : public lsp::server
 {
-	lsp::data::initialize_params client;
+public:
+	class QueueLogger : public Logger {
+	public:
+		QueueLogger() : Logger() {}
+		std::queue<std::string> infos;
+		std::queue<std::string> warnings;
+		std::queue<std::string> errors;
+		std::queue<std::string> other;
+
+		virtual void log(loglevel level, std::string_view message) override
+		{
+			std::stringstream sstream;
+			switch (level)
+			{
+			case loglevel::fatal:
+			case loglevel::error:
+				errors.push(std::string(message));
+				break;
+			case loglevel::warning:
+				warnings.push(std::string(message));
+				break;
+			case loglevel::info:
+				errors.push(std::string(message));
+				break;
+			case loglevel::verbose:
+			case loglevel::trace:
+			default:
+				other.push(std::string(message));
+				break;
+			}
+
+		}
+	};
+	class text_document
+	{
+	private:
+		std::string m_path;
+		std::string m_contents;
+		sqf::parser::sqf::impl_default::astnode m_root_ast;
+		std::vector<lsp::data::folding_range> m_foldings;
+
+		void recalculate_ast(sqf::runtime::runtime& sqfvm)
+		{
+			auto parser = dynamic_cast<sqf::parser::sqf::impl_default&>(sqfvm.parser_sqf());
+			bool errflag = false;
+
+			auto preprocessed = sqfvm.parser_preprocessor().preprocess(sqfvm, { m_path, {} });
+			if (preprocessed.has_value())
+			{
+				m_contents = preprocessed.value();
+				m_root_ast = parser.get_ast(sqfvm, m_contents, { m_path, {} }, &errflag);
+				if (errflag)
+				{
+					m_root_ast = {};
+				}
+			}
+			else
+			{
+				m_root_ast = {};
+			}
+		}
+
+		void recalculate_foldings_recursive(sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current)
+		{
+			switch (current.kind)
+			{
+			case sqf::parser::sqf::impl_default::nodetype::ARRAY:
+			case sqf::parser::sqf::impl_default::nodetype::CODE:
+			{
+				lsp::data::folding_range frange;
+				frange.startCharacter = current.offset;
+				frange.startLine = current.line;
+				frange.endCharacter = current.offset + current.length;
+				frange.endLine = current.children.empty() ? current.line : current.children.back().line;
+				m_foldings.push_back(frange);
+			} break;
+			}
+			for (auto child : current.children)
+			{
+				recalculate_foldings_recursive(sqfvm, child);
+			}
+		}
+		void recalculate_foldings(sqf::runtime::runtime& sqfvm)
+		{
+			m_foldings.clear();
+			recalculate_foldings_recursive(sqfvm, m_root_ast);
+		}
+	public:
+		text_document() {}
+		text_document(sqf::runtime::runtime& sqfvm, std::string path) : m_path(path)
+		{
+			reread(sqfvm);
+		}
+
+		std::string_view contents() const { return m_contents; }
+		void reread(sqf::runtime::runtime& sqfvm)
+		{
+			recalculate_ast(sqfvm);
+			recalculate_foldings(sqfvm);
+		}
+
+		std::vector<lsp::data::folding_range>& foldings() { return m_foldings; }
+	};
+protected:
+
 	// Inherited via server
 	virtual lsp::data::initialize_result on_initialize(const lsp::data::initialize_params& params) override
 	{
@@ -63,6 +170,37 @@ class sqf_language_server : public lsp::server
 	}
 	virtual void on_shutdown() override {}
 
+	// After Initialize
+	virtual void after_initialize(const lsp::data::initialize_params& params) override
+	{
+		if (params.workspaceFolders.has_value())
+		{
+			for (auto workspaceFolder : params.workspaceFolders.value())
+			{
+				auto uri = workspaceFolder.uri;
+				std::string dpath;
+				dpath.reserve(uri.host().length() + 1 + uri.path().length());
+				dpath.append(uri.host());
+				dpath.append("/");
+				dpath.append(uri.path());
+				std::filesystem::path data_path(dpath);
+				data_path = data_path.lexically_normal();
+				std::filesystem::recursive_directory_iterator dir_start(data_path, std::filesystem::directory_options::skip_permission_denied);
+				std::filesystem::recursive_directory_iterator dir_end;
+
+				for (auto it = dir_start; it != dir_end; it++)
+				{
+					if (it->is_directory())
+					{
+						continue;
+					}
+					auto fpath = it->path().string();
+					text_documents[fpath] = { sqfvm, fpath };
+				}
+			}
+		}
+	}
+
 	virtual void on_textDocument_didOpen(const lsp::data::did_open_text_document_params& params) override
 	{
 
@@ -73,42 +211,29 @@ class sqf_language_server : public lsp::server
 	}
 	virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(const lsp::data::folding_range_params& params) override
 	{
-		return {};
+		auto& uri = params.textDocument.uri;
+		std::string dpath;
+		dpath.reserve(uri.host().length() + 1 + uri.path().length());
+		dpath.append(uri.host());
+		dpath.append("/");
+		dpath.append(uri.path());
+		std::filesystem::path data_path(dpath);
+		data_path = data_path.lexically_normal();
+		auto findRes = text_documents.find(data_path.string());
+		if (findRes != text_documents.end())
+		{
+			auto& doc = findRes->second;
+			return doc.foldings();
+		}
+		else
+		{
+			return {};
+		}
 	}
 
 public:
-	class QueueLogger : public Logger {
-	public:
-		QueueLogger() : Logger() {}
-		std::queue<std::string> infos;
-		std::queue<std::string> warnings;
-		std::queue<std::string> errors;
-		std::queue<std::string> other;
-
-		virtual void log(loglevel level, std::string_view message) override
-		{
-			std::stringstream sstream;
-			switch (level)
-			{
-			case loglevel::fatal:
-			case loglevel::error:
-				errors.push(std::string(message));
-				break;
-			case loglevel::warning:
-				warnings.push(std::string(message));
-				break;
-			case loglevel::info:
-				errors.push(std::string(message));
-				break;
-			case loglevel::verbose:
-			case loglevel::trace:
-			default:
-				other.push(std::string(message));
-				break;
-			}
-
-		}
-	};
+	std::unordered_map<std::string, text_document> text_documents;
+	lsp::data::initialize_params client;
 	QueueLogger logger;
 	sqf::runtime::runtime sqfvm;
 	sqf_language_server() : logger(), sqfvm(logger, {}) {}
@@ -120,6 +245,15 @@ int main(int argc, char** argv)
 	_CrtDbgReport(_CRT_ASSERT, "", 0, "", "Waiting for vs.");
 #endif // _DEBUG
 
+	x39::uri a("aba://aba:aba@aba:aba/aba?aba#aba");
+	x39::uri b("aba://aba:aba@aba:aba?aba#aba");
+	x39::uri c("aba://aba:aba@aba?aba#aba");
+	x39::uri d("aba://aba@aba?aba#aba");
+	x39::uri e("aba://aba?aba#aba");
+	x39::uri f("aba://aba?aba");
+	x39::uri g("aba://aba");
+	x39::uri h("file://D%3A/Git/Sqfvm/vm/tests/");
+	x39::uri i("https://www.google.com/search?rlz=1C1CHBF_deDE910DE910&sxsrf=ALeKk02J_XcmnGpP0UfYPa2S-usVtUnZXw%3A1597937338384&ei=upY-X4TzFpHikgWc7pXwBQ&q=file%3A%2F%2F%2FD%3A%2Fasdasd");
 	sqf_language_server ls;
 	ls.listen();
 }

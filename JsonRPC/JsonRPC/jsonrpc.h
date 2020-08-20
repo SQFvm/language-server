@@ -12,6 +12,7 @@
 #include <charconv>
 #include <functional>
 #include <variant>
+#include <optional>
 
 #include <nlohmann/json.hpp>
 
@@ -26,8 +27,8 @@ public:
         std::string protocol_version;
         std::string id;
         std::string method;
-        nlohmann::json result;
-        nlohmann::json params;
+        std::optional<nlohmann::json> result;
+        std::optional<nlohmann::json> params;
 
         rpcmessage() : protocol_version("2.0"), id({}), method({}), result(nullptr), params(nullptr) {}
         rpcmessage(std::string id, std::string method) : protocol_version("2.0"), id(id), method(method), result(nullptr), params(nullptr) {}
@@ -37,13 +38,13 @@ public:
         nlohmann::json serialize() const
         {
             nlohmann::json res = { { "jsonrpc", protocol_version } };
-            if (!result.is_null())
+            if (result.has_value())
             {
-                res["result"] = result;
+                res["result"] = *result;
             }
-            if (!params.is_null())
+            if (params.has_value())
             {
-                res["params"] = params;
+                res["params"] = *params;
             }
             if (!id.empty())
             {
@@ -61,8 +62,8 @@ public:
             res.protocol_version = json.contains("jsonrpc") ? json["jsonrpc"].get<std::string>() : std::string();
             res.id = json.contains("id") ? (json["id"].is_string() ? json["id"].get<std::string>() : json["id"].dump()) : std::string();
             res.method = json.contains("method") ? json["method"].get<std::string>() : std::string();
-            res.result = json.contains("result") ? json["result"] : nlohmann::json(nullptr);
-            res.params = json.contains("params") ? json["params"] : nlohmann::json(nullptr);
+            res.result = json.contains("result") ? json["result"] : std::optional<nlohmann::json>{};
+            res.params = json.contains("params") ? json["params"] : std::optional<nlohmann::json>{};
             return res;
         }
     };
@@ -78,6 +79,8 @@ public:
     };
     using mthd = std::function<void(jsonrpc& jsonrpc, const rpcmessage& msg)>;
 private:
+    std::mutex m_read_mutex;
+    std::mutex m_write_mutex;
     std::istream& m_in;
     std::ostream& m_out;
     std::atomic<size_t> m_counter;
@@ -87,8 +90,6 @@ private:
     std::thread m_write_thread;
     destruct_strategy m_destruct_strategy;
     parse_error_strategy m_parse_error_strategy;
-    std::mutex m_read_mutex;
-    std::mutex m_write_mutex;
 
     std::queue<std::string> m_qin;
     std::queue<std::string> m_qout;

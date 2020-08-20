@@ -10,38 +10,64 @@ namespace x39
     {
     private:
         std::string m_data;
-        std::string_view m_schema;
-        std::string_view m_user;
-        std::string_view m_password;
-        std::string_view m_host;
-        std::string_view m_port;
-        std::string_view m_path;
-        std::string_view m_query;
-        std::string_view m_fragment;
+        size_t m_schema_start;
+        size_t m_schema_length;
+        size_t m_user_start;
+        size_t m_user_length;
+        size_t m_password_start;
+        size_t m_password_length;
+        size_t m_host_start;
+        size_t m_host_length;
+        size_t m_port_start;
+        size_t m_port_length;
+        size_t m_path_start;
+        size_t m_path_length;
+        size_t m_query_start;
+        size_t m_query_length;
+        size_t m_fragment_start;
+        size_t m_fragment_length;
     protected:
         uri() {}
     public:
+        uri(const char* input) : uri(std::string_view(input)) {}
         uri(const std::string& input) : uri(std::string_view(input)) {}
-        uri(std::string_view input)
+        uri(std::string_view input) : 
+            m_data(),
+            m_schema_start(0),
+            m_schema_length(0),
+            m_user_start(0),
+            m_user_length(0),
+            m_password_start(0),
+            m_password_length(0),
+            m_host_start(0),
+            m_host_length(0),
+            m_port_start(0),
+            m_port_length(0),
+            m_path_start(0),
+            m_path_length(0),
+            m_query_start(0),
+            m_query_length(0),
+            m_fragment_start(0),
+            m_fragment_length(0)
         {
-            std::string output;
+            auto& output = m_data;
             output.reserve(input.size()); // parsed string is always at max as long as input
 
-            enum estate { schema_read, schema_wait_end, user, password, host, port, path, query, fragment };
+            enum estate { schema_read, schema_wait_length, user, password, host, port, path, query, fragment };
             estate state = schema_read;
             size_t start = 0;
             size_t current = 0;
             int specialCharacter = 0;
-            char specialBuffer[3] = { '\0', '\0','\0' };
+            char specialBuffer[4] = { ' ', '\0', '\0', '\0' };
             for (auto c : input)
             {
                 if (specialCharacter != 0)
                 {
                     specialBuffer[specialCharacter++] = c;
-                    if (specialCharacter == 2)
+                    if (specialCharacter == 3)
                     {
                         specialCharacter = 0;
-                        switch (specialBuffer[0])
+                        switch (specialBuffer[1])
                         {
                         case '0':
                             c = 0x00;
@@ -92,7 +118,7 @@ namespace x39
                             c = 0xF0;
                             break;
                         }
-                        switch (specialBuffer[1])
+                        switch (specialBuffer[2])
                         {
                         case '0':
                             c |= 0x0;
@@ -164,15 +190,16 @@ namespace x39
                 case schema_read:
                     if (c == ':')
                     {
-                        state = schema_wait_end;
-                        m_schema = std::string_view(output).substr(start, current);
+                        state = schema_wait_length;
+                        m_schema_start = start;
+                        m_schema_length = current - start - 1;
                     }
                     break;
-                case schema_wait_end:
+                case schema_wait_length:
                     if (c != '/' && c != ':')
                     {
                         state = user;
-                        start = current;
+                        start = current - 1;
                     }
                     break;
                 case user:
@@ -184,61 +211,160 @@ namespace x39
                             state = host;
                             goto case_host;
                         }
-                        m_user = std::string_view(output).substr(start, current);
+                        m_user_start = start;
+                        m_user_length = current - start - 1;
                         state = password;
-                        start = current + 1;
+                        start = current;
                     }
                     else if (c == '@')
                     {
-                        m_user = std::string_view(output).substr(start, current);
+                        m_user_start = start;
+                        m_user_length = current - start - 1;
                         state = host;
-                        start = current + 1;
+                        start = current;
+                    }
+                    else if (c == '/')
+                    {
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
+                        state = path;
+                        start = current;
+                    }
+                    else if (c == '?')
+                    {
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
+                        state = query;
+                        start = current;
+                    }
+                    else if (c == '#')
+                    {
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
+                        state = fragment;
+                        start = current;
+                    }
+                    else if (c == ':')
+                    {
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
+                        state = port;
+                        start = current;
                     }
                     break;
                 case password:
                     if (c == '@')
                     {
-                        m_password = std::string_view(output).substr(start, current);
+                        m_password_start = start;
+                        m_password_length = current - start - 1;
                         state = host;
-                        start = current + 1;
+                        start = current;
+                    }
+                    else if (c == '/')
+                    {
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
+                        state = path;
+                        start = current;
+                    }
+                    else if (c == '?')
+                    {
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
+                        state = query;
+                        start = current;
+                    }
+                    else if (c == '#')
+                    {
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
+                        state = fragment;
+                        start = current;
+                    }
+                    else if (c == ':')
+                    {
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
+                        state = port;
+                        start = current;
                     }
                     break;
                 case host:
                 case_host:
                     if (c == '/')
                     {
-                        m_host = std::string_view(output).substr(start, current);
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
                         state = path;
+                        start = current;
+                    }
+                    else if (c == '?')
+                    {
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
+                        state = query;
+                        start = current;
+                    }
+                    else if (c == '#')
+                    {
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
+                        state = fragment;
                         start = current;
                     }
                     else if (c == ':')
                     {
-                        m_host = std::string_view(output).substr(start, current);
+                        m_host_start = start;
+                        m_host_length = current - start - 1;
                         state = port;
-                        start = current + 1;
+                        start = current;
                     }
                     break;
                 case port:
                     if (c == '/')
                     {
-                        m_port = std::string_view(output).substr(start, current);
+                        m_port_start = start;
+                        m_port_length = current - start - 1;
                         state = path;
+                        start = current;
+                    }
+                    else if (c == '?')
+                    {
+                        m_port_start = start;
+                        m_port_length = current - start - 1;
+                        state = query;
+                        start = current;
+                    }
+                    else if (c == '#')
+                    {
+                        m_port_start = start;
+                        m_port_length = current - start - 1;
+                        state = fragment;
                         start = current;
                     }
                     break;
                 case path:
                     if (c == '?')
                     {
-                        m_path = std::string_view(output).substr(start, current);
-                        state = path;
+                        m_path_start = start;
+                        m_path_length = current - start - 1;
+                        state = query;
+                        start = current;
+                    }
+                    else if (c == '#')
+                    {
+                        m_path_start = start;
+                        m_path_length = current - start - 1;
+                        state = fragment;
                         start = current;
                     }
                     break;
                 case query:
                     if (c == '#')
                     {
-                        m_query = std::string_view(output).substr(start, current);
-                        state = path;
+                        m_query_start = start;
+                        m_query_length = current - start - 1;
+                        state = fragment;
                         start = current;
                     }
                     break;
@@ -248,25 +374,42 @@ namespace x39
             }
             switch (state)
             {
-            case host:     m_host = std::string_view(output).substr(start, current); break;
-            case port:     m_port = std::string_view(output).substr(start, current); break;
-            case path:     m_path = std::string_view(output).substr(start, current); break;
-            case query:    m_query = std::string_view(output).substr(start, current); break;
-            case fragment: m_fragment = std::string_view(output).substr(start, current); break;
+            case user:
+            case password:
+            case host:
+                m_host_start = start;
+                m_host_length = current - start;
+                break;
+            case port:
+                m_port_start = start;
+                m_port_length = current - start;
+                break;
+            case path:
+                m_path_start = start;
+                m_path_length = current - start;
+                break;
+            case query:
+                m_query_start = start;
+                m_query_length = current - start;
+                break;
+            case fragment:
+                m_fragment_start = start;
+                m_fragment_length = current - start - 1;
+                break;
             default: break;
             }
         }
 
 
-        std::string_view full() const { return m_data; }
-        std::string_view schema() const { return m_schema; }
-        std::string_view user() const { return m_user; }
-        std::string_view password() const { return m_password; }
-        std::string_view host() const { return m_host; }
-        std::string_view port() const { return m_port; }
-        std::string_view path() const { return m_path; }
-        std::string_view query() const { return m_query; }
-        std::string_view fragment() const { return m_fragment; }
+        std::string_view full()     const { return m_data; }
+        std::string_view schema()   const { return std::string_view(m_data.data() + m_schema_start, m_schema_length); }
+        std::string_view user()     const { return std::string_view(m_data.data() + m_user_start, m_user_length); }
+        std::string_view password() const { return std::string_view(m_data.data() + m_password_start, m_password_length); }
+        std::string_view host()     const { return std::string_view(m_data.data() + m_host_start, m_host_length); }
+        std::string_view port()     const { return std::string_view(m_data.data() + m_port_start, m_port_length); }
+        std::string_view path()     const { return std::string_view(m_data.data() + m_path_start, m_path_length); }
+        std::string_view query()    const { return std::string_view(m_data.data() + m_query_start, m_query_length); }
+        std::string_view fragment() const { return std::string_view(m_data.data() + m_fragment_start, m_fragment_length); }
 
         static std::array<char, 3> escape(char c)
         {
@@ -336,34 +479,34 @@ namespace x39
             std::stringstream sstream;
 
             // ToDo: Parse into https://de.wikipedia.org/wiki/URL-Encoding
-            encode_helper(sstream, m_schema);
+            encode_helper(sstream, schema());
             sstream << "://";
-            if (!m_user.empty())
+            if (!user().empty())
             {
-                encode_helper(sstream, m_user);
-                if (!m_password.empty())
+                encode_helper(sstream, user());
+                if (!password().empty())
                 {
                     sstream << ":";
-                    encode_helper(sstream, m_password);
+                    encode_helper(sstream, password());
                 }
                 sstream << "@";
             }
-            encode_helper(sstream, m_host);
-            if (!m_port.empty())
+            encode_helper(sstream, host());
+            if (!port().empty())
             {
                 sstream << ":";
-                encode_helper(sstream, m_port);
+                encode_helper(sstream, port());
             }
-            encode_helper(sstream, m_path);
-            if (!m_query.empty())
+            encode_helper(sstream, path());
+            if (!query().empty())
             {
                 sstream << "?";
-                encode_helper(sstream, m_query);
+                encode_helper(sstream, query());
             }
-            if (!m_fragment.empty())
+            if (!fragment().empty())
             {
                 sstream << "#";
-                encode_helper(sstream, m_fragment);
+                encode_helper(sstream, fragment());
             }
 
             return sstream.str();

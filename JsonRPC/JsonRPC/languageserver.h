@@ -713,7 +713,7 @@ namespace lsp
             uri(std::string_view input) : ::x39::uri(input) {}
             static uri from_json(const nlohmann::json& node)
             {
-                return node;
+                return { node.get<std::string>() };
             }
             nlohmann::json to_json() const
             {
@@ -4080,9 +4080,10 @@ namespace lsp
             rpc.register_method("initialize", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 { 
-                    auto params = data::initialize_params::from_json(msg.params);
+                    auto params = data::initialize_params::from_json(msg.params.value());
                     auto res = on_initialize(params);
                     rpc.send({ msg.id, res.to_json() });
+                    after_initialize(params);
                 });
             rpc.register_method("shutdown", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
@@ -4093,51 +4094,51 @@ namespace lsp
             rpc.register_method("textDocument/didOpen", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 {
-                    auto params = data::did_open_text_document_params::from_json(msg.params);
+                    auto params = data::did_open_text_document_params::from_json(msg.params.value());
                     on_textDocument_didOpen(params);
                 });
             rpc.register_method("textDocument/didChange", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 {
-                    auto params = data::did_change_text_document_params::from_json(msg.params);
+                    auto params = data::did_change_text_document_params::from_json(msg.params.value());
                     on_textDocument_didChange(params);
                 });
             rpc.register_method("textDocument/willSave", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 {
-                    auto params = data::will_save_text_document_params::from_json(msg.params);
+                    auto params = data::will_save_text_document_params::from_json(msg.params.value());
                     on_textDocument_willSave(params);
                 });
             rpc.register_method("textDocument/willSaveWaitUntil", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 {
-                    auto params = data::will_save_text_document_params::from_json(msg.params);
+                    auto params = data::will_save_text_document_params::from_json(msg.params.value());
                     auto res = on_textDocument_willSaveWaitUntil(params);
                     rpc.send({ msg.id, res.has_value() ? res->to_json() : nlohmann::json(nullptr) });
                 });
             rpc.register_method("textDocument/didSave", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 {
-                    auto params = data::did_save_text_document_params::from_json(msg.params);
+                    auto params = data::did_save_text_document_params::from_json(msg.params.value());
                     on_textDocument_didSave(params);
                 });
             rpc.register_method("textDocument/didClose", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 {
-                    auto params = data::did_close_text_document_params::from_json(msg.params);
+                    auto params = data::did_close_text_document_params::from_json(msg.params.value());
                     on_textDocument_didClose(params);
                 });
             rpc.register_method("textDocument/completion", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 {
-                    auto params = data::completion_params::from_json(msg.params);
+                    auto params = data::completion_params::from_json(msg.params.value());
                     auto res = on_textDocument_completion(params);
                     rpc.send({ msg.id, res.has_value() ? res->to_json() : nlohmann::json(nullptr) });
                 });
             rpc.register_method("textDocument/foldingRange", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 {
-                    auto params = data::folding_range_params::from_json(msg.params);
+                    auto params = data::folding_range_params::from_json(msg.params.value());
                     auto res = on_textDocument_foldingRange(params);
                     rpc.send({ msg.id, res.has_value() ? to_json(*res) : nlohmann::json(nullptr) });
                 });
@@ -4158,13 +4159,14 @@ namespace lsp
         void kill() { m_die = true; }
 
         // Methods that must be overriden by clients
-    private:
+    protected:
         virtual lsp::data::initialize_result on_initialize(const lsp::data::initialize_params& params) = 0;
+        virtual void after_initialize(const lsp::data::initialize_params& params) {}
         virtual void on_shutdown() = 0;
 
 
         // Methods that can be overriden by implementing clients
-    private:
+    protected:
         virtual void on_textDocument_didOpen(const lsp::data::did_open_text_document_params& params) {}
         virtual void on_textDocument_didChange(const lsp::data::did_change_text_document_params& params) {}
         virtual void on_textDocument_willSave(const lsp::data::will_save_text_document_params& params) {}
