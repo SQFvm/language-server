@@ -1,6 +1,6 @@
 [submodule "json"]
-	path = json
+	path = server/extern/json
 	url = https://github.com/nlohmann/json.git
 [submodule "vm"]
-	path = vm
+	path = server/extern/vm
 	url = https://github.com/SQFvm/vm.git

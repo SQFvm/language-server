@@ -33,25 +33,25 @@ public:
 		std::vector<std::string> errors;
 		std::vector<std::string> other;
 
-		virtual void log(loglevel level, std::string_view message) override
+		virtual void log(const LogMessageBase& message) override
 		{
 			std::stringstream sstream;
-			switch (level)
+			switch (message.getLevel())
 			{
 			case loglevel::fatal:
 			case loglevel::error:
-				errors.push_back(std::string(message));
+				errors.push_back(message.formatMessage());
 				break;
 			case loglevel::warning:
-				warnings.push_back(std::string(message));
+				warnings.push_back(message.formatMessage());
 				break;
 			case loglevel::info:
-				errors.push_back(std::string(message));
+				errors.push_back(message.formatMessage());
 				break;
 			case loglevel::verbose:
 			case loglevel::trace:
 			default:
-				other.push_back(std::string(message));
+				other.push_back(message.formatMessage());
 				break;
 			}
 
@@ -132,9 +132,9 @@ public:
 			{
 				// todo: find a way to force vscode into using offsets instead of lines
 				lsp::data::folding_range frange;
-				frange.startCharacter = current.offset;
+				frange.startCharacter = current.file_offset;
 				frange.startLine = current.line - 1; // lines start at 0
-				frange.endCharacter = current.offset + current.length;
+				frange.endCharacter = current.file_offset + current.length;
 
 				// find current nodes, last child in tree and set its line as end.
 				sqf::parser::sqf::impl_default::astnode* prev = &current;
