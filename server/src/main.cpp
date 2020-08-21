@@ -28,70 +28,74 @@ public:
 	class QueueLogger : public Logger {
 	public:
 		QueueLogger() : Logger() {}
-		std::vector<std::string> infos;
-		std::vector<std::string> warnings;
-		std::vector<std::string> errors;
-		std::vector<std::string> other;
+		std::unordered_map<std::string, lsp::data::publish_diagnostics_params> messages;
 
-		virtual void log(const LogMessageBase& message) override
+		virtual void log(const LogMessageBase& base) override
 		{
-			std::stringstream sstream;
+			auto& message = dynamic_cast<const logmessage::RuntimeLogMessageBase&>(base);
+			if (message == nullptr)
+			{
+				return;
+			}
+
+			auto location = message.location();
+			auto findRes = messages.find(location.path);
+			if (findRes == messages.end())
+			{
+				lsp::data::publish_diagnostics_params p;
+				auto path = std::filesystem::path(location.path).lexically_normal();
+				auto str = path.string();
+				std::replace(str.begin(), str.end(), '\\', '/');
+				p.uri = "file:///" + str;
+				messages[location.path] = p;
+			}
+
+			lsp::data::publish_diagnostics_params& params = messages[location.path];
+
+			lsp::data::diagnostics msg;
+			msg.range.start.line = location.line;
+			msg.range.start.character = location.col;
+			msg.range.end.line = location.line;
+			msg.range.end.character = location.col;
+
+
+			
+
+			msg.message = message.formatMessage();
+			msg.source = "SQF-VM";
+
 			switch (message.getLevel())
 			{
 			case loglevel::fatal:
 			case loglevel::error:
-				errors.push_back(message.formatMessage());
+				msg.severity = lsp::data::diagnostic_severity::Error;
 				break;
 			case loglevel::warning:
-				warnings.push_back(message.formatMessage());
+				msg.severity = lsp::data::diagnostic_severity::Warning;
 				break;
 			case loglevel::info:
-				errors.push_back(message.formatMessage());
+				msg.severity = lsp::data::diagnostic_severity::Information;
 				break;
 			case loglevel::verbose:
 			case loglevel::trace:
 			default:
-				other.push_back(message.formatMessage());
+				msg.severity = lsp::data::diagnostic_severity::Hint;
 				break;
 			}
-
+			params.diagnostics.push_back(msg);
 		}
 		void report(sqf_language_server& ls)
 		{
-			lsp::data::publish_diagnostics_params params;
-			for (auto it : infos)
+			for (auto res : messages)
 			{
-				lsp::data::diagnostics diag;
-				diag.severity = lsp::data::diagnostic_severity::Information;
-				diag.message = it;
-				params.diagnostics.push_back(diag);
+				if (res.second.diagnostics.empty())
+				{
+					continue;
+				}
+
+				ls.textDocument_publishDiagnostics(res.second);
+				res.second.diagnostics.clear();
 			}
-			infos.clear();
-			for (auto it : warnings)
-			{
-				lsp::data::diagnostics diag;
-				diag.severity = lsp::data::diagnostic_severity::Warning;
-				diag.message = it;
-				params.diagnostics.push_back(diag);
-			}
-			warnings.clear();
-			for (auto it : errors)
-			{
-				lsp::data::diagnostics diag;
-				diag.severity = lsp::data::diagnostic_severity::Error;
-				diag.message = it;
-				params.diagnostics.push_back(diag);
-			}
-			errors.clear();
-			for (auto it : other)
-			{
-				lsp::data::diagnostics diag;
-				diag.severity = lsp::data::diagnostic_severity::Hint;
-				diag.message = it;
-				params.diagnostics.push_back(diag);
-			}
-			other.clear();
-			ls.textDocument_publishDiagnostics(params);
 		}
 	};
 	class text_document
@@ -230,6 +234,7 @@ protected:
 				dpath.append(uri.host());
 				dpath.append("/");
 				dpath.append(uri.path());
+				std::replace(dpath.begin(), dpath.end(), '\\', '/');
 				std::filesystem::path data_path(dpath);
 				data_path = data_path.lexically_normal();
 				std::filesystem::recursive_directory_iterator dir_start(data_path, std::filesystem::directory_options::skip_permission_denied);
@@ -257,6 +262,7 @@ protected:
 		dpath.append(uri.host());
 		dpath.append("/");
 		dpath.append(uri.path());
+		std::replace(dpath.begin(), dpath.end(), '\\', '/');
 		std::filesystem::path data_path(dpath);
 		data_path = data_path.lexically_normal();
 		auto findRes = text_documents.find(data_path.string());
@@ -280,6 +286,7 @@ protected:
 		dpath.append(uri.host());
 		dpath.append("/");
 		dpath.append(uri.path());
+		std::replace(dpath.begin(), dpath.end(), '\\', '/');
 		std::filesystem::path data_path(dpath);
 		data_path = data_path.lexically_normal();
 		auto findRes = text_documents.find(data_path.string());
@@ -308,15 +315,15 @@ int main(int argc, char** argv)
 	_CrtDbgReport(_CRT_ASSERT, "", 0, "", "Waiting for vs.");
 #endif // _DEBUG
 
-	x39::uri a("aba://aba:aba@aba:aba/aba?aba#aba");
-	x39::uri b("aba://aba:aba@aba:aba?aba#aba");
-	x39::uri c("aba://aba:aba@aba?aba#aba");
-	x39::uri d("aba://aba@aba?aba#aba");
-	x39::uri e("aba://aba?aba#aba");
-	x39::uri f("aba://aba?aba");
-	x39::uri g("aba://aba");
-	x39::uri h("file://D%3A/Git/Sqfvm/vm/tests/");
-	x39::uri i("https://www.google.com/search?rlz=1C1CHBF_deDE910DE910&sxsrf=ALeKk02J_XcmnGpP0UfYPa2S-usVtUnZXw%3A1597937338384&ei=upY-X4TzFpHikgWc7pXwBQ&q=file%3A%2F%2F%2FD%3A%2Fasdasd");
+	// x39::uri a("aba://aba:aba@aba:aba/aba?aba#aba");
+	// x39::uri b("aba://aba:aba@aba:aba?aba#aba");
+	// x39::uri c("aba://aba:aba@aba?aba#aba");
+	// x39::uri d("aba://aba@aba?aba#aba");
+	// x39::uri e("aba://aba?aba#aba");
+	// x39::uri f("aba://aba?aba");
+	// x39::uri g("aba://aba");
+	// x39::uri h("file://D%3A/Git/Sqfvm/vm/tests/");
+	// x39::uri i("https://www.google.com/search?rlz=1C1CHBF_deDE910DE910&sxsrf=ALeKk02J_XcmnGpP0UfYPa2S-usVtUnZXw%3A1597937338384&ei=upY-X4TzFpHikgWc7pXwBQ&q=file%3A%2F%2F%2FD%3A%2Fasdasd");
 	sqf_language_server ls;
 	ls.listen();
 }
