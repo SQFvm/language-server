@@ -4179,7 +4179,7 @@ namespace lsp
     public:
         void textDocument_publishDiagnostics(const lsp::data::publish_diagnostics_params& params)
         {
-            rpc.send({ {}, params.to_json() });
+            rpc.send({ {}, "textDocument/publishDiagnostics", params.to_json() });
         }
     };
 }

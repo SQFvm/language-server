@@ -30,10 +30,10 @@ public:
         std::optional<nlohmann::json> result;
         std::optional<nlohmann::json> params;
 
-        rpcmessage() : protocol_version("2.0"), id({}), method({}), result(nullptr), params(nullptr) {}
-        rpcmessage(std::string id, std::string method) : protocol_version("2.0"), id(id), method(method), result(nullptr), params(nullptr) {}
-        rpcmessage(std::string id, std::string method, nlohmann::json params) : protocol_version("2.0"), id(id), method(method), result(nullptr), params(params) {}
-        rpcmessage(std::string id, nlohmann::json result) : protocol_version("2.0"), id(id), method({}), result(result), params(nullptr) {}
+        rpcmessage() : protocol_version("2.0"), id({}), method({}), result(), params() {}
+        rpcmessage(std::string id, std::string method) : protocol_version("2.0"), id(id), method(method), result(), params() {}
+        rpcmessage(std::string id, std::string method, nlohmann::json params) : protocol_version("2.0"), id(id), method(method), result(), params(params) {}
+        rpcmessage(std::string id, nlohmann::json result) : protocol_version("2.0"), id(id), method({}), result(result), params() {}
 
         nlohmann::json serialize() const
         {
