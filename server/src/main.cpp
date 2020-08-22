@@ -195,6 +195,9 @@ protected:
 		res.capabilities.textDocumentSync = lsp::data::initialize_result::server_capabilities::text_document_sync_options{};
 		res.capabilities.textDocumentSync->change = lsp::data::text_document_sync_kind::Full;
 		res.capabilities.textDocumentSync->openClose = true;
+		res.capabilities.textDocumentSync->save = lsp::data::initialize_result::server_capabilities::text_document_sync_options::SaveOptions{};
+		res.capabilities.textDocumentSync->save->includeText = true;
+		res.capabilities.textDocumentSync->willSave = true;
 		res.capabilities.foldingRangeProvider = lsp::data::initialize_result::server_capabilities::folding_range_registration_options{};
 		res.capabilities.foldingRangeProvider->documentSelector = lsp::data::document_filter{ };
 		res.capabilities.foldingRangeProvider->documentSelector->language = "sqf";

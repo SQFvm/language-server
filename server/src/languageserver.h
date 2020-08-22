@@ -1370,22 +1370,60 @@ namespace lsp
             {
                 struct text_document_sync_options
                 {
+                    struct SaveOptions
+                    {
+                        /**
+                         * The client is supposed to include the content on save.
+                         */
+                        std::optional<bool> includeText;
+
+                        static SaveOptions from_json(const nlohmann::json& node)
+                        {
+                            SaveOptions res;
+                            data::from_json(node, "includeText", res.includeText);
+                            return res;
+                        }
+                        nlohmann::json to_json() const
+                        {
+                            nlohmann::json json;
+                            data::set_json(json, "includeText", includeText);
+                            return json;
+                        }
+                    };
                     /**
                         * Open and close notifications are sent to the server. If omitted open close notification should not
                         * be sent.
                         */
                     std::optional<bool> openClose;
+                    /**
+                     * If present will save notifications are sent to the server. If omitted the notification should not be
+                     * sent.
+                     */
+                    std::optional<bool> willSave;
+                    /**
+                     * If present will save wait until requests are sent to the server. If omitted the request should not be
+                     * sent.
+                     */
+                    std::optional<bool> willSaveWaitUntil;
+                    /**
+                     * If present save notifications are sent to the server. If omitted the notification should not be
+                     * sent.
+                     */
+                    std::optional<SaveOptions> save;
 
                     /**
-                        * Change notifications are sent to the server. See TextDocumentSyncKind.None, TextDocumentSyncKind.Full
-                        * and TextDocumentSyncKind.Incremental. If omitted it defaults to TextDocumentSyncKind.None.
-                        */
+                    * Change notifications are sent to the server. See TextDocumentSyncKind.None, TextDocumentSyncKind.Full
+                    * and TextDocumentSyncKind.Incremental. If omitted it defaults to TextDocumentSyncKind.None.
+                    */
                     std::optional<text_document_sync_kind> change;
 
                     static text_document_sync_options from_json(const nlohmann::json& node)
                     {
                         text_document_sync_options res;
                         data::from_json(node, "openClose", res.openClose);
+                        data::from_json(node, "willSave", res.willSave);
+                        data::from_json(node, "willSaveWaitUntil", res.willSaveWaitUntil);
+                        data::from_json(node, "save", res.save);
                         data::from_json(node, "change", res.change);
                         return res;
                     }
@@ -1393,6 +1431,8 @@ namespace lsp
                     {
                         nlohmann::json json;
                         data::set_json(json, "openClose", openClose);
+                        data::set_json(json, "willSave", willSave);
+                        data::set_json(json, "willSaveWaitUntil", willSaveWaitUntil);
                         data::set_json(json, "change", change);
                         return json;
                     }
