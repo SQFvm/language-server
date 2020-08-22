@@ -53,9 +53,9 @@ public:
 			lsp::data::publish_diagnostics_params& params = messages[location.path];
 
 			lsp::data::diagnostics msg;
-			msg.range.start.line = location.line;
+			msg.range.start.line = location.line - 1;
 			msg.range.start.character = location.col;
-			msg.range.end.line = location.line;
+			msg.range.end.line = location.line - 1;
 			msg.range.end.character = location.col;
 
 

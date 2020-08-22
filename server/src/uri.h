@@ -325,6 +325,10 @@ namespace x39
                     {
                         m_port_start = start;
                         m_port_length = current - start - 1;
+                        if (m_port_length == 0)
+                        {
+                            m_host_length++;
+                        }
                         state = path;
                         start = current;
                     }
@@ -458,11 +462,20 @@ namespace x39
         }
 
     private:
-        void encode_helper(std::stringstream& sstream, std::string_view selected_view) const
+        void encode_helper(std::stringstream& sstream, std::string_view selected_view, const char* allowed) const
         {
             for (auto c : selected_view)
             {
-                if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_' || c == '~')
+                bool flag = false;
+                for (const char* it = allowed; *it != '\0'; it++)
+                {
+                    if (*it == c)
+                    {
+                        flag = true;
+                        break;
+                    }
+                }
+                if (flag)
                 {
                     sstream << c;
                 }
@@ -479,34 +492,35 @@ namespace x39
             std::stringstream sstream;
 
             // ToDo: Parse into https://de.wikipedia.org/wiki/URL-Encoding
-            encode_helper(sstream, schema());
-            sstream << "://";
+            encode_helper(sstream, schema(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
+            sstream << ":///";
             if (!user().empty())
             {
-                encode_helper(sstream, user());
+                encode_helper(sstream, user(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
                 if (!password().empty())
                 {
                     sstream << ":";
-                    encode_helper(sstream, password());
+                    encode_helper(sstream, password(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
                 }
                 sstream << "@";
             }
-            encode_helper(sstream, host());
+            encode_helper(sstream, host(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~:");
             if (!port().empty())
             {
                 sstream << ":";
-                encode_helper(sstream, port());
+                encode_helper(sstream, port(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
             }
-            encode_helper(sstream, path());
+            sstream << "/";
+            encode_helper(sstream, path(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~/");
             if (!query().empty())
             {
                 sstream << "?";
-                encode_helper(sstream, query());
+                encode_helper(sstream, query(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~&");
             }
             if (!fragment().empty())
             {
                 sstream << "#";
-                encode_helper(sstream, fragment());
+                encode_helper(sstream, fragment(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
             }
 
             return sstream.str();
