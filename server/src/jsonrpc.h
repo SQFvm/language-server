@@ -16,6 +16,13 @@
 
 #include <nlohmann/json.hpp>
 
+#define JSONRPC_DUMP_CHAT_TO_FILE
+#ifdef JSONRPC_DUMP_CHAT_TO_FILE
+#include <fstream>
+#include <filesystem>
+#include <stdexcept>
+#endif
+
 class jsonrpc
 {
     static constexpr size_t buffersize = 1;
@@ -66,6 +73,17 @@ public:
             res.params = json.contains("params") ? json["params"] : std::optional<nlohmann::json>{};
             return res;
         }
+    };
+    struct rpcframe
+    {
+        struct header_value_pair
+        {
+            std::string key;
+            std::string value;
+        };
+        size_t content_length;
+        std::vector<header_value_pair> additional;
+        rpcmessage message;
     };
     enum destruct_strategy
     {
@@ -170,10 +188,38 @@ private:
         std::vector<char> message_buffer;
         long content_length;
 
-
+#ifdef JSONRPC_DUMP_CHAT_TO_FILE
+        std::filesystem::path p("jsonrpc-read-dump.txt");
+        p = std::filesystem::absolute(p);
+        std::fstream __dbg_dump(p, std::fstream::out);
+        if (!__dbg_dump.good())
+        {
+            throw std::runtime_error("Failed to open dump file");
+        }
+#endif
+        rpcframe frame;
+        enum estate { read_header, read_header_content, read_content };
+        estate state = read_header;
 
         while (!*terminate)
         {
+            // ToDo: Transform to state-based reader.
+
+            switch (state)
+            {
+            case read_header: {
+
+            } break;
+            case read_header_content: {
+
+            } break;
+            case read_content: {
+
+            } break;
+            }
+
+
+
             // Read Message
             auto read = m_in.read(buffer, buffersize).gcount();
             if (read == 0)
@@ -181,6 +227,11 @@ private:
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 continue;
             }
+#ifdef JSONRPC_DUMP_CHAT_TO_FILE
+            __dbg_dump << std::string_view(buffer, read);
+            __dbg_dump.flush();
+#endif
+
 
             message_buffer.insert(message_buffer.end(), buffer, buffer + read);
 
@@ -241,6 +292,16 @@ private:
         bool* terminate = m_write_terminate;
         char buffer[buffersize];
 
+#ifdef JSONRPC_DUMP_CHAT_TO_FILE
+        std::filesystem::path p("jsonrpc-write-dump.txt");
+        p = std::filesystem::absolute(p);
+        std::fstream __dbg_dump(p, std::fstream::out);
+        if (!__dbg_dump.good())
+        {
+            throw std::runtime_error("Failed to open dump file");
+        }
+#endif
+
         while (!*terminate)
         {
             bool queue_empty;
@@ -270,6 +331,13 @@ private:
                     "Content-Type: application/json-rpc;charset=utf-8" << double_newline <<
                     msg;
                 m_out.flush();
+#ifdef JSONRPC_DUMP_CHAT_TO_FILE
+                __dbg_dump <<
+                    "Content-Length: " << msg.length() << newline <<
+                    "Content-Type: application/json-rpc;charset=utf-8" << double_newline <<
+                    msg;
+                __dbg_dump.flush();
+#endif
             }
         }
 
