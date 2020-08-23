@@ -49,7 +49,8 @@
                 ],
                 "extensions": [
                     ".sqf"
-                ]
+                ],
+                "configuration": "./grammar/sqf.configuration.json"
             }
         ],
         "configuration": {
