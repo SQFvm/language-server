@@ -88,6 +88,12 @@ public:
             int level;
             std::string variable;
         };
+        enum class analysis_info
+        {
+            NA,
+            FOREACH,
+            COUNT
+        };
         std::string m_path;
         std::string m_contents;
         sqf::parser::sqf::impl_default::astnode m_root_ast;
@@ -154,7 +160,8 @@ public:
             sqf::runtime::runtime& sqfvm,
             sqf::parser::sqf::impl_default::astnode& current,
             int layer,
-            std::vector<variable_declaration>& known)
+            std::vector<variable_declaration>& known,
+            analysis_info parent_type)
         {
             switch (current.kind)
             {
@@ -180,12 +187,22 @@ public:
                     diag.source = "SQF-VM LS";
                     diagnostics.diagnostics.push_back(diag);
                 }
-                recalculate_analysis_helper(sqfvm, current.children[1], layer + 1, known);
+                recalculate_analysis_helper(sqfvm, current.children[1], layer + 1, known, analysis_info::NA);
             } break;
             case sqf::parser::sqf::impl_default::nodetype::CODE: {
+                switch (parent_type)
+                {
+                case sqf_language_server::text_document::analysis_info::FOREACH:
+                    known.push_back({ layer, "_x" });
+                    known.push_back({ layer, "_forEachIndex" });
+                    break;
+                case sqf_language_server::text_document::analysis_info::COUNT:
+                    known.push_back({ layer, "_x" });
+                    break;
+                }
                 for (auto child : current.children)
                 {
-                    recalculate_analysis_helper(sqfvm, child, layer + 1, known);
+                    recalculate_analysis_helper(sqfvm, child, layer + 1, known, analysis_info::NA);
                 }
 
                 // Erase lower known variables
@@ -234,8 +251,26 @@ public:
                 {
                     for (auto child : current.children)
                     {
-                        std::vector<variable_declaration> known2;
-                        recalculate_analysis_helper(sqfvm, child, layer + 1, known2);
+                        std::vector<variable_declaration> known2 = { { layer, "_this" } };
+                        recalculate_analysis_helper(sqfvm, child, layer + 1, known2, analysis_info::NA);
+                    }
+
+                    break;
+                }
+                else if (op == "foreach")
+                {
+                    for (auto child : current.children)
+                    {
+                        recalculate_analysis_helper(sqfvm, child, layer + 1, known, analysis_info::FOREACH);
+                    }
+
+                    break;
+                }
+                else if (op == "count")
+                {
+                    for (auto child : current.children)
+                    {
+                        recalculate_analysis_helper(sqfvm, child, layer + 1, known, analysis_info::COUNT);
                     }
 
                     break;
@@ -253,8 +288,8 @@ public:
                 {
                     for (auto child : current.children)
                     {
-                        std::vector<variable_declaration> known2;
-                        recalculate_analysis_helper(sqfvm, child, layer + 1, known2);
+                        std::vector<variable_declaration> known2 = { { layer, "_this" } };
+                        recalculate_analysis_helper(sqfvm, child, layer + 1, known2, analysis_info::NA);
                     }
 
                     break;
@@ -275,7 +310,7 @@ public:
             default: {
                 for (auto child : current.children)
                 {
-                    recalculate_analysis_helper(sqfvm, child, layer, known);
+                    recalculate_analysis_helper(sqfvm, child, layer, known, analysis_info::NA);
                 }
             } break;
             }
@@ -283,8 +318,8 @@ public:
         void recalculate_analysis(sqf::runtime::runtime& sqfvm)
         {
             m_foldings.clear();
-            std::vector<variable_declaration> known;
-            recalculate_analysis_helper(sqfvm, m_root_ast, 0, known);
+            std::vector<variable_declaration> known = { { 0, "_this" } };
+            recalculate_analysis_helper(sqfvm, m_root_ast, 0, known, analysis_info::NA);
         }
     public:
         lsp::data::publish_diagnostics_params diagnostics;
