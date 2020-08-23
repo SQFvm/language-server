@@ -23,6 +23,13 @@
     ],
     "main": "./out/src/extension",
     "contributes": {
+        "grammars": [
+            {
+                "language": "sqf",
+                "scopeName": "source.sqf",
+                "path": "./grammar/sqf.min.json"
+            }
+        ],
         "commands": [
             {
                 "command": "sqfVmLanguageServer.openFilePath",
