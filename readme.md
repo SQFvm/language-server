@@ -7,3 +7,6 @@ ToDo
 
 # How to use?
 ToDo
+
+# Credits
+[Armitxes](https://github.com/Armitxes/VSCode_SQF) - SQF Grammar file

@@ -28,6 +28,11 @@ namespace lsp
             t = node;
         }
         template<>
+        void from_json<float>(const nlohmann::json& node, float& t)
+        {
+            t = node;
+        }
+        template<>
         void from_json<uint64_t>(const nlohmann::json& node, uint64_t& t)
         {
             t = node;
@@ -49,6 +54,11 @@ namespace lsp
         }
         template<>
         nlohmann::json to_json<int>(const int& t)
+        {
+            return t;
+        }
+        template<>
+        nlohmann::json to_json<float>(const float& t)
         {
             return t;
         }
@@ -674,7 +684,7 @@ namespace lsp
         template<typename T>
         nlohmann::json to_json(const std::vector<T>& ts)
         {
-            nlohmann::json json;
+            nlohmann::json json = nlohmann::json::array();
             for (auto t : ts)
             {
                 json.push_back(to_json(t));
@@ -3994,27 +4004,27 @@ namespace lsp
                 }
             };
             /**
-                * An optional token that a server can use to report partial results (e.g. streaming) to
-                * the client.
-                */
+            * An optional token that a server can use to report partial results (e.g. streaming) to
+            * the client.
+            */
             std::optional<std::string> partialResultToken;
             /**
-                * An optional token that a server can use to report work done progress.
-                */
+            * An optional token that a server can use to report work done progress.
+            */
             std::optional<std::string> workDoneToken;
             /**
-                * The text document.
-                */
+            * The text document.
+            */
             text_document_identifier textDocument;
 
             /**
-                * The position inside the text document.
-                */
+            * The position inside the text document.
+            */
             position position;
             /**
-                * The completion context. This is only available if the client specifies
-                * to send this using `ClientCapabilities.textDocument.completion.contextSupport === true`
-                */
+            * The completion context. This is only available if the client specifies
+            * to send this using `ClientCapabilities.textDocument.completion.contextSupport === true`
+            */
             std::optional<CompletionContext> context;
 
             static completion_params from_json(const nlohmann::json& node)
@@ -4107,7 +4117,244 @@ namespace lsp
                 return json;
             }
         };
+
+        /**
+         * Represents a color in RGBA space.
+         */
+        struct color {
+
+            /**
+             * The red component of this color in the range [0-1].
+             */
+            float red;
+
+            /**
+             * The green component of this color in the range [0-1].
+             */
+            float green;
+
+            /**
+             * The blue component of this color in the range [0-1].
+             */
+            float blue;
+
+            /**
+             * The alpha component of this color in the range [0-1].
+             */
+            float alpha;
+
+            static color from_json(const nlohmann::json& node)
+            {
+                color res;
+                data::from_json(node, "red", res.red);
+                data::from_json(node, "green", res.green);
+                data::from_json(node, "blue", res.blue);
+                data::from_json(node, "alpha", res.alpha);
+                return res;
+            }
+            nlohmann::json to_json() const
+            {
+                nlohmann::json json;
+                data::set_json(json, "red", red);
+                data::set_json(json, "green", green);
+                data::set_json(json, "blue", blue);
+                data::set_json(json, "alpha", alpha);
+                return json;
+            }
+        };
+        struct color_information {
+            /**
+             * The range in the document where this color appears.
+             */
+            range range;
+
+            /**
+             * The actual color value for this color range.
+             */
+            color color;
+
+            static color_information from_json(const nlohmann::json& node)
+            {
+                color_information res;
+                data::from_json(node, "range", res.range);
+                data::from_json(node, "color", res.color);
+                return res;
+            }
+            nlohmann::json to_json() const
+            {
+                nlohmann::json json;
+                data::set_json(json, "range", range);
+                data::set_json(json, "color", color);
+                return json;
+            }
+        };
+        struct document_color_params {
+            /**
+             * An optional token that a server can use to report partial results (e.g. streaming) to
+             * the client.
+             */
+            std::optional<std::string> partialResultToken;
+            /**
+             * An optional token that a server can use to report work done progress.
+             */
+            std::optional<std::string> workDoneToken;
+            /**
+             * The text document.
+             */
+            text_document_identifier textDocument;
+
+            static document_color_params from_json(const nlohmann::json& node)
+            {
+                document_color_params res;
+                data::from_json(node, "partialResultToken", res.partialResultToken);
+                data::from_json(node, "workDoneToken", res.workDoneToken);
+                data::from_json(node, "textDocument", res.textDocument);
+                return res;
+            }
+            nlohmann::json to_json() const
+            {
+                nlohmann::json json;
+                data::set_json(json, "partialResultToken", partialResultToken);
+                data::set_json(json, "workDoneToken", workDoneToken);
+                data::set_json(json, "textDocument", textDocument);
+                return json;
+            }
+        };
+        struct color_presentation {
+	        /**
+	         * The label of this color presentation. It will be shown on the color
+	         * picker header. By default this is also the text that is inserted when selecting
+	         * this color presentation.
+	         */
+	        std::string label;
+	        /**
+	         * An [edit](#TextEdit) which is applied to a document when selecting
+	         * this presentation for the color.  When `falsy` the [label](#ColorPresentation.label)
+	         * is used.
+	         */
+            std::optional<text_edit> textEdit;
+	        /**
+	         * An optional array of additional [text edits](#TextEdit) that are applied when
+	         * selecting this color presentation. Edits must not overlap with the main [edit](#ColorPresentation.textEdit) nor with themselves.
+	         */
+	        std::optional<std::vector<text_edit>> additionalTextEdits;
+
+            static color_presentation from_json(const nlohmann::json& node)
+            {
+                color_presentation res;
+                data::from_json(node, "label", res.label);
+                data::from_json(node, "textEdit", res.textEdit);
+                data::from_json(node, "additionalTextEdits", res.additionalTextEdits);
+                return res;
+            }
+            nlohmann::json to_json() const
+            {
+                nlohmann::json json;
+                data::set_json(json, "label", label);
+                data::set_json(json, "textEdit", textEdit);
+                data::set_json(json, "additionalTextEdits", additionalTextEdits);
+                return json;
+            }
+        };
+        struct color_presentation_params {
+            /**
+             * An optional token that a server can use to report partial results (e.g. streaming) to
+             * the client.
+             */
+            std::optional<std::string> partialResultToken;
+            /**
+             * An optional token that a server can use to report work done progress.
+             */
+            std::optional<std::string> workDoneToken;
+	        /**
+	         * The text document.
+	         */
+	        text_document_identifier textDocument;
+
+	        /**
+	         * The color information to request presentations for.
+	         */
+	        color color;
+
+	        /**
+	         * The range where the color would be inserted. Serves as a context.
+	         */
+	        range range;
+
+            static color_presentation_params from_json(const nlohmann::json& node)
+            {
+                color_presentation_params res;
+                data::from_json(node, "partialResultToken", res.partialResultToken);
+                data::from_json(node, "workDoneToken", res.workDoneToken);
+                data::from_json(node, "textDocument", res.textDocument);
+                data::from_json(node, "color", res.color);
+                data::from_json(node, "range", res.range);
+                return res;
+            }
+            nlohmann::json to_json() const
+            {
+                nlohmann::json json;
+                data::set_json(json, "partialResultToken", partialResultToken);
+                data::set_json(json, "workDoneToken", workDoneToken);
+                data::set_json(json, "textDocument", textDocument);
+                data::set_json(json, "color", color);
+                data::set_json(json, "range", range);
+                return json;
+            }
+        };
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     class server
     {
 
@@ -4182,6 +4429,20 @@ namespace lsp
                     auto res = on_textDocument_foldingRange(params);
                     rpc.send({ msg.id, res.has_value() ? to_json(*res) : nlohmann::json(nullptr) });
                 });
+            rpc.register_method("textDocument/documentColor", 
+                [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
+                {
+                    auto params = data::document_color_params::from_json(msg.params.value());
+                    auto res = on_textDocument_documentColor(params);
+                    rpc.send({ msg.id, to_json(res) });
+                });
+            rpc.register_method("textDocument/colorPresentation", 
+                [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
+                {
+                    auto params = data::color_presentation_params::from_json(msg.params.value());
+                    auto res = on_textDocument_colorPresentation(params);
+                    rpc.send({ msg.id, to_json(res) });
+                });
         }
 
         void listen()
@@ -4215,6 +4476,8 @@ namespace lsp
         virtual void on_textDocument_didClose(const lsp::data::did_close_text_document_params& params) {}
         virtual std::optional<lsp::data::completion_list> on_textDocument_completion(const lsp::data::completion_params& params) { return {}; }
         virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(const lsp::data::folding_range_params& params) { return {}; }
+        virtual std::vector<lsp::data::color_information> on_textDocument_documentColor(const lsp::data::document_color_params& params) { return {}; }
+        virtual std::vector<lsp::data::color_presentation> on_textDocument_colorPresentation(const lsp::data::color_presentation_params& params) { return {}; }
 
     public:
         void textDocument_publishDiagnostics(const lsp::data::publish_diagnostics_params& params)

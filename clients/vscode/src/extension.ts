@@ -7,6 +7,10 @@ import * as languageClient from "vscode-languageclient";
 import * as path from "path";
 import * as fs from "fs";
 
+import * as OpenSelected from "./commands/open_selected";
+import * as OpenRpt from "./commands/open_rpt";
+import * as AlignEquals from "./commands/align_equals";
+
 // Defines the search path of your language server DLL. (.NET Core)
 const languageServerPaths = [
     "../../server/Debug/sqfvm_language_server.exe",
@@ -43,7 +47,7 @@ async function activateLanguageServer(context: vscode.ExtensionContext) {
     // Options to control the language client
     let clientOptions: languageClient.LanguageClientOptions = {
         // Register the server for plain text documents
-        documentSelector: ["sqf"],
+        documentSelector: [{language: "sqf"}],
         synchronize: {
             // Synchronize the setting section 'languageServerExample' to the server
             configurationSection: "sqfVmLanguageServer",
@@ -62,6 +66,9 @@ async function activateLanguageServer(context: vscode.ExtensionContext) {
     // Push the disposable to the context's subscriptions so that the 
     // client can be deactivated on extension deactivation
     context.subscriptions.push(disposable);
+    OpenSelected.activate(context);
+    OpenRpt.activate(context);
+    AlignEquals.activate(context);
 }
 
 // this method is called when your extension is activated
