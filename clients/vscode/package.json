@@ -36,14 +36,24 @@
         ],
         "configuration": {
             "type": "object",
-            "title": "Example configuration",
+            "title": "SQF VM Language server",
             "properties": {
-                "demoLanguageServer.maxNumberOfProblems": {
+                "sqfVmLanguageServer.mode": {
+                    "enum": [
+                        "Arma2",
+                        "Arma3",
+                        "VBS3",
+                        "VBS4"
+                    ],
+                    "default": "Arma3",
+                    "description": "Controls which game version to run the LS for."
+                },
+                "sqfVmLanguageServer.maxNumberOfProblems": {
                     "type": "number",
                     "default": 100,
                     "description": "Controls the maximum number of problems produced by the server."
                 },
-                "demoLanguageServer.trace.server": {
+                "sqfVmLanguageServer.trace.server": {
                     "scope": "window",
                     "type": "string",
                     "enum": [
@@ -52,7 +62,7 @@
                         "verbose"
                     ],
                     "default": "off",
-                    "description": "Traces the communication between VSCode and the demoLanguageServer service."
+                    "description": "Traces the communication between VSCode and the sqfVmLanguageServer service."
                 }
             }
         }

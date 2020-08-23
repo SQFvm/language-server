@@ -43,7 +43,7 @@ async function activateLanguageServer(context: vscode.ExtensionContext) {
     // Options to control the language client
     let clientOptions: languageClient.LanguageClientOptions = {
         // Register the server for plain text documents
-        documentSelector: ["sqf"],
+        documentSelector: [{language: "sqf"}],
         synchronize: {
             // Synchronize the setting section 'languageServerExample' to the server
             configurationSection: "sqfVmLanguageServer",
