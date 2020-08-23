@@ -2,6 +2,7 @@
 
 
 #include <runtime/runtime.h>
+#include <runtime/d_string.h>
 #include <operators/ops_config.h>
 #include <operators/ops_diag.h>
 #include <operators/ops_generic.h>
@@ -149,7 +150,11 @@ public:
             m_foldings.clear();
             recalculate_foldings_recursive(sqfvm, m_root_ast);
         }
-        void recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, int layer, std::vector<variable_declaration>& known)
+        void recalculate_analysis_helper(
+            sqf::runtime::runtime& sqfvm,
+            sqf::parser::sqf::impl_default::astnode& current,
+            int layer,
+            std::vector<variable_declaration>& known)
         {
             switch (current.kind)
             {
@@ -253,6 +258,12 @@ public:
                     }
 
                     break;
+                }
+                else if (op == "for" && current.children[1].kind == sqf::parser::sqf::impl_default::nodetype::STRING)
+                {
+                    auto variable = sqf::types::d_string::from_sqf(current.children[1].content);
+                    known.push_back({ layer, variable });
+                    goto l_default;
                 }
                 else
                 {
