@@ -17,11 +17,17 @@
         "Linters"
     ],
     "activationEvents": [
-        "onLanguage:sqf"
+        "onLanguage:sqf",
+        "onCommand:sqfVmLanguageServer.openFilePath"
     ],
     "main": "./out/src/extension",
     "contributes": {
-        "commands": [],
+        "commands": [
+            {
+                "command": "sqfVmLanguageServer.openFilePath",
+                "title": "SQF: Open path on workdrive"
+            }
+        ],
         "languages": [
             {
                 "id": "sqf",
@@ -63,6 +69,11 @@
                     ],
                     "default": "off",
                     "description": "Traces the communication between VSCode and the sqfVmLanguageServer service."
+                },
+                "sqfVmLanguageServer.workdrive.path": {
+                    "type": "string",
+                    "default": "P:\\",
+                    "description": "Set the partition name for your workdrive (Used to open files from)"
                 }
             }
         }
