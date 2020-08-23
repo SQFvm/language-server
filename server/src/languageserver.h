@@ -4429,6 +4429,20 @@ namespace lsp
                     auto res = on_textDocument_foldingRange(params);
                     rpc.send({ msg.id, res.has_value() ? to_json(*res) : nlohmann::json(nullptr) });
                 });
+            rpc.register_method("textDocument/documentColor", 
+                [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
+                {
+                    auto params = data::document_color_params::from_json(msg.params.value());
+                    auto res = on_textDocument_documentColor(params);
+                    rpc.send({ msg.id, to_json(res) });
+                });
+            rpc.register_method("textDocument/colorPresentation", 
+                [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
+                {
+                    auto params = data::color_presentation_params::from_json(msg.params.value());
+                    auto res = on_textDocument_colorPresentation(params);
+                    rpc.send({ msg.id, to_json(res) });
+                });
         }
 
         void listen()

@@ -180,9 +180,6 @@ protected:
 		res.serverInfo = lsp::data::initialize_result::server_info{};
 		res.serverInfo->name = "SQF-VM Language Server";
 		res.serverInfo->version = "0.1.0";
-		res.capabilities.colorProvider = lsp::data::initialize_result::server_capabilities::document_color_registration_options{ };
-		res.capabilities.colorProvider->documentSelector = lsp::data::document_filter{ };
-		res.capabilities.colorProvider->documentSelector->language = "sqf";
 		res.capabilities.textDocumentSync = lsp::data::initialize_result::server_capabilities::text_document_sync_options{};
 		res.capabilities.textDocumentSync->change = lsp::data::text_document_sync_kind::Full;
 		res.capabilities.textDocumentSync->openClose = true;
