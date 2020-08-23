@@ -8,6 +8,7 @@ import * as path from "path";
 import * as fs from "fs";
 
 import * as OpenSelected from "./commands/open_selected"
+import * as OpenRpt from "./commands/open_rpt"
 
 // Defines the search path of your language server DLL. (.NET Core)
 const languageServerPaths = [
@@ -65,6 +66,7 @@ async function activateLanguageServer(context: vscode.ExtensionContext) {
     // client can be deactivated on extension deactivation
     context.subscriptions.push(disposable);
     OpenSelected.activate(context);
+    OpenRpt.activate(context);
 }
 
 // this method is called when your extension is activated
