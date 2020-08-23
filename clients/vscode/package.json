@@ -19,10 +19,19 @@
     "activationEvents": [
         "onLanguage:sqf",
         "onCommand:sqfVmLanguageServer.openFilePath",
-        "onCommand:sqfVmLanguageServer.openRpt"
+        "onCommand:sqfVmLanguageServer.openRpt",
+        "onCommand:sqfVmLanguageServer.alignEquals"
     ],
     "main": "./out/src/extension",
     "contributes": {
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "sqfVmLanguageServer.alignEquals",
+                    "group": "SQF"
+                }
+            ]
+        },
         "grammars": [
             {
                 "language": "sqf",
@@ -38,6 +47,10 @@
             {
                 "command": "sqfVmLanguageServer.openRpt",
                 "title": "SQF: Open latest rpt file"
+            },
+            {
+                "command": "sqfVmLanguageServer.alignEquals",
+                "title": "SQF: Align the equal signs"
             }
         ],
         "languages": [
