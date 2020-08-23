@@ -1,4 +1,5 @@
 
+#define CFUNC(ARG) ARG
 
 private _something = [];
 private _input = _this select 0;
@@ -43,7 +44,7 @@ if (_newState isEqualTo "exit") exitWith
     if (_something) then
     {
      
-     };
+    };
     [_state] call CFUNC(macroFunction);
 };
 
