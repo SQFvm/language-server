@@ -52,10 +52,9 @@ public:
 			msg.range.start.character = location.col;
 			msg.range.end.line = location.line - 1;
 			msg.range.end.character = location.col;
-
-
 			
-
+			
+			msg.code = std::to_string(base.getErrorCode());
 			msg.message = message.formatMessage();
 			msg.source = "SQF-VM";
 
@@ -83,6 +82,11 @@ public:
 	class text_document
 	{
 	private:
+		struct variable_declaration
+		{
+			int level;
+			std::string variable;
+		};
 		std::string m_path;
 		std::string m_contents;
 		sqf::parser::sqf::impl_default::astnode m_root_ast;
@@ -92,8 +96,6 @@ public:
 		{
 			auto parser = dynamic_cast<sqf::parser::sqf::impl_default&>(sqfvm.parser_sqf());
 			bool errflag = false;
-			bool had_diagnostics = !diagnostics.diagnostics.empty();
-			diagnostics.diagnostics.clear();
 			auto preprocessed = contents.empty() ?
 				sqfvm.parser_preprocessor().preprocess(sqfvm, { m_path, {} }) :
 				sqfvm.parser_preprocessor().preprocess(sqfvm, contents, { m_path, {} });
@@ -109,10 +111,6 @@ public:
 			else
 			{
 				m_root_ast = {};
-			}
-			if (had_diagnostics || !diagnostics.diagnostics.empty())
-			{
-				language_server.textDocument_publishDiagnostics(diagnostics);
 			}
 		}
 
@@ -151,6 +149,132 @@ public:
 			m_foldings.clear();
 			recalculate_foldings_recursive(sqfvm, m_root_ast);
 		}
+		void recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, int layer, std::vector<variable_declaration>& known)
+		{
+			switch (current.kind)
+			{
+			case sqf::parser::sqf::impl_default::nodetype::ASSIGNMENTLOCAL:
+			case sqf::parser::sqf::impl_default::nodetype::ASSIGNMENT: {
+				auto variable = current.children[0].content;
+				auto findRes = std::find_if(known.begin(), known.end(),
+					[&variable](variable_declaration& it) { return it.variable == variable; });
+				if (findRes == known.end())
+				{
+					known.push_back({ layer, variable });
+				}
+				else if (current.kind == sqf::parser::sqf::impl_default::nodetype::ASSIGNMENTLOCAL)
+				{
+					lsp::data::diagnostics diag;
+					diag.code = "L-0001";
+					diag.range.start.line = current.line - 1;
+					diag.range.start.character = current.column;
+					diag.range.end.line = current.line - 1;
+					diag.range.end.character = current.column;
+					diag.message = "'" + variable + "' hides previous declaration.";
+					diag.severity = lsp::data::diagnostic_severity::Warning;
+					diag.source = "SQF-VM LS";
+					diagnostics.diagnostics.push_back(diag);
+				}
+				recalculate_analysis_helper(sqfvm, current.children[1], layer + 1, known);
+			} break;
+			case sqf::parser::sqf::impl_default::nodetype::CODE: {
+				for (auto child : current.children)
+				{
+					recalculate_analysis_helper(sqfvm, child, layer + 1, known);
+				}
+
+				// Erase lower known variables
+				for (size_t i = 0; i < known.size(); i++)
+				{
+					if (known[i].level == layer + 1)
+					{
+						known.at(i) = known.back();
+						known.erase(known.begin() + known.size() - 1);
+						i--;
+					}
+				}
+			} break;
+			case sqf::parser::sqf::impl_default::nodetype::VARIABLE: {
+				auto findRes = std::find_if(known.begin(), known.end(),
+					[&current](variable_declaration& it) { return it.variable == current.content; });
+				if (findRes == known.end())
+				{
+					lsp::data::diagnostics diag;
+					diag.code = "L-0002";
+					diag.range.start.line = current.line - 1;
+					diag.range.start.character = current.column;
+					diag.range.end.line = current.line - 1;
+					diag.range.end.character = current.column;
+					diag.message = "Variable '" + current.content + "' not defined.";
+					diag.severity = lsp::data::diagnostic_severity::Warning;
+					diag.source = "SQF-VM LS";
+					diagnostics.diagnostics.push_back(diag);
+				}
+			} goto l_default; /* L-0002 */
+			case sqf::parser::sqf::impl_default::nodetype::BEXP1:
+			case sqf::parser::sqf::impl_default::nodetype::BEXP2:
+			case sqf::parser::sqf::impl_default::nodetype::BEXP3:
+			case sqf::parser::sqf::impl_default::nodetype::BEXP4:
+			case sqf::parser::sqf::impl_default::nodetype::BEXP5:
+			case sqf::parser::sqf::impl_default::nodetype::BEXP6:
+			case sqf::parser::sqf::impl_default::nodetype::BEXP7:
+			case sqf::parser::sqf::impl_default::nodetype::BEXP8:
+			case sqf::parser::sqf::impl_default::nodetype::BEXP9:
+			case sqf::parser::sqf::impl_default::nodetype::BEXP10:
+			case sqf::parser::sqf::impl_default::nodetype::BINARYEXPRESSION: {
+				auto op = std::string(current.children[1].content);
+				std::transform(op.begin(), op.end(), op.begin(), [](char& c) { return (char)std::tolower((int)c); });
+
+				if (op == "spawn")
+				{
+					for (auto child : current.children)
+					{
+						std::vector<variable_declaration> known2;
+						recalculate_analysis_helper(sqfvm, child, layer + 1, known2);
+					}
+
+					break;
+				}
+				else
+				{
+					goto l_default;
+				}
+			}
+			case sqf::parser::sqf::impl_default::nodetype::UNARYEXPRESSION: {
+				auto op = std::string(current.children[0].content);
+				std::transform(op.begin(), op.end(), op.begin(), [](char& c) { return (char)std::tolower((int)c); });
+
+				if (op == "spawn")
+				{
+					for (auto child : current.children)
+					{
+						std::vector<variable_declaration> known2;
+						recalculate_analysis_helper(sqfvm, child, layer + 1, known2);
+					}
+
+					break;
+				}
+				else
+				{
+					goto l_default;
+				}
+			}
+
+			l_default:
+			default: {
+				for (auto child : current.children)
+				{
+					recalculate_analysis_helper(sqfvm, child, layer, known);
+				}
+			} break;
+			}
+		}
+		void recalculate_analysis(sqf::runtime::runtime& sqfvm)
+		{
+			m_foldings.clear();
+			std::vector<variable_declaration> known;
+			recalculate_analysis_helper(sqfvm, m_root_ast, 0, known);
+		}
 	public:
 		lsp::data::publish_diagnostics_params diagnostics;
 		text_document() {}
@@ -163,8 +287,15 @@ public:
 		std::string_view contents() const { return m_contents; }
 		void reread(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::string_view contents)
 		{
+			bool had_diagnostics = !diagnostics.diagnostics.empty();
+			diagnostics.diagnostics.clear();
 			recalculate_ast(language_server, sqfvm, contents);
 			recalculate_foldings(sqfvm);
+			recalculate_analysis(sqfvm);
+			if (had_diagnostics || !diagnostics.diagnostics.empty())
+			{
+				language_server.textDocument_publishDiagnostics(diagnostics);
+			}
 		}
 
 		std::vector<lsp::data::folding_range>& foldings() { return m_foldings; }
