@@ -162,7 +162,7 @@ public:
             {
                 return false;
             }
-            frame = m_qin.back();
+            frame = m_qin.front();
             m_qin.pop();
         }
         
@@ -178,7 +178,7 @@ public:
         frame.message = msg;
         frame.headers.push_back({ "Content-Type", "application/json-rpc;charset=utf-8", rpcframe::header_kind::other });
         {
-            std::lock_guard ____lock(m_read_mutex);
+            std::lock_guard ____lock(m_write_mutex);
             m_qout.push(frame);
         }
     }
@@ -348,7 +348,7 @@ private:
                 // Dequeue single frame
                 {
                     std::lock_guard ____lock(m_write_mutex);
-                    frame = m_qout.back();
+                    frame = m_qout.front();
                     m_qout.pop();
                 }
 

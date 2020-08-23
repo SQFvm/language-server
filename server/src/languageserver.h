@@ -674,7 +674,7 @@ namespace lsp
         template<typename T>
         nlohmann::json to_json(const std::vector<T>& ts)
         {
-            nlohmann::json json;
+            nlohmann::json json = nlohmann::json::array();
             for (auto t : ts)
             {
                 json.push_back(to_json(t));

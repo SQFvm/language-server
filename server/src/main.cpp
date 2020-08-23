@@ -26,9 +26,9 @@ class sqf_language_server : public lsp::server
 {
 public:
 	class QueueLogger : public Logger {
+		sqf_language_server& language_server;
 	public:
-		QueueLogger() : Logger() {}
-		std::unordered_map<std::string, lsp::data::publish_diagnostics_params> messages;
+		QueueLogger(sqf_language_server& ref) : Logger(), language_server(ref) {}
 
 		virtual void log(const LogMessageBase& base) override
 		{
@@ -39,18 +39,13 @@ public:
 			}
 
 			auto location = message.location();
-			auto findRes = messages.find(location.path);
-			if (findRes == messages.end())
+			auto findRes = language_server.text_documents.find(location.path);
+			if (findRes == language_server.text_documents.end())
 			{
-				lsp::data::publish_diagnostics_params p;
-				auto path = std::filesystem::path(location.path).lexically_normal();
-				auto str = path.string();
-				std::replace(str.begin(), str.end(), '\\', '/');
-				p.uri = "file:///" + str;
-				messages[location.path] = p;
+				return;
 			}
 
-			lsp::data::publish_diagnostics_params& params = messages[location.path];
+			lsp::data::publish_diagnostics_params& params = findRes->second.diagnostics;
 
 			lsp::data::diagnostics msg;
 			msg.range.start.line = location.line - 1;
@@ -84,19 +79,6 @@ public:
 			}
 			params.diagnostics.push_back(msg);
 		}
-		void report(sqf_language_server& ls)
-		{
-			for (auto res : messages)
-			{
-				if (res.second.diagnostics.empty())
-				{
-					continue;
-				}
-
-				ls.textDocument_publishDiagnostics(res.second);
-				res.second.diagnostics.clear();
-			}
-		}
 	};
 	class text_document
 	{
@@ -106,12 +88,15 @@ public:
 		sqf::parser::sqf::impl_default::astnode m_root_ast;
 		std::vector<lsp::data::folding_range> m_foldings;
 
-		void recalculate_ast(sqf::runtime::runtime& sqfvm)
+		void recalculate_ast(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::string_view contents)
 		{
 			auto parser = dynamic_cast<sqf::parser::sqf::impl_default&>(sqfvm.parser_sqf());
 			bool errflag = false;
-
-			auto preprocessed = sqfvm.parser_preprocessor().preprocess(sqfvm, { m_path, {} });
+			bool had_diagnostics = !diagnostics.diagnostics.empty();
+			diagnostics.diagnostics.clear();
+			auto preprocessed = contents.empty() ?
+				sqfvm.parser_preprocessor().preprocess(sqfvm, { m_path, {} }) :
+				sqfvm.parser_preprocessor().preprocess(sqfvm, contents, { m_path, {} });
 			if (preprocessed.has_value())
 			{
 				m_contents = preprocessed.value();
@@ -124,6 +109,10 @@ public:
 			else
 			{
 				m_root_ast = {};
+			}
+			if (had_diagnostics || !diagnostics.diagnostics.empty())
+			{
+				language_server.textDocument_publishDiagnostics(diagnostics);
 			}
 		}
 
@@ -163,16 +152,18 @@ public:
 			recalculate_foldings_recursive(sqfvm, m_root_ast);
 		}
 	public:
+		lsp::data::publish_diagnostics_params diagnostics;
 		text_document() {}
-		text_document(sqf::runtime::runtime& sqfvm, std::string path) : m_path(path)
+		text_document(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::string path) : m_path(path)
 		{
-			reread(sqfvm);
+			reread(language_server, sqfvm, {});
+			diagnostics.uri = sanitize(path);
 		}
 
 		std::string_view contents() const { return m_contents; }
-		void reread(sqf::runtime::runtime& sqfvm)
+		void reread(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::string_view contents)
 		{
-			recalculate_ast(sqfvm);
+			recalculate_ast(language_server, sqfvm, contents);
 			recalculate_foldings(sqfvm);
 		}
 
@@ -231,16 +222,7 @@ protected:
 		{
 			for (auto workspaceFolder : params.workspaceFolders.value())
 			{
-				auto uri = workspaceFolder.uri;
-				std::string dpath;
-				dpath.reserve(uri.host().length() + 1 + uri.path().length());
-				dpath.append(uri.host());
-				dpath.append("/");
-				dpath.append(uri.path());
-				std::replace(dpath.begin(), dpath.end(), '\\', '/');
-				std::filesystem::path data_path(dpath);
-				data_path = data_path.lexically_normal();
-				std::filesystem::recursive_directory_iterator dir_start(data_path, std::filesystem::directory_options::skip_permission_denied);
+				std::filesystem::recursive_directory_iterator dir_start(sanitize(workspaceFolder.uri), std::filesystem::directory_options::skip_permission_denied);
 				std::filesystem::recursive_directory_iterator dir_end;
 
 				for (auto it = dir_start; it != dir_end; it++)
@@ -249,50 +231,30 @@ protected:
 					{
 						continue;
 					}
-					auto fpath = it->path().string();
-					text_documents[fpath] = { sqfvm, fpath };
+					auto fpath = sanitize(workspaceFolder.uri);
+					text_documents[fpath] = { *this, sqfvm, fpath };
 				}
 			}
 		}
-		logger.report(*this);
 	}
 
 	virtual void on_textDocument_didChange(const lsp::data::did_change_text_document_params& params) override
 	{
-		auto& uri = params.textDocument.uri;
-		std::string dpath;
-		dpath.reserve(uri.host().length() + 1 + uri.path().length());
-		dpath.append(uri.host());
-		dpath.append("/");
-		dpath.append(uri.path());
-		std::replace(dpath.begin(), dpath.end(), '\\', '/');
-		std::filesystem::path data_path(dpath);
-		data_path = data_path.lexically_normal();
-		auto findRes = text_documents.find(data_path.string());
+		auto findRes = text_documents.find(sanitize(params.textDocument.uri));
 		if (findRes != text_documents.end())
 		{
 			auto& doc = findRes->second;
-			doc.reread(sqfvm);
+			doc.reread(*this, sqfvm, params.contentChanges.front().text);
 		}
 		else
 		{
-			auto fpath = data_path.string();
-			text_documents[fpath] = { sqfvm, fpath };
+			auto fpath = sanitize(params.textDocument.uri);
+			text_documents[fpath] = { *this, sqfvm, fpath };
 		}
-		logger.report(*this);
 	}
 	virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(const lsp::data::folding_range_params& params) override
 	{
-		auto& uri = params.textDocument.uri;
-		std::string dpath;
-		dpath.reserve(uri.host().length() + 1 + uri.path().length());
-		dpath.append(uri.host());
-		dpath.append("/");
-		dpath.append(uri.path());
-		std::replace(dpath.begin(), dpath.end(), '\\', '/');
-		std::filesystem::path data_path(dpath);
-		data_path = data_path.lexically_normal();
-		auto findRes = text_documents.find(data_path.string());
+		auto findRes = text_documents.find(sanitize(params.textDocument.uri));
 		if (findRes != text_documents.end())
 		{
 			auto& doc = findRes->second;
@@ -309,7 +271,33 @@ public:
 	lsp::data::initialize_params client;
 	QueueLogger logger;
 	sqf::runtime::runtime sqfvm;
-	sqf_language_server() : logger(), sqfvm(logger, {}) {}
+	sqf_language_server() : logger(*this), sqfvm(logger, {}) {}
+	sqf_language_server(const sqf_language_server& copy) = delete;
+
+	// Method to get a clear & clean uri string out of the uri provided by vscode.
+	static std::string sanitize(const lsp::data::uri& uri)
+	{
+		std::string dpath;
+		dpath.reserve(uri.host().length() + 1 + uri.path().length());
+		dpath.append(uri.host());
+		dpath.append("/");
+		dpath.append(uri.path());
+		std::filesystem::path data_path(dpath);
+		data_path = data_path.lexically_normal();
+		dpath = data_path.string();
+		std::replace(dpath.begin(), dpath.end(), '\\', '/');
+		return dpath;
+	}
+	// Method to get a clear & clean uri out of the string provided by sqfvm.
+	static lsp::data::uri sanitize(const std::string str) { return sanitize(std::string_view(str)); }
+	// Method to get a clear & clean uri out of the string provided by sqfvm.
+	static lsp::data::uri sanitize(const std::string_view sv)
+	{
+		auto path = std::filesystem::path(sv).lexically_normal();
+		auto str = "file:///" + path.string();
+		std::replace(str.begin(), str.end(), '\\', '/');
+		return lsp::data::uri(str);
+	}
 };
 
 int main(int argc, char** argv)

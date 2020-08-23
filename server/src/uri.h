@@ -27,11 +27,7 @@ namespace x39
         size_t m_fragment_start;
         size_t m_fragment_length;
     protected:
-        uri() {}
-    public:
-        uri(const char* input) : uri(std::string_view(input)) {}
-        uri(const std::string& input) : uri(std::string_view(input)) {}
-        uri(std::string_view input) : 
+        uri() :
             m_data(),
             m_schema_start(0),
             m_schema_length(0),
@@ -48,7 +44,11 @@ namespace x39
             m_query_start(0),
             m_query_length(0),
             m_fragment_start(0),
-            m_fragment_length(0)
+            m_fragment_length(0) {}
+    public:
+        uri(const char* input) : uri(std::string_view(input)) {}
+        uri(const std::string& input) : uri(std::string_view(input)) {}
+        uri(std::string_view input) : uri()
         {
             auto& output = m_data;
             output.reserve(input.size()); // parsed string is always at max as long as input
