@@ -81,14 +81,22 @@ public:
             params.diagnostics.push_back(msg);
         }
     };
+    struct variable_declaration
+    {
+        int level;
+        lsp::data::position position;
+        std::string variable;
+        std::vector<lsp::data::position> usages;
+
+        variable_declaration(size_t layer, sqf::parser::sqf::impl_default::astnode node, std::string variable) :
+            level(layer),
+            position({ node.line, node.column }),
+            variable(variable),
+            usages() { }
+    };
     class text_document
     {
     private:
-        struct variable_declaration
-        {
-            int level;
-            std::string variable;
-        };
         enum class analysis_info
         {
             NA,
@@ -99,6 +107,9 @@ public:
         std::string m_contents;
         sqf::parser::sqf::impl_default::astnode m_root_ast;
         std::vector<lsp::data::folding_range> m_foldings;
+
+        std::vector<variable_declaration> m_private_declarations;
+        std::vector<variable_declaration> m_global_declarations;
 
         void recalculate_ast(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::string_view contents)
         {
@@ -121,7 +132,6 @@ public:
                 m_root_ast = {};
             }
         }
-
         void recalculate_foldings_recursive(sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current)
         {
             switch (current.kind)
@@ -160,22 +170,38 @@ public:
         void recalculate_analysis_helper(
             sqf::runtime::runtime& sqfvm,
             sqf::parser::sqf::impl_default::astnode& current,
-            int layer,
+            size_t level,
             std::vector<variable_declaration>& known,
             analysis_info parent_type)
         {
+            using sqf::parser::sqf::impl_default;
             switch (current.kind)
             {
-            case sqf::parser::sqf::impl_default::nodetype::ASSIGNMENTLOCAL:
-            case sqf::parser::sqf::impl_default::nodetype::ASSIGNMENT: {
+            /*
+                Handles:
+                 - Duplicate-Declaration detection
+                 - Adding variables to the known-stack
+            */
+            case impl_default::nodetype::ASSIGNMENTLOCAL:
+            case impl_default::nodetype::ASSIGNMENT: {
                 auto variable = current.children[0].content;
+                std::transform(variable.begin(), variable.end(), variable.begin(), [](char c) { return (char)std::tolower(c); });
                 auto findRes = std::find_if(known.begin(), known.end(),
                     [&variable](variable_declaration& it) { return it.variable == variable; });
                 if (findRes == known.end())
                 {
-                    known.push_back({ layer, variable });
+                    variable_declaration var = { level, current.children[0], variable };
+                    known.push_back(var);
+                    if (var.variable[0] == '_') // safe as empty std string `0` is `\0`
+                    {
+                        m_private_declarations.push_back(var);
+                    }
+                    else
+                    {
+                        m_global_declarations.push_back(var);
+                    }
                 }
-                else if (current.kind == sqf::parser::sqf::impl_default::nodetype::ASSIGNMENTLOCAL)
+                else if (current.kind == impl_default::nodetype::ASSIGNMENTLOCAL)
                 {
                     lsp::data::diagnostics diag;
                     diag.code = "L-0001";
@@ -183,33 +209,41 @@ public:
                     diag.range.start.character = current.column;
                     diag.range.end.line = current.line - 1;
                     diag.range.end.character = current.column;
-                    diag.message = "'" + variable + "' hides previous declaration.";
+                    diag.message = "'" + current.children[0].content + "' hides previous declaration.";
                     diag.severity = lsp::data::diagnostic_severity::Warning;
                     diag.source = "SQF-VM LS";
                     diagnostics.diagnostics.push_back(diag);
                 }
-                recalculate_analysis_helper(sqfvm, current.children[1], layer + 1, known, analysis_info::NA);
+                recalculate_analysis_helper(sqfvm, current.children[0], level + 1, known, analysis_info::NA);
+                recalculate_analysis_helper(sqfvm, current.children[1], level + 1, known, analysis_info::NA);
             } break;
-            case sqf::parser::sqf::impl_default::nodetype::CODE: {
+
+            /*
+                Handles:
+                 - Add built-in variables `_x`, `_foreachindex` of foreach
+                 - Add built-in variables `_x` of count
+                 - Cleanup of "known" variables after leaving code-block
+            */
+            case impl_default::nodetype::CODE: {
                 switch (parent_type)
                 {
                 case sqf_language_server::text_document::analysis_info::FOREACH:
-                    known.push_back({ layer, "_x" });
-                    known.push_back({ layer, "_forEachIndex" });
+                    known.push_back({ level, current, "_x" });
+                    known.push_back({ level, current, "_foreachindex" });
                     break;
                 case sqf_language_server::text_document::analysis_info::COUNT:
-                    known.push_back({ layer, "_x" });
+                    known.push_back({ level, current, "_x" });
                     break;
                 }
                 for (auto child : current.children)
                 {
-                    recalculate_analysis_helper(sqfvm, child, layer + 1, known, analysis_info::NA);
+                    recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::NA);
                 }
 
                 // Erase lower known variables
                 for (size_t i = 0; i < known.size(); i++)
                 {
-                    if (known[i].level == layer + 1)
+                    if (known[i].level == level + 1)
                     {
                         known.at(i) = known.back();
                         known.erase(known.begin() + known.size() - 1);
@@ -217,9 +251,20 @@ public:
                     }
                 }
             } break;
-            case sqf::parser::sqf::impl_default::nodetype::VARIABLE: {
+
+            /*
+                Handles:
+                 - Undefined variable warnings
+                 - Variable-Usage reference updating
+            */
+            case impl_default::nodetype::VARIABLE: {
+                auto variable = current.content;
+                auto& node = current;
+
+
+                std::transform(variable.begin(), variable.end(), variable.begin(), [](char c) { return (char)std::tolower(c); });
                 auto findRes = std::find_if(known.begin(), known.end(),
-                    [&current](variable_declaration& it) { return it.variable == current.content; });
+                    [&variable](variable_declaration& it) { return it.variable == variable; });
                 if (findRes == known.end())
                 {
                     lsp::data::diagnostics diag;
@@ -233,18 +278,45 @@ public:
                     diag.source = "SQF-VM LS";
                     diagnostics.diagnostics.push_back(diag);
                 }
+                else
+                {
+                    if (variable[0] == '_') // safe as empty std string `0` is `\0`
+                    {
+                        auto it = std::find_if(m_private_declarations.begin(), m_private_declarations.end(),
+                            [&variable](variable_declaration& it) -> bool { return it.variable == variable; });
+                        if (it != m_private_declarations.end())
+                        {
+                            it->usages.push_back({ node.line, node.column });
+                        }
+                    }
+                    else
+                    {
+                        auto it = std::find_if(m_global_declarations.begin(), m_global_declarations.end(),
+                            [&variable](variable_declaration& it) -> bool { return it.variable == variable; });
+                        if (it != m_global_declarations.end())
+                        {
+                            it->usages.push_back({ node.line, node.column });
+                        }
+                    }
+                }
             } goto l_default; /* L-0002 */
-            case sqf::parser::sqf::impl_default::nodetype::BEXP1:
-            case sqf::parser::sqf::impl_default::nodetype::BEXP2:
-            case sqf::parser::sqf::impl_default::nodetype::BEXP3:
-            case sqf::parser::sqf::impl_default::nodetype::BEXP4:
-            case sqf::parser::sqf::impl_default::nodetype::BEXP5:
-            case sqf::parser::sqf::impl_default::nodetype::BEXP6:
-            case sqf::parser::sqf::impl_default::nodetype::BEXP7:
-            case sqf::parser::sqf::impl_default::nodetype::BEXP8:
-            case sqf::parser::sqf::impl_default::nodetype::BEXP9:
-            case sqf::parser::sqf::impl_default::nodetype::BEXP10:
-            case sqf::parser::sqf::impl_default::nodetype::BINARYEXPRESSION: {
+
+            /*
+                Handles:
+                 - Passing analysis_info to lower method
+                 - Applying clean `known` vector for `spawn`
+            */
+            case impl_default::nodetype::BEXP1:
+            case impl_default::nodetype::BEXP2:
+            case impl_default::nodetype::BEXP3:
+            case impl_default::nodetype::BEXP4:
+            case impl_default::nodetype::BEXP5:
+            case impl_default::nodetype::BEXP6:
+            case impl_default::nodetype::BEXP7:
+            case impl_default::nodetype::BEXP8:
+            case impl_default::nodetype::BEXP9:
+            case impl_default::nodetype::BEXP10:
+            case impl_default::nodetype::BINARYEXPRESSION: {
                 auto op = std::string(current.children[1].content);
                 std::transform(op.begin(), op.end(), op.begin(), [](char& c) { return (char)std::tolower((int)c); });
 
@@ -252,8 +324,8 @@ public:
                 {
                     for (auto child : current.children)
                     {
-                        std::vector<variable_declaration> known2 = { { layer, "_this" } };
-                        recalculate_analysis_helper(sqfvm, child, layer + 1, known2, analysis_info::NA);
+                        std::vector<variable_declaration> known2 = { { level, current, "_this" } };
+                        recalculate_analysis_helper(sqfvm, child, level + 1, known2, analysis_info::NA);
                     }
 
                     break;
@@ -262,7 +334,7 @@ public:
                 {
                     for (auto child : current.children)
                     {
-                        recalculate_analysis_helper(sqfvm, child, layer + 1, known, analysis_info::FOREACH);
+                        recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::FOREACH);
                     }
 
                     break;
@@ -271,7 +343,7 @@ public:
                 {
                     for (auto child : current.children)
                     {
-                        recalculate_analysis_helper(sqfvm, child, layer + 1, known, analysis_info::COUNT);
+                        recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::COUNT);
                     }
 
                     break;
@@ -281,7 +353,11 @@ public:
                     goto l_default;
                 }
             }
-            case sqf::parser::sqf::impl_default::nodetype::UNARYEXPRESSION: {
+            /*
+                Handles:
+                 - Applying clean `known` vector for `spawn`
+            */
+            case impl_default::nodetype::UNARYEXPRESSION: {
                 auto op = std::string(current.children[0].content);
                 std::transform(op.begin(), op.end(), op.begin(), [](char& c) { return (char)std::tolower((int)c); });
 
@@ -289,16 +365,25 @@ public:
                 {
                     for (auto child : current.children)
                     {
-                        std::vector<variable_declaration> known2 = { { layer, "_this" } };
-                        recalculate_analysis_helper(sqfvm, child, layer + 1, known2, analysis_info::NA);
+                        std::vector<variable_declaration> known2 = { { level, current, "_this" } };
+                        recalculate_analysis_helper(sqfvm, child, level + 1, known2, analysis_info::NA);
                     }
 
                     break;
                 }
-                else if (op == "for" && current.children[1].kind == sqf::parser::sqf::impl_default::nodetype::STRING)
+                else if (op == "for" && current.children[1].kind == impl_default::nodetype::STRING)
                 {
                     auto variable = sqf::types::d_string::from_sqf(current.children[1].content);
-                    known.push_back({ layer, variable });
+                    variable_declaration var = { level, current.children[1], variable };
+                    known.push_back(var);
+                    if (var.variable[0] == '_') // safe as empty std string `0` is `\0`
+                    {
+                        m_private_declarations.push_back(var);
+                    }
+                    else
+                    {
+                        m_global_declarations.push_back(var);
+                    }
                     goto l_default;
                 }
                 else
@@ -311,15 +396,16 @@ public:
             default: {
                 for (auto child : current.children)
                 {
-                    recalculate_analysis_helper(sqfvm, child, layer, known, analysis_info::NA);
+                    recalculate_analysis_helper(sqfvm, child, level, known, analysis_info::NA);
                 }
             } break;
             }
         }
         void recalculate_analysis(sqf::runtime::runtime& sqfvm)
         {
-            m_foldings.clear();
-            std::vector<variable_declaration> known = { { 0, "_this" } };
+            m_private_declarations.clear();
+            m_global_declarations.clear();
+            std::vector<variable_declaration> known = { { 0, {}, "_this" } };
             recalculate_analysis_helper(sqfvm, m_root_ast, 0, known, analysis_info::NA);
         }
     public:
@@ -453,9 +539,7 @@ public:
     static std::string sanitize(const lsp::data::uri& uri)
     {
         std::string dpath;
-        dpath.reserve(uri.host().length() + 1 + uri.path().length());
-        dpath.append(uri.host());
-        dpath.append("/");
+        dpath.reserve(uri.path().length());
         dpath.append(uri.path());
         std::filesystem::path data_path(dpath);
         data_path = data_path.lexically_normal();
@@ -469,9 +553,9 @@ public:
     static lsp::data::uri sanitize(const std::string_view sv)
     {
         auto path = std::filesystem::path(sv).lexically_normal();
-        auto str = "file:///" + path.string();
+        auto str = path.string();
         std::replace(str.begin(), str.end(), '\\', '/');
-        return lsp::data::uri(str);
+        return lsp::data::uri("file", {}, {}, {}, {}, str, {}, {});
     }
 };
 
@@ -481,15 +565,16 @@ int main(int argc, char** argv)
     _CrtDbgReport(_CRT_ASSERT, "", 0, "", "Waiting for vs.");
 #endif // _DEBUG
 
-    // x39::uri a("aba://aba:aba@aba:aba/aba?aba#aba");
-    // x39::uri b("aba://aba:aba@aba:aba?aba#aba");
-    // x39::uri c("aba://aba:aba@aba?aba#aba");
-    // x39::uri d("aba://aba@aba?aba#aba");
-    // x39::uri e("aba://aba?aba#aba");
-    // x39::uri f("aba://aba?aba");
-    // x39::uri g("aba://aba");
-    // x39::uri h("file://D%3A/Git/Sqfvm/vm/tests/");
-    // x39::uri i("https://www.google.com/search?rlz=1C1CHBF_deDE910DE910&sxsrf=ALeKk02J_XcmnGpP0UfYPa2S-usVtUnZXw%3A1597937338384&ei=upY-X4TzFpHikgWc7pXwBQ&q=file%3A%2F%2F%2FD%3A%2Fasdasd");
+    // x39::uri a("aba:///aba:aba@aba:aba/aba?aba#aba");
+    // x39::uri b("aba:///aba:aba@aba:aba?aba#aba");
+    // x39::uri c("aba:///aba:aba@aba?aba#aba");
+    // x39::uri d("aba:///aba@aba?aba#aba");
+    // x39::uri e("aba:///aba?aba#aba");
+    // x39::uri f("aba:///aba?aba");
+    // x39::uri g("aba:///aba");
+    // x39::uri h("file:///D%3A/Git/Sqfvm/vm/tests/");
+    // x39::uri i("file:///c%3A/%40X39/vscode/clients/vscode/sample/sample.sqf");
+    // x39::uri j("https://www.google.com/search?rlz=1C1CHBF_deDE910DE910&sxsrf=ALeKk02J_XcmnGpP0UfYPa2S-usVtUnZXw%3A1597937338384&ei=upY-X4TzFpHikgWc7pXwBQ&q=file%3A%2F%2F%2FD%3A%2Fasdasd");
     sqf_language_server ls;
     ls.listen();
 }

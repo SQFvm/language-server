@@ -53,7 +53,7 @@ namespace x39
             auto& output = m_data;
             output.reserve(input.size()); // parsed string is always at max as long as input
 
-            enum estate { schema_read, schema_wait_length, user, password, host, port, path, query, fragment };
+            enum estate { schema_read, schema_wait_length, schema_wait_length_slash, user, password, host, port, path, query, fragment };
             estate state = schema_read;
             size_t start = 0;
             size_t current = 0;
@@ -196,12 +196,30 @@ namespace x39
                     }
                     break;
                 case schema_wait_length:
-                    if (c != '/' && c != ':')
+                    if (c == '/')
                     {
+                        state = schema_wait_length_slash;
+                    }
+                    else if (c != ':')
+                    { // invalid uri. Still try to parse
                         state = user;
                         start = current - 1;
                     }
                     break;
+                case schema_wait_length_slash:
+                    if (c != '/')
+                    { // invalid uri. Still try to parse
+                        state = user;
+                        start = current - 1;
+                        goto l_user;
+                    }
+                    else // char c is '/' here
+                    {
+                        state = user;
+                        start = current; // Skip current '/'
+                    }
+                    break;
+                l_user:
                 case user:
                     if (c == ':')
                     {
@@ -403,6 +421,97 @@ namespace x39
             default: break;
             }
         }
+        uri(std::string_view schema,
+            std::string_view user,
+            std::string_view password,
+            std::string_view host,
+            std::string_view port,
+            std::string_view path,
+            std::string_view query,
+            std::string_view fragment) : uri()
+        {
+            using namespace std::string_view_literals;
+            m_data.reserve(
+                schema.length() +
+                "://"sv.length() +
+                (user.empty() ? 0 : user.length() + "@"sv.length() + (password.empty() ? 0 : password.length() + ":"sv.length())) +
+                host.length() + 
+                "/"sv.length() + 
+                (port.empty() ? 0 : port.length() + ":"sv.length()) +
+                path.length() + 
+                (query.empty() ? 0 : query.length() + "?"sv.length()) +
+                (fragment.empty() ? 0 : fragment.length() + "#"sv.length())
+            );
+            size_t cur = 0;
+
+            m_data.append(schema);
+            m_schema_start = cur;
+            cur += m_schema_length = schema.length();
+
+            m_data.append("://"sv);
+            cur += "://"sv.length();
+
+            if (!user.empty())
+            {
+                m_data.append(user);
+                m_user_start = cur;
+                cur += m_user_length = user.length();
+
+                if (!password.empty())
+                {
+                    m_data.append(":"sv);
+                    cur += ":"sv.length();
+
+                    m_data.append(password);
+                    m_password_start = cur;
+                    cur += m_password_length = password.length();
+                }
+
+                m_data.append("@"sv);
+                cur += "@"sv.length();
+            }
+
+            m_data.append(host);
+            m_host_start = cur;
+            cur += m_host_length = host.length();
+
+            if (!port.empty())
+            {
+                m_data.append(":"sv);
+                cur += ":"sv.length();
+
+                m_data.append(port);
+                m_port_start = cur;
+                cur += m_port_length = port.length();
+            }
+
+            m_data.append("/"sv);
+            cur += "/"sv.length();
+
+            m_data.append(path);
+            m_path_start = cur;
+            cur += m_path_length = path.length();
+
+            if (!query.empty())
+            {
+                m_data.append("?"sv);
+                cur += "?"sv.length();
+
+                m_data.append(query);
+                m_query_start = cur;
+                cur += m_query_length = query.length();
+            }
+
+            if (!fragment.empty())
+            {
+                m_data.append("#"sv);
+                cur += "#"sv.length();
+
+                m_data.append(fragment);
+                m_fragment_start = cur;
+                cur += m_fragment_length = fragment.length();
+            }
+        }
 
 
         std::string_view full()     const { return m_data; }
@@ -493,7 +602,7 @@ namespace x39
 
             // ToDo: Parse into https://de.wikipedia.org/wiki/URL-Encoding
             encode_helper(sstream, schema(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
-            sstream << ":///";
+            sstream << "://";
             if (!user().empty())
             {
                 encode_helper(sstream, user(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
@@ -504,7 +613,7 @@ namespace x39
                 }
                 sstream << "@";
             }
-            encode_helper(sstream, host(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~:");
+            encode_helper(sstream, host(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
             if (!port().empty())
             {
                 sstream << ":";

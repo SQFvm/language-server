@@ -721,6 +721,15 @@ namespace lsp
             uri() : ::x39::uri() {}
             uri(const std::string& input) : ::x39::uri(input) {}
             uri(std::string_view input) : ::x39::uri(input) {}
+            uri(std::string_view schema,
+                std::string_view user,
+                std::string_view password,
+                std::string_view host,
+                std::string_view port,
+                std::string_view path,
+                std::string_view query,
+                std::string_view fragment) :
+                ::x39::uri(schema, user, password, host, port, path, query, fragment) {}
             static uri from_json(const nlohmann::json& node)
             {
                 return { node.get<std::string>() };
