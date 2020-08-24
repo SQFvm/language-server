@@ -331,7 +331,7 @@ public:
                     [&variable](variable_declaration& it) { return it.variable == variable; });
                 if (findRes == known.end())
                 {
-                    analysis_raise_L0003(current, current.content);
+                    analysis_raise_L0002(current, current.content);
                 }
                 else
                 {
