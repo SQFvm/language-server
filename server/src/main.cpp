@@ -492,7 +492,8 @@ protected:
                     {
                         continue;
                     }
-                    auto fpath = sanitize(workspaceFolder.uri);
+                    auto uri = sanitize(it->path().string());
+                    auto fpath = sanitize(uri);
                     text_documents[fpath] = { *this, sqfvm, fpath };
                 }
             }
