@@ -108,9 +108,9 @@ private:
     std::istream& m_in;
     std::ostream& m_out;
     std::atomic<size_t> m_counter;
-    std::thread m_read_thread;
     bool* m_read_terminate;
     bool* m_write_terminate;
+    std::thread m_read_thread;
     std::thread m_write_thread;
     destruct_strategy m_destruct_strategy;
     parse_error_strategy m_parse_error_strategy;
