@@ -96,6 +96,12 @@ public:
     };
     class text_document
     {
+    public:
+        enum class document_type
+        {
+            NA,
+            SQF
+        };
     private:
         enum class analysis_info
         {
@@ -410,8 +416,9 @@ public:
         }
     public:
         lsp::data::publish_diagnostics_params diagnostics;
+        document_type type;
         text_document() {}
-        text_document(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::string path) : m_path(path)
+        text_document(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::string path, document_type type) : m_path(path), type(type)
         {
             diagnostics.uri = sanitize(path);
             reread(language_server, sqfvm, {});
@@ -492,9 +499,25 @@ protected:
                     {
                         continue;
                     }
-                    auto uri = sanitize(it->path().string());
-                    auto fpath = sanitize(uri);
-                    text_documents[fpath] = { *this, sqfvm, fpath };
+                    auto path = it->path();
+                    if (!path.has_extension())
+                    {
+                        if (path.filename() == "$PBOPREFIX$")
+                        {
+                            // ToDo: If modified, remove existing mapping and reparse as whole. (or message the user that a reload is required)
+                            // ToDo: If created, add mapping and reparse as whole. (or message the user that a reload is required)
+                            auto pboprefix_path = path.parent_path().string();
+                            auto pboprefix_contents_o = sqfvm.fileio().read_file_from_disk(path.string());
+                            auto pboprefix_contents = pboprefix_contents_o.value();
+                            sqfvm.fileio().add_mapping(pboprefix_path, pboprefix_contents[0] != '/' ? "/" + pboprefix_contents : pboprefix_contents);
+                        }
+                    }
+                    else if (path.extension() == ".sqf")
+                    {
+                        auto uri = sanitize(path.string());
+                        auto fpath = sanitize(uri);
+                        text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF };
+                    }
                 }
             }
         }
@@ -502,16 +525,17 @@ protected:
 
     virtual void on_textDocument_didChange(const lsp::data::did_change_text_document_params& params) override
     {
-        auto findRes = text_documents.find(sanitize(params.textDocument.uri));
+        using namespace std::string_view_literals;
+        auto fpath = sanitize(params.textDocument.uri);
+        auto findRes = text_documents.find(fpath);
         if (findRes != text_documents.end())
         {
             auto& doc = findRes->second;
             doc.reread(*this, sqfvm, params.contentChanges.front().text);
         }
-        else
+        else if (fpath.length() > 4 && std::string_view(fpath.data() + fpath.length() - 4, 4) == ".sqf"sv)
         {
-            auto fpath = sanitize(params.textDocument.uri);
-            text_documents[fpath] = { *this, sqfvm, fpath };
+            text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF };
         }
     }
     virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(const lsp::data::folding_range_params& params) override
