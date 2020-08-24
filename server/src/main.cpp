@@ -174,6 +174,45 @@ public:
             m_foldings.clear();
             recalculate_foldings_recursive(sqfvm, m_root_ast);
         }
+        void analysis_raise_L0001(sqf::parser::sqf::impl_default::astnode& node, const std::string& variable)
+        {
+            lsp::data::diagnostics diag;
+            diag.code = "L-0001";
+            diag.range.start.line = node.line - 1;
+            diag.range.start.character = node.column;
+            diag.range.end.line = node.line - 1;
+            diag.range.end.character = node.column;
+            diag.message = "'" + variable + "' hides previous declaration.";
+            diag.severity = lsp::data::diagnostic_severity::Warning;
+            diag.source = "SQF-VM LS";
+            diagnostics.diagnostics.push_back(diag);
+        }
+        void analysis_raise_L0002(sqf::parser::sqf::impl_default::astnode& node, const std::string& variable)
+        {
+            lsp::data::diagnostics diag;
+            diag.code = "L-0002";
+            diag.range.start.line = node.line - 1;
+            diag.range.start.character = node.column;
+            diag.range.end.line = node.line - 1;
+            diag.range.end.character = node.column;
+            diag.message = "Variable '" + variable + "' not defined.";
+            diag.severity = lsp::data::diagnostic_severity::Warning;
+            diag.source = "SQF-VM LS";
+            diagnostics.diagnostics.push_back(diag);
+        }
+        void analysis_raise_L0003(sqf::parser::sqf::impl_default::astnode& node, const std::string& variable)
+        {
+            lsp::data::diagnostics diag;
+            diag.code = "L-0003";
+            diag.range.start.line = node.line - 1;
+            diag.range.start.character = node.column;
+            diag.range.end.line = node.line - 1;
+            diag.range.end.character = node.column;
+            diag.message = "'" + variable + "' is not starting with an underscore ('_').";
+            diag.severity = lsp::data::diagnostic_severity::Error;
+            diag.source = "SQF-VM LS";
+            diagnostics.diagnostics.push_back(diag);
+        }
 
         // Performs the checks for L-0001 & L-0003.
         // 
@@ -204,33 +243,14 @@ public:
             }
             else if (node.kind == impl_default::nodetype::ASSIGNMENTLOCAL || private_check)
             {
-                lsp::data::diagnostics diag;
-                diag.code = "L-0001";
-                diag.range.start.line = node.line - 1;
-                diag.range.start.character = node.column;
-                diag.range.end.line = node.line - 1;
-                diag.range.end.character = node.column;
-                diag.message = "'" + variable + "' hides previous declaration.";
-                diag.severity = lsp::data::diagnostic_severity::Warning;
-                diag.source = "SQF-VM LS";
-                diagnostics.diagnostics.push_back(diag);
-
+                analysis_raise_L0001(node, orig);
                 private_check = true;
             }
             if (private_check)
             {
                 if (variable[0] != '_')
                 {
-                    lsp::data::diagnostics diag;
-                    diag.code = "L-0003";
-                    diag.range.start.line = node.line - 1;
-                    diag.range.start.character = node.column;
-                    diag.range.end.line = node.line - 1;
-                    diag.range.end.character = node.column;
-                    diag.message = "'" + variable + "' is not starting with an underscore ('_').";
-                    diag.severity = lsp::data::diagnostic_severity::Error;
-                    diag.source = "SQF-VM LS";
-                    diagnostics.diagnostics.push_back(diag);
+                    analysis_raise_L0003(node, orig);
                 }
             }
         }
@@ -311,16 +331,7 @@ public:
                     [&variable](variable_declaration& it) { return it.variable == variable; });
                 if (findRes == known.end())
                 {
-                    lsp::data::diagnostics diag;
-                    diag.code = "L-0002";
-                    diag.range.start.line = current.line - 1;
-                    diag.range.start.character = current.column;
-                    diag.range.end.line = current.line - 1;
-                    diag.range.end.character = current.column;
-                    diag.message = "Variable '" + current.content + "' not defined.";
-                    diag.severity = lsp::data::diagnostic_severity::Warning;
-                    diag.source = "SQF-VM LS";
-                    diagnostics.diagnostics.push_back(diag);
+                    analysis_raise_L0003(current, current.content);
                 }
                 else
                 {
@@ -665,4 +676,5 @@ int main(int argc, char** argv)
     // x39::uri j("https://www.google.com/search?rlz=1C1CHBF_deDE910DE910&sxsrf=ALeKk02J_XcmnGpP0UfYPa2S-usVtUnZXw%3A1597937338384&ei=upY-X4TzFpHikgWc7pXwBQ&q=file%3A%2F%2F%2FD%3A%2Fasdasd");
     sqf_language_server ls;
     ls.listen();
+    return 0;
 }
