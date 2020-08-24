@@ -326,8 +326,8 @@ public:
         text_document() {}
         text_document(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::string path) : m_path(path)
         {
-            reread(language_server, sqfvm, {});
             diagnostics.uri = sanitize(path);
+            reread(language_server, sqfvm, {});
         }
 
         std::string_view contents() const { return m_contents; }
