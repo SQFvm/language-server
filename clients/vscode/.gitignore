@@ -2,3 +2,4 @@ out
 node_modules
 server
 !.vscode
+sqfvm_language_server.exe

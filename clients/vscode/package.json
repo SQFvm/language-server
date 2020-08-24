@@ -2,15 +2,15 @@
     "name": "sqf-vm-language-server",
     "displayName": "SQF-VM Language Server",
     "description": "",
-    "version": "0.1.0",
-    "publisher": "X39",
+    "version": "0.1.1",
+    "publisher": "SQF-VM",
     "repository": {
         "type": "git",
         "url": "https://github.com/SQFvm/vscode"
     },
     "license": "LGPL-3.0 License",
     "engines": {
-        "vscode": "^1.33.0"
+        "vscode": "^1.43.0"
     },
     "categories": [
         "Programming Languages",
