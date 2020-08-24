@@ -107,7 +107,8 @@ public:
         {
             NA,
             FOREACH,
-            COUNT
+            COUNT,
+            PRIVATE
         };
         std::string m_path;
         std::string m_contents;
@@ -173,6 +174,64 @@ public:
             m_foldings.clear();
             recalculate_foldings_recursive(sqfvm, m_root_ast);
         }
+
+        // Performs the checks for L-0001 & L-0003.
+        // 
+        // @param known:            The list of known variable as reference
+        // @param level:            The current variable level
+        // @param node:             The actual variable node, handled
+        // @param variable:         The variable name (should be tolowered first)
+        // @param private_check:    Wether the variable should be treated as private declaration
+        void analysis_ensure_L0001_L0003(std::vector<variable_declaration>& known, size_t level, sqf::parser::sqf::impl_default::astnode& node, const std::string& variable, bool private_check)
+        {
+            using sqf::parser::sqf::impl_default;
+            auto findRes = std::find_if(known.begin(), known.end(),
+                [&variable](variable_declaration& it) { return it.variable == variable; });
+            if (findRes == known.end())
+            {
+                variable_declaration var = { level, node, variable };
+                known.push_back(var);
+                if (var.variable[0] == '_') // safe as empty std string `0` is `\0`
+                {
+                    m_private_declarations.push_back(var);
+                }
+                else
+                {
+                    m_global_declarations.push_back(var);
+                }
+            }
+            else if (node.kind == impl_default::nodetype::ASSIGNMENTLOCAL || private_check)
+            {
+                lsp::data::diagnostics diag;
+                diag.code = "L-0001";
+                diag.range.start.line = node.line - 1;
+                diag.range.start.character = node.column;
+                diag.range.end.line = node.line - 1;
+                diag.range.end.character = node.column;
+                diag.message = "'" + node.content + "' hides previous declaration.";
+                diag.severity = lsp::data::diagnostic_severity::Warning;
+                diag.source = "SQF-VM LS";
+                diagnostics.diagnostics.push_back(diag);
+
+                private_check = true;
+            }
+            if (private_check)
+            {
+                if (variable[0] != '_')
+                {
+                    lsp::data::diagnostics diag;
+                    diag.code = "L-0003";
+                    diag.range.start.line = node.line - 1;
+                    diag.range.start.character = node.column;
+                    diag.range.end.line = node.line - 1;
+                    diag.range.end.character = node.column;
+                    diag.message = "'" + node.content + "' is not starting with an underscore ('_').";
+                    diag.severity = lsp::data::diagnostic_severity::Error;
+                    diag.source = "SQF-VM LS";
+                    diagnostics.diagnostics.push_back(diag);
+                }
+            }
+        }
         void recalculate_analysis_helper(
             sqf::runtime::runtime& sqfvm,
             sqf::parser::sqf::impl_default::astnode& current,
@@ -184,6 +243,9 @@ public:
             switch (current.kind)
             {
             /*
+                Error Codes:
+                 - L-0001
+                 - L-0003
                 Handles:
                  - Duplicate-Declaration detection
                  - Adding variables to the known-stack
@@ -192,34 +254,7 @@ public:
             case impl_default::nodetype::ASSIGNMENT: {
                 auto variable = current.children[0].content;
                 std::transform(variable.begin(), variable.end(), variable.begin(), [](char c) { return (char)std::tolower(c); });
-                auto findRes = std::find_if(known.begin(), known.end(),
-                    [&variable](variable_declaration& it) { return it.variable == variable; });
-                if (findRes == known.end())
-                {
-                    variable_declaration var = { level, current.children[0], variable };
-                    known.push_back(var);
-                    if (var.variable[0] == '_') // safe as empty std string `0` is `\0`
-                    {
-                        m_private_declarations.push_back(var);
-                    }
-                    else
-                    {
-                        m_global_declarations.push_back(var);
-                    }
-                }
-                else if (current.kind == impl_default::nodetype::ASSIGNMENTLOCAL)
-                {
-                    lsp::data::diagnostics diag;
-                    diag.code = "L-0001";
-                    diag.range.start.line = current.line - 1;
-                    diag.range.start.character = current.column;
-                    diag.range.end.line = current.line - 1;
-                    diag.range.end.character = current.column;
-                    diag.message = "'" + current.children[0].content + "' hides previous declaration.";
-                    diag.severity = lsp::data::diagnostic_severity::Warning;
-                    diag.source = "SQF-VM LS";
-                    diagnostics.diagnostics.push_back(diag);
-                }
+                analysis_ensure_L0001_L0003(known, level, current.children[0], variable, false);
                 recalculate_analysis_helper(sqfvm, current.children[0], level + 1, known, analysis_info::NA);
                 recalculate_analysis_helper(sqfvm, current.children[1], level + 1, known, analysis_info::NA);
             } break;
@@ -259,6 +294,8 @@ public:
             } break;
 
             /*
+                Error Codes:
+                 - L-0002
                 Handles:
                  - Undefined variable warnings
                  - Variable-Usage reference updating
@@ -305,7 +342,7 @@ public:
                         }
                     }
                 }
-            } goto l_default; /* L-0002 */
+            } goto l_default;
 
             /*
                 Handles:
@@ -377,6 +414,15 @@ public:
 
                     break;
                 }
+                else if (op == "private")
+                {
+                    for (auto child : current.children)
+                    {
+                        recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::PRIVATE);
+                    }
+
+                    break;
+                }
                 else if (op == "for" && current.children[1].kind == impl_default::nodetype::STRING)
                 {
                     auto variable = sqf::types::d_string::from_sqf(current.children[1].content);
@@ -397,12 +443,29 @@ public:
                     goto l_default;
                 }
             }
+            /*
+                Error Codes:
+                 - L-0001
+                 - L-0003
+                Handles:
+                 - On parent_type == PRIVATE:
+                   - Duplicate-Declaration detection
+                   - Adding variables to the known-stack
+            */
+            case impl_default::nodetype::STRING: {
+                if (parent_type == analysis_info::PRIVATE)
+                {
+                    auto variable = current.content;
+                    std::transform(variable.begin(), variable.end(), variable.begin(), [](char c) { return (char)std::tolower(c); });
+                    analysis_ensure_L0001_L0003(known, level, current.children[0], variable, true);
+                }
+            } break;
 
             l_default:
             default: {
                 for (auto child : current.children)
                 {
-                    recalculate_analysis_helper(sqfvm, child, level, known, analysis_info::NA);
+                    recalculate_analysis_helper(sqfvm, child, level, known, parent_type);
                 }
             } break;
             }
