@@ -16,7 +16,9 @@
 
 #include <nlohmann/json.hpp>
 
+#ifdef _DEBUG
 #define JSONRPC_DUMP_CHAT_TO_FILE
+#endif
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
 #include <fstream>
 #include <filesystem>
