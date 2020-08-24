@@ -276,8 +276,8 @@ public:
             case impl_default::nodetype::ASSIGNMENT: {
                 auto variable = current.children[0].content;
                 analysis_ensure_L0001_L0003(known, level, current.children[0], variable, false);
-                recalculate_analysis_helper(sqfvm, current.children[0], level + 1, known, analysis_info::NA);
-                recalculate_analysis_helper(sqfvm, current.children[1], level + 1, known, analysis_info::NA);
+                recalculate_analysis_helper(sqfvm, current.children[0], level, known, analysis_info::NA);
+                recalculate_analysis_helper(sqfvm, current.children[1], level, known, analysis_info::NA);
             } break;
 
             /*
@@ -430,7 +430,7 @@ public:
                 {
                     for (auto child : current.children)
                     {
-                        recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::PRIVATE);
+                        recalculate_analysis_helper(sqfvm, child, level, known, analysis_info::PRIVATE);
                     }
 
                     break;
@@ -476,7 +476,7 @@ public:
             default: {
                 for (auto child : current.children)
                 {
-                    recalculate_analysis_helper(sqfvm, child, level, known, parent_type);
+                    recalculate_analysis_helper(sqfvm, child, level + 1, known, parent_type);
                 }
             } break;
             }
