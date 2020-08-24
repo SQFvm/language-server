@@ -1,4 +1,4 @@
-![](assets/readme/indev_preview.png)
+![](https://raw.githubusercontent.com/SQFvm/vscode/master/clients/vscode/assets/readme/indev_preview.png)
 
 ***Use at your own Risk!***
 
@@ -9,7 +9,7 @@
 Provides a Language Server for the Scripting Language SQF, that is used in the `Arma` Series and `Virtual Battle Space` Simulation.
 
 
-![](assets/readme/variable_not_defined.gif)
+![](https://raw.githubusercontent.com/SQFvm/vscode/master/clients/vscode/assets/readme/variable_not_defined.gif)
 
 # Features
 * Linting
