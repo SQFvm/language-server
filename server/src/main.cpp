@@ -1,4 +1,5 @@
 #include "languageserver.h"
+#include "git_sha1.h"
 
 
 #include <runtime/runtime.h>
@@ -356,7 +357,7 @@ protected:
         lsp::data::initialize_result res;
         res.serverInfo = lsp::data::initialize_result::server_info{};
         res.serverInfo->name = "SQF-VM Language Server";
-        res.serverInfo->version = "0.1.0";
+        res.serverInfo->version = std::string(g_GIT_SHA1);
         res.capabilities.textDocumentSync = lsp::data::initialize_result::server_capabilities::text_document_sync_options{};
         res.capabilities.textDocumentSync->change = lsp::data::text_document_sync_kind::Full;
         res.capabilities.textDocumentSync->openClose = true;
