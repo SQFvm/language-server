@@ -182,9 +182,11 @@ public:
         // @param node:             The actual variable node, handled
         // @param variable:         The variable name (should be tolowered first)
         // @param private_check:    Wether the variable should be treated as private declaration
-        void analysis_ensure_L0001_L0003(std::vector<variable_declaration>& known, size_t level, sqf::parser::sqf::impl_default::astnode& node, const std::string& variable, bool private_check)
+        void analysis_ensure_L0001_L0003(std::vector<variable_declaration>& known, size_t level, sqf::parser::sqf::impl_default::astnode& node, const std::string& orig, bool private_check)
         {
             using sqf::parser::sqf::impl_default;
+            std::string variable = orig;
+            std::transform(variable.begin(), variable.end(), variable.begin(), [](char c) { return (char)std::tolower(c); });
             auto findRes = std::find_if(known.begin(), known.end(),
                 [&variable](variable_declaration& it) { return it.variable == variable; });
             if (findRes == known.end())
@@ -208,7 +210,7 @@ public:
                 diag.range.start.character = node.column;
                 diag.range.end.line = node.line - 1;
                 diag.range.end.character = node.column;
-                diag.message = "'" + node.content + "' hides previous declaration.";
+                diag.message = "'" + variable + "' hides previous declaration.";
                 diag.severity = lsp::data::diagnostic_severity::Warning;
                 diag.source = "SQF-VM LS";
                 diagnostics.diagnostics.push_back(diag);
@@ -225,7 +227,7 @@ public:
                     diag.range.start.character = node.column;
                     diag.range.end.line = node.line - 1;
                     diag.range.end.character = node.column;
-                    diag.message = "'" + node.content + "' is not starting with an underscore ('_').";
+                    diag.message = "'" + variable + "' is not starting with an underscore ('_').";
                     diag.severity = lsp::data::diagnostic_severity::Error;
                     diag.source = "SQF-VM LS";
                     diagnostics.diagnostics.push_back(diag);
@@ -253,7 +255,6 @@ public:
             case impl_default::nodetype::ASSIGNMENTLOCAL:
             case impl_default::nodetype::ASSIGNMENT: {
                 auto variable = current.children[0].content;
-                std::transform(variable.begin(), variable.end(), variable.begin(), [](char c) { return (char)std::tolower(c); });
                 analysis_ensure_L0001_L0003(known, level, current.children[0], variable, false);
                 recalculate_analysis_helper(sqfvm, current.children[0], level + 1, known, analysis_info::NA);
                 recalculate_analysis_helper(sqfvm, current.children[1], level + 1, known, analysis_info::NA);
@@ -455,9 +456,8 @@ public:
             case impl_default::nodetype::STRING: {
                 if (parent_type == analysis_info::PRIVATE)
                 {
-                    auto variable = current.content;
-                    std::transform(variable.begin(), variable.end(), variable.begin(), [](char c) { return (char)std::tolower(c); });
-                    analysis_ensure_L0001_L0003(known, level, current.children[0], variable, true);
+                    auto variable = sqf::types::d_string::from_sqf(current.content);
+                    analysis_ensure_L0001_L0003(known, level, current, variable, true);
                 }
             } break;
 
