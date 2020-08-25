@@ -253,6 +253,35 @@ namespace lsp
             return static_cast<int>(t);
         }
 
+        enum class message_type {
+            /**
+             * An error message.
+             */
+            Error = 1,
+            /**
+             * A warning message.
+             */
+            Warning = 2,
+            /**
+             * An information message.
+             */
+            Info = 3,
+            /**
+             * A log message.
+             */
+            Log = 4
+        };
+        template<>
+        inline void from_json<message_type>(const nlohmann::json& node, message_type& t)
+        {
+            t = static_cast<message_type>(node.get<int>());
+        }
+        template<>
+        inline nlohmann::json to_json<message_type>(const message_type& t)
+        {
+            return static_cast<int>(t);
+        }
+
         enum class trace_mode
         {
             off,
@@ -4311,6 +4340,33 @@ namespace lsp
                 return json;
             }
         };
+
+        struct log_message_params {
+            /**
+             * The message type. See {@link MessageType}
+             */
+            message_type type;
+
+            /**
+             * The actual message
+             */
+            std::string message;
+
+            static log_message_params from_json(const nlohmann::json& node)
+            {
+                log_message_params res;
+                data::from_json(node, "type", res.type);
+                data::from_json(node, "message", res.message);
+                return res;
+            }
+            nlohmann::json to_json() const
+            {
+                nlohmann::json json;
+                data::set_json(json, "type", type);
+                data::set_json(json, "message", message);
+                return json;
+            }
+        };
     }
 
 
@@ -4493,5 +4549,8 @@ namespace lsp
         {
             rpc.send({ {}, "textDocument/publishDiagnostics", params.to_json() });
         }
+
+        void window_logMessage(lsp::data::message_type type, std::string message) { rpc.send({ {}, "window/logMessage", lsp::data::log_message_params{ type, message }.to_json() }); }
+        void window_logMessage(const lsp::data::log_message_params& params) { rpc.send({ {}, "window/logMessage", params.to_json() }); }
     };
 }
