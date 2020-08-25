@@ -476,7 +476,7 @@ public:
             default: {
                 for (auto child : current.children)
                 {
-                    recalculate_analysis_helper(sqfvm, child, level + 1, known, parent_type);
+                    recalculate_analysis_helper(sqfvm, child, level, known, parent_type);
                 }
             } break;
             }
