@@ -3,8 +3,12 @@
 #include <sstream>
 
 void language_server_logger::log(const LogMessageBase& base)
-
 {
+    {
+        std::stringstream sstream;
+        sstream << Logger::loglevelstring(base.getLevel()) << ' ' << base.formatMessage();
+        language_server.window_logMessage(lsp::data::message_type::Log, sstream.str());
+    }
     auto& message = dynamic_cast<const logmessage::RuntimeLogMessageBase&>(base);
     if (message == nullptr)
     {
