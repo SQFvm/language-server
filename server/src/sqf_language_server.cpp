@@ -30,6 +30,7 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
                 std::stringstream sstream;
                 sstream << "Cannot analyze workspace folder " << workspacePath << " as it is not existing.";
                 window_logMessage(lsp::data::message_type::Error, sstream.str());
+                continue;
             }
             sqfvm.fileio().add_mapping(workspacePath, "/");
             std::filesystem::recursive_directory_iterator dir_end;
