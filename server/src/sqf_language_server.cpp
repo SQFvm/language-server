@@ -46,11 +46,11 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
             auto workspacePath = sanitize_to_string(workspaceFolder.uri);
             sqfvm.fileio().add_mapping(workspacePath, "/");
 
-            std::filesystem::recursive_directory_iterator dir_start(workspacePath, std::filesystem::directory_options::skip_permission_denied);
+            ;
             std::filesystem::recursive_directory_iterator dir_end;
-
+            size_t sqf_files_total = 0;
             // Read-In all $PBOPREFIX$ files
-            for (auto it = dir_start; it != dir_end; it++)
+            for (std::filesystem::recursive_directory_iterator it(workspacePath, std::filesystem::directory_options::skip_permission_denied); it != dir_end; it++)
             {
                 auto path = it->path();
                 if (!it->is_directory() && !path.has_extension() && path.filename() == "$PBOPREFIX$")
@@ -60,11 +60,18 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
                     auto pboprefix_path = path.parent_path().string();
                     auto pboprefix_contents_o = sqfvm.fileio().read_file_from_disk(path.string());
                     auto pboprefix_contents = pboprefix_contents_o.value();
-                    sqfvm.fileio().add_mapping(pboprefix_path, pboprefix_contents[0] != '/' ? "/" + pboprefix_contents : pboprefix_contents);
+                    pboprefix_contents = pboprefix_contents[0] != '/' ? "/" + pboprefix_contents : pboprefix_contents;
+                    sqfvm.fileio().add_mapping(pboprefix_path, pboprefix_contents);
+                    window_logMessage(lsp::data::message_type::Log, "Mapped '" + pboprefix_path + "' onto '" + pboprefix_contents + "'");
+                }
+                else if (path.has_extension() && path.extension() == ".sqf")
+                {
+                    sqf_files_total++;
                 }
             }
+            size_t sqf_files_count = 0;
             // ToDo: Make parsing async
-            for (auto it = dir_start; it != dir_end; it++)
+            for (std::filesystem::recursive_directory_iterator it(workspacePath, std::filesystem::directory_options::skip_permission_denied); it != dir_end; it++)
             {
                 auto path = it->path();
                 if (it->is_directory() || !path.has_extension())
@@ -76,11 +83,15 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
                     auto uri = sanitize_to_uri(path.string());
                     auto fpath = sanitize_to_string(uri);
                     text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF };
+                    std::stringstream sstream;
+                    sstream << "Analyzing " << fpath << " ... " << "(" << ++sqf_files_count << "/" << sqf_files_total << ")";
+                    window_logMessage(lsp::data::message_type::Log, sstream.str());
                     text_documents[fpath].analyze(*this, sqfvm, {});
                 }
             }
         }
     }
+    window_logMessage(lsp::data::message_type::Log, "SQF-VM Language Server is ready.");
 }
 
 void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_text_document_params& params)
