@@ -564,7 +564,10 @@ protected:
         {
             for (auto workspaceFolder : params.workspaceFolders.value())
             {
-                std::filesystem::recursive_directory_iterator dir_start(sanitize(workspaceFolder.uri), std::filesystem::directory_options::skip_permission_denied);
+                auto workspacePath = sanitize(workspaceFolder.uri);
+                sqfvm.fileio().add_mapping(workspacePath, "/");
+
+                std::filesystem::recursive_directory_iterator dir_start(workspacePath, std::filesystem::directory_options::skip_permission_denied);
                 std::filesystem::recursive_directory_iterator dir_end;
 
                 for (auto it = dir_start; it != dir_end; it++)
