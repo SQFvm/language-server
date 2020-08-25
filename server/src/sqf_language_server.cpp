@@ -43,38 +43,40 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
     {
         for (auto workspaceFolder : params.workspaceFolders.value())
         {
-            auto workspacePath = sanitize(workspaceFolder.uri);
+            auto workspacePath = sanitize_to_string(workspaceFolder.uri);
             sqfvm.fileio().add_mapping(workspacePath, "/");
 
             std::filesystem::recursive_directory_iterator dir_start(workspacePath, std::filesystem::directory_options::skip_permission_denied);
             std::filesystem::recursive_directory_iterator dir_end;
 
+            // Read-In all $PBOPREFIX$ files
+            for (auto it = dir_start; it != dir_end; it++)
+            {
+                auto path = it->path();
+                if (!it->is_directory() && !path.has_extension() && path.filename() == "$PBOPREFIX$")
+                {
+                    // ToDo: If modified, remove existing mapping and reparse as whole. (or message the user that a reload is required)
+                    // ToDo: If created, add mapping and reparse as whole. (or message the user that a reload is required)
+                    auto pboprefix_path = path.parent_path().string();
+                    auto pboprefix_contents_o = sqfvm.fileio().read_file_from_disk(path.string());
+                    auto pboprefix_contents = pboprefix_contents_o.value();
+                    sqfvm.fileio().add_mapping(pboprefix_path, pboprefix_contents[0] != '/' ? "/" + pboprefix_contents : pboprefix_contents);
+                }
+            }
             // ToDo: Make parsing async
             for (auto it = dir_start; it != dir_end; it++)
             {
-                if (it->is_directory())
+                auto path = it->path();
+                if (it->is_directory() || !path.has_extension())
                 {
                     continue;
                 }
-                auto path = it->path();
-                if (!path.has_extension())
-                {
-                    if (path.filename() == "$PBOPREFIX$")
-                    {
-                        // ToDo: If modified, remove existing mapping and reparse as whole. (or message the user that a reload is required)
-                        // ToDo: If created, add mapping and reparse as whole. (or message the user that a reload is required)
-                        auto pboprefix_path = path.parent_path().string();
-                        auto pboprefix_contents_o = sqfvm.fileio().read_file_from_disk(path.string());
-                        auto pboprefix_contents = pboprefix_contents_o.value();
-                        sqfvm.fileio().add_mapping(pboprefix_path, pboprefix_contents[0] != '/' ? "/" + pboprefix_contents : pboprefix_contents);
-                    }
-                }
                 else if (path.extension() == ".sqf")
                 {
-                    auto uri = sanitize(path.string());
-                    auto fpath = sanitize(uri);
-                    auto& doc = (text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF });
-                    doc.analyze(*this, sqfvm, {});
+                    auto uri = sanitize_to_uri(path.string());
+                    auto fpath = sanitize_to_string(uri);
+                    text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF };
+                    text_documents[fpath].analyze(*this, sqfvm, {});
                 }
             }
         }
@@ -84,7 +86,7 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
 void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_text_document_params& params)
 {
     using namespace std::string_view_literals;
-    auto fpath = sanitize(params.textDocument.uri);
+    auto fpath = sanitize_to_string(params.textDocument.uri);
 
     // Check if file already exists
     auto findRes = text_documents.find(fpath);
@@ -97,14 +99,14 @@ void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_
     else if (fpath.length() > 4 && std::string_view(fpath.data() + fpath.length() - 4, 4) == ".sqf"sv)
     {
         // Create file at fpath only if file is an actual sqf file and perform analysis.
-        auto& doc = (text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF });
-        doc.analyze(*this, sqfvm, params.contentChanges.front().text);
+        text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF };
+        text_documents[fpath].analyze(*this, sqfvm, params.contentChanges.front().text);
     }
 }
 
 std::optional<std::vector<lsp::data::folding_range>> sqf_language_server::on_textDocument_foldingRange(const lsp::data::folding_range_params& params)
 {
-    auto findRes = text_documents.find(sanitize(params.textDocument.uri));
+    auto findRes = text_documents.find(sanitize_to_string(params.textDocument.uri));
     if (findRes != text_documents.end())
     {
         auto& doc = findRes->second;

@@ -21,8 +21,8 @@ private:
     enum class analysis_info
     {
         NA,
-        FOREACH,
-        COUNT,
+        DECLARE_FOREACHINDEX_AND_X,
+        DECLARE_X,
         PRIVATE
     };
     std::string m_path;
@@ -163,7 +163,7 @@ public:
     text_document() {}
     text_document(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::string path, document_type type) : m_path(path), type(type)
     {
-        diagnostics.uri = sanitize(path);
+        diagnostics.uri = sanitize_to_uri(path);
     }
 
     std::string_view contents() const { return m_contents; }

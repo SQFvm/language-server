@@ -8,7 +8,7 @@
 
 struct variable_declaration
 {
-    int level;
+    size_t level;
     lsp::data::position position;
     std::string variable;
     std::vector<lsp::data::position> usages;

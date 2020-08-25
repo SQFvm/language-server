@@ -10,8 +10,8 @@ void text_document::recalculate_ast(sqf_language_server& language_server, sqf::r
     auto parser = dynamic_cast<sqf::parser::sqf::impl_default&>(sqfvm.parser_sqf());
     bool errflag = false;
     auto preprocessed = contents_override.has_value() ?
-        sqfvm.parser_preprocessor().preprocess(sqfvm, { m_path, {} }) :
-        sqfvm.parser_preprocessor().preprocess(sqfvm, *contents_override, { m_path, {} });
+        sqfvm.parser_preprocessor().preprocess(sqfvm, *contents_override, { m_path, {} }) :
+        sqfvm.parser_preprocessor().preprocess(sqfvm, { m_path, {} });
     if (preprocessed.has_value())
     {
         m_contents = preprocessed.value();
@@ -32,14 +32,14 @@ void text_document::recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sq
     using sqf::parser::sqf::impl_default;
     switch (current.kind)
     {
-        /*
-            Error Codes:
-                - L-0001
-                - L-0003
-            Handles:
-                - Duplicate-Declaration detection
-                - Adding variables to the known-stack
-        */
+    /*
+        Error Codes:
+            - L-0001
+            - L-0003
+        Handles:
+            - Duplicate-Declaration detection
+            - Adding variables to the known-stack
+    */
     case impl_default::nodetype::ASSIGNMENTLOCAL:
     case impl_default::nodetype::ASSIGNMENT: {
         auto variable = current.children[0].content;
@@ -48,20 +48,19 @@ void text_document::recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sq
         recalculate_analysis_helper(sqfvm, current.children[1], level, known, analysis_info::NA);
     } break;
 
-        /*
-            Handles:
-                - Add built-in variables `_x`, `_foreachindex` of foreach
-                - Add built-in variables `_x` of count
-                - Cleanup of "known" variables after leaving code-block
-        */
+    /*
+        Handles:
+            - Add built-in variables `_x`, `_foreachindex` of foreach
+            - Add built-in variables `_x` of count
+            - Cleanup of "known" variables after leaving code-block
+    */
     case impl_default::nodetype::CODE: {
         switch (parent_type)
         {
-        case text_document::analysis_info::FOREACH:
-            known.push_back({ level, current, "_x" });
+        case text_document::analysis_info::DECLARE_FOREACHINDEX_AND_X:
             known.push_back({ level, current, "_foreachindex" });
-            break;
-        case text_document::analysis_info::COUNT:
+            /* fallthrough */
+        case text_document::analysis_info::DECLARE_X:
             known.push_back({ level, current, "_x" });
             break;
         }
@@ -82,13 +81,13 @@ void text_document::recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sq
         }
     } break;
 
-        /*
-            Error Codes:
-                - L-0002
-            Handles:
-                - Undefined variable warnings
-                - Variable-Usage reference updating
-        */
+    /*
+        Error Codes:
+            - L-0002
+        Handles:
+            - Undefined variable warnings
+            - Variable-Usage reference updating
+    */
     case impl_default::nodetype::VARIABLE: {
         auto variable = current.content;
         auto& node = current;
@@ -124,11 +123,11 @@ void text_document::recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sq
         }
     } goto l_default;
 
-        /*
-            Handles:
-                - Passing analysis_info to lower method
-                - Applying clean `known` vector for `spawn`
-        */
+    /*
+        Handles:
+            - Passing analysis_info to lower method
+            - Applying clean `known` vector for `spawn`
+    */
     case impl_default::nodetype::BEXP1:
     case impl_default::nodetype::BEXP2:
     case impl_default::nodetype::BEXP3:
@@ -157,16 +156,16 @@ void text_document::recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sq
         {
             for (auto child : current.children)
             {
-                recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::FOREACH);
+                recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::DECLARE_FOREACHINDEX_AND_X);
             }
 
             break;
         }
-        else if (op == "count")
+        else if (op == "count" || op == "select" || op == "apply" || op == "findif")
         {
             for (auto child : current.children)
             {
-                recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::COUNT);
+                recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::DECLARE_X);
             }
 
             break;
@@ -176,10 +175,10 @@ void text_document::recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sq
             goto l_default;
         }
     }
-                                                 /*
-                                                     Handles:
-                                                     - Applying clean `known` vector for `spawn`
-                                                 */
+    /*
+        Handles:
+        - Applying clean `known` vector for `spawn`
+    */
     case impl_default::nodetype::UNARYEXPRESSION: {
         auto op = std::string(current.children[0].content);
         std::transform(op.begin(), op.end(), op.begin(), [](char& c) { return (char)std::tolower((int)c); });
@@ -223,15 +222,15 @@ void text_document::recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sq
             goto l_default;
         }
     }
-                                                /*
-                                                    Error Codes:
-                                                        - L-0001
-                                                        - L-0003
-                                                    Handles:
-                                                        - On parent_type == PRIVATE:
-                                                        - Duplicate-Declaration detection
-                                                        - Adding variables to the known-stack
-                                                */
+    /*
+        Error Codes:
+            - L-0001
+            - L-0003
+        Handles:
+            - On parent_type == PRIVATE:
+            - Duplicate-Declaration detection
+            - Adding variables to the known-stack
+    */
     case impl_default::nodetype::STRING: {
         if (parent_type == analysis_info::PRIVATE)
         {
