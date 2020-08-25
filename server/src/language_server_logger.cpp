@@ -18,7 +18,7 @@ void language_server_logger::log(const LogMessageBase& base)
     auto location = message.location();
     auto uri = sanitize_to_uri(location.path);
     auto fpath = sanitize_to_string(uri);
-    auto doc = language_server.get_or_create(uri);
+    auto& doc = language_server.get_or_create(uri);
 
     lsp::data::publish_diagnostics_params& params = doc.diagnostics;
 

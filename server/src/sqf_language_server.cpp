@@ -88,13 +88,13 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
 
 void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_text_document_params& params)
 {
-    auto doc = get_or_create(params.textDocument.uri);
+    auto& doc = get_or_create(params.textDocument.uri);
     doc.analyze(*this, sqfvm, params.contentChanges.front().text);
 }
 
 std::optional<std::vector<lsp::data::folding_range>> sqf_language_server::on_textDocument_foldingRange(const lsp::data::folding_range_params& params)
 {
-    auto doc = get_or_create(params.textDocument.uri);
+    auto& doc = get_or_create(params.textDocument.uri);
     return doc.foldings();
 }
 
