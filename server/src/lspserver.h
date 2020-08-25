@@ -13,62 +13,62 @@ namespace lsp
     namespace data
     {
         template<typename T>
-        void from_json(const nlohmann::json& node, T& t)
+        inline void from_json(const nlohmann::json& node, T& t)
         {
             t = T::from_json(node);
         }
         template<>
-        void from_json<bool>(const nlohmann::json& node, bool& t)
+        inline void from_json<bool>(const nlohmann::json& node, bool& t)
         {
             t = node;
         }
         template<>
-        void from_json<int>(const nlohmann::json& node, int& t)
+        inline void from_json<int>(const nlohmann::json& node, int& t)
         {
             t = node;
         }
         template<>
-        void from_json<float>(const nlohmann::json& node, float& t)
+        inline void from_json<float>(const nlohmann::json& node, float& t)
         {
             t = node;
         }
         template<>
-        void from_json<uint64_t>(const nlohmann::json& node, uint64_t& t)
+        inline void from_json<uint64_t>(const nlohmann::json& node, uint64_t& t)
         {
             t = node;
         }
         template<>
-        void from_json<std::string>(const nlohmann::json& node, std::string& t)
+        inline void from_json<std::string>(const nlohmann::json& node, std::string& t)
         {
             t = node;
         }
         template<typename T>
-        nlohmann::json to_json(const T& t)
+        inline nlohmann::json to_json(const T& t)
         {
             return t.to_json();
         }
         template<>
-        nlohmann::json to_json<bool>(const bool& t)
+        inline nlohmann::json to_json<bool>(const bool& t)
         {
             return t;
         }
         template<>
-        nlohmann::json to_json<int>(const int& t)
+        inline nlohmann::json to_json<int>(const int& t)
         {
             return t;
         }
         template<>
-        nlohmann::json to_json<float>(const float& t)
+        inline nlohmann::json to_json<float>(const float& t)
         {
             return t;
         }
         template<>
-        nlohmann::json to_json<uint64_t>(const uint64_t& t)
+        inline nlohmann::json to_json<uint64_t>(const uint64_t& t)
         {
             return t;
         }
         template<>
-        nlohmann::json to_json<std::string>(const std::string& t)
+        inline nlohmann::json to_json<std::string>(const std::string& t)
         {
             return t;
         }
@@ -90,14 +90,14 @@ namespace lsp
             */
             Delete = 0b100
         };
-        resource_operations operator | (resource_operations lhs, resource_operations rhs)
+        inline resource_operations operator | (resource_operations lhs, resource_operations rhs)
         {
             return static_cast<resource_operations> (
                 static_cast<std::underlying_type<resource_operations>::type>(lhs) |
                 static_cast<std::underlying_type<resource_operations>::type>(rhs)
                 );
         }
-        resource_operations operator & (resource_operations lhs, resource_operations rhs)
+        inline resource_operations operator & (resource_operations lhs, resource_operations rhs)
         {
             return static_cast<resource_operations> (
                 static_cast<std::underlying_type<resource_operations>::type>(lhs) &
@@ -105,7 +105,7 @@ namespace lsp
                 );
         }
         template<>
-        void from_json<resource_operations>(const nlohmann::json& node,  resource_operations& t)
+        inline void from_json<resource_operations>(const nlohmann::json& node,  resource_operations& t)
         {
             t = resource_operations::Empty;
             for (auto resourceOperationJson : node)
@@ -117,7 +117,7 @@ namespace lsp
             }
         }
         template<>
-        nlohmann::json to_json<resource_operations>(const resource_operations& t)
+        inline nlohmann::json to_json<resource_operations>(const resource_operations& t)
         {
             nlohmann::json arr;
             if ((t & resource_operations::Create) == resource_operations::Create) { arr.push_back("create"); }
@@ -152,7 +152,7 @@ namespace lsp
             undo
         };
         template<>
-        void from_json<failure_handling>(const nlohmann::json& node,  failure_handling& t)
+        inline void from_json<failure_handling>(const nlohmann::json& node,  failure_handling& t)
         {
 
             t = failure_handling::empty;
@@ -163,7 +163,7 @@ namespace lsp
             if (actual == "undo") { t = failure_handling::undo; return; }
         }
         template<>
-        nlohmann::json to_json<failure_handling>(const failure_handling& t)
+        inline nlohmann::json to_json<failure_handling>(const failure_handling& t)
         {
             switch (t)
             {
@@ -194,7 +194,7 @@ namespace lsp
 	        Region
         };
         template<>
-        void from_json<folding_range_kind>(const nlohmann::json& node, folding_range_kind& t)
+        inline void from_json<folding_range_kind>(const nlohmann::json& node, folding_range_kind& t)
         {
             t = folding_range_kind::Comment;
             std::string actual = node;
@@ -203,7 +203,7 @@ namespace lsp
             if (actual == "region") { t = folding_range_kind::Region; return; }
         }
         template<>
-        nlohmann::json to_json<folding_range_kind>(const folding_range_kind& t)
+        inline nlohmann::json to_json<folding_range_kind>(const folding_range_kind& t)
         {
             switch (t)
             {
@@ -243,12 +243,12 @@ namespace lsp
             TypeParameter = 26
         };
         template<>
-        void from_json<symbol_kind>(const nlohmann::json& node,  symbol_kind& t)
+        inline void from_json<symbol_kind>(const nlohmann::json& node,  symbol_kind& t)
         {
             t = static_cast<symbol_kind>(node.get<int>());
         }
         template<>
-        nlohmann::json to_json<symbol_kind>(const symbol_kind& t)
+        inline nlohmann::json to_json<symbol_kind>(const symbol_kind& t)
         {
             return static_cast<int>(t);
         }
@@ -260,7 +260,7 @@ namespace lsp
             verbose
         };
         template<>
-        void from_json<trace_mode>(const nlohmann::json& node,  trace_mode& t)
+        inline void from_json<trace_mode>(const nlohmann::json& node,  trace_mode& t)
         {
 
             t = trace_mode::off;
@@ -269,7 +269,7 @@ namespace lsp
             if (actual == "verbose") { t = trace_mode::verbose; return; }
         }
         template<>
-        nlohmann::json to_json<trace_mode>(const trace_mode& t)
+        inline nlohmann::json to_json<trace_mode>(const trace_mode& t)
         {
             switch (t)
             {
@@ -285,12 +285,12 @@ namespace lsp
             Deprecated = 1
         };
         template<>
-        void from_json<completion_item_tag>(const nlohmann::json& node,  completion_item_tag& t)
+        inline void from_json<completion_item_tag>(const nlohmann::json& node,  completion_item_tag& t)
         {
             t = static_cast<completion_item_tag>(node.get<int>());
         }
         template<>
-        nlohmann::json to_json<completion_item_tag>(const completion_item_tag& t)
+        inline nlohmann::json to_json<completion_item_tag>(const completion_item_tag& t)
         {
             return static_cast<int>(t);
         }
@@ -316,7 +316,7 @@ namespace lsp
             Markdown
         };
         template<>
-        void from_json<markup_kind>(const nlohmann::json& node,  markup_kind& t)
+        inline void from_json<markup_kind>(const nlohmann::json& node,  markup_kind& t)
         {
 
             t = markup_kind::PlainText;
@@ -325,7 +325,7 @@ namespace lsp
             if (actual == "markdown") { t = markup_kind::Markdown; return; }
         }
         template<>
-        nlohmann::json to_json<markup_kind>(const markup_kind& t)
+        inline nlohmann::json to_json<markup_kind>(const markup_kind& t)
         {
             switch (t)
             {
@@ -363,12 +363,12 @@ namespace lsp
             TypeParameter = 25
         };
         template<>
-        void from_json<completion_item_kind>(const nlohmann::json& node,  completion_item_kind& t)
+        inline void from_json<completion_item_kind>(const nlohmann::json& node,  completion_item_kind& t)
         {
             t = static_cast<completion_item_kind>(node.get<int>());
         }
         template<>
-        nlohmann::json to_json<completion_item_kind>(const completion_item_kind& t)
+        inline nlohmann::json to_json<completion_item_kind>(const completion_item_kind& t)
         {
             return static_cast<int>(t);
         }
@@ -390,12 +390,12 @@ namespace lsp
             Deprecated = 2
         };
         template<>
-        void from_json<diagnostic_tag>(const nlohmann::json& node,  diagnostic_tag& t)
+        inline void from_json<diagnostic_tag>(const nlohmann::json& node,  diagnostic_tag& t)
         {
             t = static_cast<diagnostic_tag>(node.get<int>());
         }
         template<>
-        nlohmann::json to_json<diagnostic_tag>(const diagnostic_tag& t)
+        inline nlohmann::json to_json<diagnostic_tag>(const diagnostic_tag& t)
         {
             return static_cast<int>(t);
         }
@@ -468,7 +468,7 @@ namespace lsp
             SourceOrganizeImports
         };
         template<>
-        void from_json<code_action_kind>(const nlohmann::json& node,  code_action_kind& t)
+        inline void from_json<code_action_kind>(const nlohmann::json& node,  code_action_kind& t)
         {
 
             t = code_action_kind::Empty;
@@ -482,7 +482,7 @@ namespace lsp
             if (actual == "source.organizeImports") { t = code_action_kind::SourceOrganizeImports; return; }
         }
         template<>
-        nlohmann::json to_json<code_action_kind>(const code_action_kind& t)
+        inline nlohmann::json to_json<code_action_kind>(const code_action_kind& t)
         {
             switch (t)
             {
@@ -518,12 +518,12 @@ namespace lsp
             Incremental = 2
         };
         template<>
-        void from_json<text_document_sync_kind>(const nlohmann::json& node,  text_document_sync_kind& t)
+        inline void from_json<text_document_sync_kind>(const nlohmann::json& node,  text_document_sync_kind& t)
         {
             t = static_cast<text_document_sync_kind>(node.get<int>());
         }
         template<>
-        nlohmann::json to_json<text_document_sync_kind>(const text_document_sync_kind& t)
+        inline nlohmann::json to_json<text_document_sync_kind>(const text_document_sync_kind& t)
         {
             return static_cast<int>(t);
         }
@@ -545,12 +545,12 @@ namespace lsp
             FocusOut = 3,
         };
         template<>
-        void from_json<text_document_save_reason>(const nlohmann::json& node, text_document_save_reason& t)
+        inline void from_json<text_document_save_reason>(const nlohmann::json& node, text_document_save_reason& t)
         {
             t = static_cast<text_document_save_reason>(node.get<int>());
         }
         template<>
-        nlohmann::json to_json<text_document_save_reason>(const text_document_save_reason& t)
+        inline nlohmann::json to_json<text_document_save_reason>(const text_document_save_reason& t)
         {
             return static_cast<int>(t);
         }
@@ -578,12 +578,12 @@ namespace lsp
             TriggerForIncompleteCompletions = 3
         };
         template<>
-        void from_json<completion_trigger_kind>(const nlohmann::json& node, completion_trigger_kind& t)
+        inline void from_json<completion_trigger_kind>(const nlohmann::json& node, completion_trigger_kind& t)
         {
             t = static_cast<completion_trigger_kind>(node.get<int>());
         }
         template<>
-        nlohmann::json to_json<completion_trigger_kind>(const completion_trigger_kind& t)
+        inline nlohmann::json to_json<completion_trigger_kind>(const completion_trigger_kind& t)
         {
             return static_cast<int>(t);
         }
@@ -610,12 +610,12 @@ namespace lsp
 	        Snippet = 2
         };
         template<>
-        void from_json<insert_text_format>(const nlohmann::json& node, insert_text_format& t)
+        inline void from_json<insert_text_format>(const nlohmann::json& node, insert_text_format& t)
         {
             t = static_cast<insert_text_format>(node.get<int>());
         }
         template<>
-        nlohmann::json to_json<insert_text_format>(const insert_text_format& t)
+        inline nlohmann::json to_json<insert_text_format>(const insert_text_format& t)
         {
             return static_cast<int>(t);
         }
@@ -640,18 +640,18 @@ namespace lsp
 	        Hint = 4
         };
         template<>
-        void from_json<diagnostic_severity>(const nlohmann::json& node, diagnostic_severity& t)
+        inline void from_json<diagnostic_severity>(const nlohmann::json& node, diagnostic_severity& t)
         {
             t = static_cast<diagnostic_severity>(node.get<int>());
         }
         template<>
-        nlohmann::json to_json<diagnostic_severity>(const diagnostic_severity& t)
+        inline nlohmann::json to_json<diagnostic_severity>(const diagnostic_severity& t)
         {
             return static_cast<int>(t);
         }
 
         template<typename T>
-        void from_json(const nlohmann::json& node, std::vector<T>& ts)
+        inline void from_json(const nlohmann::json& node, std::vector<T>& ts)
         {
             ts = std::vector<T>();
             for (auto subnode : node)
@@ -662,12 +662,12 @@ namespace lsp
             }
         }
         template<typename T>
-        void from_json(const nlohmann::json& node, const char* key, T& t)
+        inline void from_json(const nlohmann::json& node, const char* key, T& t)
         {
             from_json(node[key], t);
         }
         template<typename T>
-        void from_json(const nlohmann::json& node, const char* key, std::optional<T>& opt)
+        inline void from_json(const nlohmann::json& node, const char* key, std::optional<T>& opt)
         {
             if (node.contains(key) && !node[key].is_null())
             {
@@ -682,7 +682,7 @@ namespace lsp
         }
 
         template<typename T>
-        nlohmann::json to_json(const std::vector<T>& ts)
+        inline nlohmann::json to_json(const std::vector<T>& ts)
         {
             nlohmann::json json = nlohmann::json::array();
             for (auto t : ts)
@@ -692,7 +692,7 @@ namespace lsp
             return json;
         }
         template<typename T>
-        nlohmann::json to_json(const std::optional<T>& t)
+        inline nlohmann::json to_json(const std::optional<T>& t)
         {
             if (t.has_value())
             {
@@ -704,7 +704,7 @@ namespace lsp
             }
         }
         template<typename T>
-        void set_json(nlohmann::json& json, const char* key, const std::optional<T>& t)
+        inline void set_json(nlohmann::json& json, const char* key, const std::optional<T>& t)
         {
             if (t.has_value())
             {
@@ -712,7 +712,7 @@ namespace lsp
             }
         }
         template<typename T>
-        void set_json(nlohmann::json& json, const char* key, const T& t)
+        inline void set_json(nlohmann::json& json, const char* key, const T& t)
         {
             json[key] = to_json(t);
         }
