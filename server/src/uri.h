@@ -70,103 +70,103 @@ namespace x39
                         switch (specialBuffer[1])
                         {
                         case '0':
-                            c = 0x00;
+                            c = static_cast<char>(0x00);
                             break;
                         case '1':
-                            c = 0x10;
+                            c = static_cast<char>(0x10);
                             break;
                         case '2':
-                            c = 0x20;
+                            c = static_cast<char>(0x20);
                             break;
                         case '3':
-                            c = 0x30;
+                            c = static_cast<char>(0x30);
                             break;
                         case '4':
-                            c = 0x40;
+                            c = static_cast<char>(0x40);
                             break;
                         case '5':
-                            c = 0x50;
+                            c = static_cast<char>(0x50);
                             break;
                         case '6':
-                            c = 0x60;
+                            c = static_cast<char>(0x60);
                             break;
                         case '7':
-                            c = 0x70;
+                            c = static_cast<char>(0x70);
                             break;
                         case '8':
-                            c = 0x80;
+                            c = static_cast<char>(0x80);
                             break;
                         case '9':
-                            c = 0x90;
+                            c = static_cast<char>(0x90);
                             break;
                         case 'a': case 'A':
-                            c = 0xA0;
+                            c = static_cast<char>(0xA0);
                             break;
                         case 'b': case 'B':
-                            c = 0xB0;
+                            c = static_cast<char>(0xB0);
                             break;
                         case 'c': case 'C':
-                            c = 0xC0;
+                            c = static_cast<char>(0xC0);
                             break;
                         case 'd': case 'D':
-                            c = 0xD0;
+                            c = static_cast<char>(0xD0);
                             break;
                         case 'e': case 'E':
-                            c = 0xE0;
+                            c = static_cast<char>(0xE0);
                             break;
                         case 'f': case 'F':
-                            c = 0xF0;
+                            c = static_cast<char>(0xF0);
                             break;
                         }
                         switch (specialBuffer[2])
                         {
                         case '0':
-                            c |= 0x0;
+                            c |= static_cast<char>(0x00);
                             break;
                         case '1':
-                            c |= 0x1;
+                            c |= static_cast<char>(0x01);
                             break;
                         case '2':
-                            c |= 0x2;
+                            c |= static_cast<char>(0x02);
                             break;
                         case '3':
-                            c |= 0x3;
+                            c |= static_cast<char>(0x03);
                             break;
                         case '4':
-                            c |= 0x4;
+                            c |= static_cast<char>(0x04);
                             break;
                         case '5':
-                            c |= 0x5;
+                            c |= static_cast<char>(0x05);
                             break;
                         case '6':
-                            c |= 0x6;
+                            c |= static_cast<char>(0x06);
                             break;
                         case '7':
-                            c |= 0x7;
+                            c |= static_cast<char>(0x07);
                             break;
                         case '8':
-                            c |= 0x8;
+                            c |= static_cast<char>(0x08);
                             break;
                         case '9':
-                            c |= 0x9;
+                            c |= static_cast<char>(0x09);
                             break;
                         case 'a': case 'A':
-                            c |= 0xA;
+                            c |= static_cast<char>(0x0A);
                             break;
                         case 'b': case 'B':
-                            c |= 0xB;
+                            c |= static_cast<char>(0x0B);
                             break;
                         case 'c': case 'C':
-                            c |= 0xC;
+                            c |= static_cast<char>(0x0C);
                             break;
                         case 'd': case 'D':
-                            c |= 0xD;
+                            c |= static_cast<char>(0x0D);
                             break;
                         case 'e': case 'E':
-                            c |= 0xE;
+                            c |= static_cast<char>(0x0E);
                             break;
                         case 'f': case 'F':
-                            c |= 0xF;
+                            c |= static_cast<char>(0x0F);
                             break;
                         }
                         current++;
