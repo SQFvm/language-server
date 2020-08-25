@@ -1,5 +1,6 @@
 #include "language_server_logger.h"
 #include "sqf_language_server.h"
+#include <sstream>
 
 void language_server_logger::log(const LogMessageBase& base)
 
@@ -11,13 +12,11 @@ void language_server_logger::log(const LogMessageBase& base)
     }
 
     auto location = message.location();
-    auto findRes = language_server.text_documents.find(location.path);
-    if (findRes == language_server.text_documents.end())
-    {
-        return;
-    }
+    auto uri = sanitize_to_uri(location.path);
+    auto fpath = sanitize_to_string(uri);
+    auto doc = language_server.get_or_create(uri);
 
-    lsp::data::publish_diagnostics_params& params = findRes->second.diagnostics;
+    lsp::data::publish_diagnostics_params& params = doc.diagnostics;
 
     lsp::data::diagnostics msg;
     msg.range.start.line = location.line - 1;

@@ -48,4 +48,6 @@ public:
     sqf::runtime::runtime sqfvm;
     sqf_language_server() : logger(*this), sqfvm(logger, {}) {}
     sqf_language_server(const sqf_language_server& copy) = delete;
+
+    text_document& get_or_create(lsp::data::uri uri);
 };
