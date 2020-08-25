@@ -29,7 +29,7 @@ void text_document::recalculate_ast(sqf_language_server& language_server, sqf::r
         diag.range.start.character = 0;
         diag.range.end.line = 0;
         diag.range.end.character = 0;
-        diag.message = "Failed to preprocess (or read) file. See other errors or output for more informations.";
+        diag.message = "Failed to preprocess (or read) file.";
         diag.severity = lsp::data::diagnostic_severity::Error;
         diag.source = "SQF-VM LS";
         diagnostics.diagnostics.push_back(diag);
