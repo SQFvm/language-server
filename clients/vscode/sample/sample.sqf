@@ -3,7 +3,7 @@
 
 #define CFUNC(ARG) ARG
 
-systemChat CONCAT(test, value);
+systemChat CONCAT(test,value);
 
 private _something = [];
 private _input = _this select 0;
