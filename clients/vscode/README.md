@@ -21,10 +21,12 @@ Provides a Language Server for the Scripting Language SQF, that is used in the `
 * Syntax Highlighting
 
 # Planned Features
-* Auto Completion
+* Basic Auto Completion (Macros, Variables, Operators, ...)
+* Extended Auto Completion (Read params of methods and automagically complete on call, ...)
 * Symbol Lookup
-* Debugger
+* Debugger (SQF-VM powered)
 * Resolve macro on hover
+* PreProcess file and display it
 
 # How to report errors
 Head over to https://github.com/SQFvm/vscode/issues and create a new issue.
