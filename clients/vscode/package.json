@@ -2,7 +2,7 @@
     "name": "sqf-vm-language-server",
     "displayName": "SQF-VM Language Server",
     "description": "",
-	"icon": "icon.png",
+	"icon": "./assets/icon.png",
     "version": "0.1.6",
     "publisher": "SQF-VM",
     "repository": {
