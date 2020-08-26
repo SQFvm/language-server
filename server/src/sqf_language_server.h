@@ -47,6 +47,7 @@ protected:
     // ToDo: Add the ability to reload the config instead of just disabling it using this workaround
     bool m_read_config;
 public:
+    std::vector<variable_declaration::sptr> global_declarations;
     std::unordered_map<std::string, text_document> text_documents;
     lsp::data::initialize_params client;
     language_server_logger logger;

@@ -39,11 +39,70 @@ void text_document::recalculate_ast(
     }
 }
 
+void text_document::analysis_ensure_L0001_L0003(sqf_language_server& language_server, std::vector<variable_declaration::sptr>& known, size_t level, sqf::parser::sqf::impl_default::astnode& node, const std::string& orig, bool private_check, variable_declaration::sptr* out_var_decl)
+{
+    using sqf::parser::sqf::impl_default;
+    std::string variable = orig;
+    std::transform(variable.begin(), variable.end(), variable.begin(), [](char c) { return (char)std::tolower(c); });
+    auto findRes = std::find_if(known.begin(), known.end(),
+        [&variable](variable_declaration::sptr& it) { return it->variable == variable; });
+    if (findRes == known.end())
+    {
+        auto var = std::make_shared<variable_declaration>(level, node, variable);
+        known.push_back(var);
+        if (var->variable[0] == '_') // safe as empty std string `0` is `\0`
+        {
+            auto ref = m_private_declarations.emplace_back(var);
+            if (out_var_decl)
+            {
+                *out_var_decl = ref;
+            }
+        }
+        else
+        {
+            var->owner = m_path;
+            auto ref = m_global_declarations.emplace_back(var);
+            if (out_var_decl)
+            {
+                *out_var_decl = ref;
+            }
+        }
+    }
+    else if (variable[0] != '_' && (*findRes)->owner == m_path)
+    {
+        if (std::find(m_global_declarations.begin(), m_global_declarations.end(), *findRes) == m_global_declarations.end())
+        {
+            m_global_declarations.push_back(*findRes);
+        }
+        if (out_var_decl)
+        {
+            *out_var_decl = *findRes;
+        }
+    }
+    else if (node.kind == impl_default::nodetype::ASSIGNMENTLOCAL || private_check)
+    {
+        analysis_raise_L0001(node, orig);
+        private_check = true;
+        if (out_var_decl)
+        {
+            *out_var_decl = *findRes;
+        }
+    }
+    if (private_check)
+    {
+        if (variable[0] != '_')
+        {
+            analysis_raise_L0003(node, orig);
+        }
+    }
+}
+
 void text_document::recalculate_analysis_helper(
+    sqf_language_server& language_server,
     sqf::runtime::runtime& sqfvm,
     sqf::parser::sqf::impl_default::astnode& current,
     size_t level,
-    std::vector<variable_declaration>& known,
+    std::vector<variable_declaration::sptr>& known,
     analysis_info parent_type)
 {
     using sqf::parser::sqf::impl_default;
@@ -63,9 +122,9 @@ void text_document::recalculate_analysis_helper(
     case impl_default::nodetype::ASSIGNMENTLOCAL:
     case impl_default::nodetype::ASSIGNMENT: {
         auto variable = current.children[0].content;
-        analysis_ensure_L0001_L0003(known, level, current.children[0], variable, false);
-        recalculate_analysis_helper(sqfvm, current.children[0], level, known, analysis_info::NA);
-        recalculate_analysis_helper(sqfvm, current.children[1], level, known, analysis_info::NA);
+        analysis_ensure_L0001_L0003(language_server, known, level, current.children[0], variable, false, nullptr);
+        recalculate_analysis_helper(language_server, sqfvm, current.children[0], level, known, analysis_info::NA);
+        recalculate_analysis_helper(language_server, sqfvm, current.children[1], level, known, analysis_info::NA);
     } break;
 
     /*
@@ -78,21 +137,21 @@ void text_document::recalculate_analysis_helper(
         switch (parent_type)
         {
         case text_document::analysis_info::DECLARE_FOREACHINDEX_AND_X:
-            known.push_back({ level, current, "_foreachindex" });
+            known.push_back(std::make_shared<variable_declaration>( level, current, "_foreachindex"));
             /* fallthrough */
         case text_document::analysis_info::DECLARE_X:
-            known.push_back({ level, current, "_x" });
+            known.push_back(std::make_shared<variable_declaration>(level, current, "_x"));
             break;
         }
         for (auto child : current.children)
         {
-            recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::NA);
+            recalculate_analysis_helper(language_server, sqfvm, child, level + 1, known, analysis_info::NA);
         }
 
         // Erase lower known variables
         for (size_t i = 0; i < known.size(); i++)
         {
-            if (known[i].level == level + 1)
+            if (known[i]->level == level + 1)
             {
                 known.at(i) = known.back();
                 known.erase(known.begin() + known.size() - 1);
@@ -115,7 +174,7 @@ void text_document::recalculate_analysis_helper(
 
         std::transform(variable.begin(), variable.end(), variable.begin(), [](char c) { return (char)std::tolower(c); });
         auto findRes = std::find_if(known.begin(), known.end(),
-            [&variable](variable_declaration& it) { return it.variable == variable; });
+            [&variable](variable_declaration::sptr it) { return it->variable == variable; });
         if (findRes == known.end())
         {
             analysis_raise_L0002(current, current.content);
@@ -125,19 +184,19 @@ void text_document::recalculate_analysis_helper(
             if (variable[0] == '_') // safe as empty std string `0` is `\0`
             {
                 auto it = std::find_if(m_private_declarations.begin(), m_private_declarations.end(),
-                    [&variable](variable_declaration& it) -> bool { return it.variable == variable; });
+                    [&variable](variable_declaration::sptr it) -> bool { return it->variable == variable; });
                 if (it != m_private_declarations.end())
                 {
-                    it->usages.push_back({ node.line, node.column });
+                    (*it)->usages.push_back({ node.line, node.column });
                 }
             }
             else
             {
-                auto it = std::find_if(m_global_declarations.begin(), m_global_declarations.end(),
-                    [&variable](variable_declaration& it) -> bool { return it.variable == variable; });
-                if (it != m_global_declarations.end())
+                auto it = std::find_if(language_server.global_declarations.begin(), language_server.global_declarations.end(),
+                    [&variable](variable_declaration::sptr it) -> bool { return it->variable == variable; });
+                if (it != language_server.global_declarations.end())
                 {
-                    it->usages.push_back({ node.line, node.column });
+                    (*it)->usages.push_back({ node.line, node.column });
                 }
             }
         }
@@ -166,8 +225,9 @@ void text_document::recalculate_analysis_helper(
         {
             for (auto child : current.children)
             {
-                std::vector<variable_declaration> known2 = { { level, current, "_this" } };
-                recalculate_analysis_helper(sqfvm, child, level + 1, known2, analysis_info::NA);
+                std::vector<variable_declaration::sptr> known2 = language_server.global_declarations;
+                known2.push_back(std::make_shared<variable_declaration>(0, sqf::parser::sqf::impl_default::astnode{}, "_this"));
+                recalculate_analysis_helper(language_server, sqfvm, child, level + 1, known2, analysis_info::NA);
             }
 
             break;
@@ -176,7 +236,7 @@ void text_document::recalculate_analysis_helper(
         {
             for (auto child : current.children)
             {
-                recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::DECLARE_FOREACHINDEX_AND_X);
+                recalculate_analysis_helper(language_server, sqfvm, child, level + 1, known, analysis_info::DECLARE_FOREACHINDEX_AND_X);
             }
 
             break;
@@ -185,7 +245,7 @@ void text_document::recalculate_analysis_helper(
         {
             for (auto child : current.children)
             {
-                recalculate_analysis_helper(sqfvm, child, level + 1, known, analysis_info::DECLARE_X);
+                recalculate_analysis_helper(language_server, sqfvm, child, level + 1, known, analysis_info::DECLARE_X);
             }
 
             break;
@@ -207,8 +267,9 @@ void text_document::recalculate_analysis_helper(
         {
             for (auto child : current.children)
             {
-                std::vector<variable_declaration> known2 = { { level, current, "_this" } };
-                recalculate_analysis_helper(sqfvm, child, level + 1, known2, analysis_info::NA);
+                std::vector<variable_declaration::sptr> known2 = language_server.global_declarations;
+                known2.push_back(std::make_shared<variable_declaration>(0, sqf::parser::sqf::impl_default::astnode{}, "_this"));
+                recalculate_analysis_helper(language_server, sqfvm, child, level + 1, known2, analysis_info::NA);
             }
 
             break;
@@ -217,7 +278,7 @@ void text_document::recalculate_analysis_helper(
         {
             for (auto child : current.children)
             {
-                recalculate_analysis_helper(sqfvm, child, level, known, analysis_info::PRIVATE);
+                recalculate_analysis_helper(language_server, sqfvm, child, level, known, analysis_info::PRIVATE);
             }
 
             break;
@@ -225,15 +286,15 @@ void text_document::recalculate_analysis_helper(
         else if (op == "for" && current.children[1].kind == impl_default::nodetype::STRING)
         {
             auto variable = sqf::types::d_string::from_sqf(current.children[1].content);
-            variable_declaration var = { level, current.children[1], variable };
+            auto var = std::make_shared<variable_declaration>(level, current.children[1], variable);
             known.push_back(var);
-            if (var.variable[0] == '_') // safe as empty std string `0` is `\0`
+            if (var->variable[0] == '_') // safe as empty std string `0` is `\0`
             {
                 m_private_declarations.push_back(var);
             }
             else
             {
-                m_global_declarations.push_back(var);
+                analysis_raise_L0003(current.children[1], var->variable);
             }
             goto l_default;
         }
@@ -255,7 +316,7 @@ void text_document::recalculate_analysis_helper(
         if (parent_type == analysis_info::PRIVATE)
         {
             auto variable = sqf::types::d_string::from_sqf(current.content);
-            analysis_ensure_L0001_L0003(known, level, current, variable, true);
+            analysis_ensure_L0001_L0003(language_server, known, level, current, variable, true, nullptr);
         }
     } break;
 
@@ -263,19 +324,72 @@ void text_document::recalculate_analysis_helper(
     default: {
         for (auto child : current.children)
         {
-            recalculate_analysis_helper(sqfvm, child, level, known, parent_type);
+            recalculate_analysis_helper(language_server, sqfvm, child, level, known, parent_type);
         }
     } break;
     }
 }
 
+void text_document::recalculate_analysis(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm)
+{
+    m_private_declarations.clear();
+    m_asthints.clear();
+    std::vector<variable_declaration::sptr> known = language_server.global_declarations;
+    known.push_back(std::make_shared<variable_declaration>(0, sqf::parser::sqf::impl_default::astnode{}, "_this" ));
+    recalculate_analysis_helper(language_server, sqfvm, m_root_ast, 0, known, analysis_info::NA);
+}
+
 void text_document::analyze(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::optional<std::string_view> contents_override)
 {
+    // Preparation
     bool had_diagnostics = !diagnostics.diagnostics.empty();
     diagnostics.diagnostics.clear();
+    auto prev_gl = m_global_declarations;
+    m_global_declarations.clear();
+
+    // Perform different analysis steps
     recalculate_ast(language_server, sqfvm, contents_override);
     recalculate_foldings(sqfvm);
-    recalculate_analysis(sqfvm);
+    recalculate_analysis(language_server, sqfvm);
+
+    // calculate delta in the globals
+    std::vector<variable_declaration::sptr> added;
+    for (auto it : m_global_declarations)
+    {
+        auto res = std::find(prev_gl.begin(), prev_gl.end(), it);
+        if (res == prev_gl.end())
+        {
+            added.push_back(it);
+        }
+    }
+    std::vector<variable_declaration::sptr> removed;
+    for (auto it : prev_gl)
+    {
+        auto res = std::find(m_global_declarations.begin(), m_global_declarations.end(), it);
+        if (res == m_global_declarations.end())
+        {
+            removed.push_back(it);
+        }
+    }
+
+    // Apply removal
+    std::vector<size_t> indexies;
+    for (auto it : removed)
+    {
+        auto res = std::find(language_server.global_declarations.begin(), language_server.global_declarations.end(), it);
+        if (res != language_server.global_declarations.end())
+        {
+            language_server.global_declarations.erase(res);
+        }
+    }
+
+    // Apply additions
+    for (auto it : added)
+    {
+        language_server.global_declarations.push_back(it);
+    }
+
+    // Send diagnostics
     if (had_diagnostics || !diagnostics.diagnostics.empty())
     {
         language_server.textDocument_publishDiagnostics(diagnostics);

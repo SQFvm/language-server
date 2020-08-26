@@ -77,8 +77,8 @@ private:
     std::vector<lsp::data::folding_range> m_foldings;
     std::vector<asthint> m_asthints;
 
-    std::vector<variable_declaration> m_private_declarations;
-    std::vector<variable_declaration> m_global_declarations;
+    std::vector<variable_declaration::sptr> m_private_declarations;
+    std::vector<variable_declaration::sptr> m_global_declarations;
 
     void recalculate_ast(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::optional<std::string_view> contents_override);
     void recalculate_foldings_recursive(sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current)
@@ -163,48 +163,11 @@ private:
     // @param node:             The actual variable node, handled
     // @param variable:         The variable name (should be tolowered first)
     // @param private_check:    Wether the variable should be treated as private declaration
-    void analysis_ensure_L0001_L0003(std::vector<variable_declaration>& known, size_t level, sqf::parser::sqf::impl_default::astnode& node, const std::string& orig, bool private_check)
-    {
-        using sqf::parser::sqf::impl_default;
-        std::string variable = orig;
-        std::transform(variable.begin(), variable.end(), variable.begin(), [](char c) { return (char)std::tolower(c); });
-        auto findRes = std::find_if(known.begin(), known.end(),
-            [&variable](variable_declaration& it) { return it.variable == variable; });
-        if (findRes == known.end())
-        {
-            variable_declaration var = { level, node, variable };
-            known.push_back(var);
-            if (var.variable[0] == '_') // safe as empty std string `0` is `\0`
-            {
-                m_private_declarations.push_back(var);
-            }
-            else
-            {
-                m_global_declarations.push_back(var);
-            }
-        }
-        else if (node.kind == impl_default::nodetype::ASSIGNMENTLOCAL || private_check)
-        {
-            analysis_raise_L0001(node, orig);
-            private_check = true;
-        }
-        if (private_check)
-        {
-            if (variable[0] != '_')
-            {
-                analysis_raise_L0003(node, orig);
-            }
-        }
-    }
-    void recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration>& known, analysis_info parent_type);
-    void recalculate_analysis(sqf::runtime::runtime& sqfvm)
-    {
-        m_private_declarations.clear();
-        m_global_declarations.clear();
-        m_asthints.clear();
-        std::vector<variable_declaration> known = { { 0, {}, "_this" } };
-        recalculate_analysis_helper(sqfvm, m_root_ast, 0, known, analysis_info::NA);
-    }
+    void analysis_ensure_L0001_L0003(
+        sqf_language_server& language_server, std::vector<variable_declaration::sptr>& known,
+        size_t level, sqf::parser::sqf::impl_default::astnode& node, const std::string& orig, bool private_check, variable_declaration::sptr* out_var_decl);
+    void recalculate_analysis_helper(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known, analysis_info parent_type);
+    void recalculate_analysis(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm);
 public:
     lsp::data::publish_diagnostics_params diagnostics;
     document_type type;

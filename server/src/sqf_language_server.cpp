@@ -112,8 +112,6 @@ void sqf_language_server::on_textDocument_didChangeConfiguration(const lsp::data
     }
 }
 
-
-
 void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_text_document_params& params)
 {
     auto& doc = get_or_create(params.textDocument.uri);
