@@ -1,0 +1,10 @@
+{
+  "iconDefinitions": {
+    "_sqfvm_sqf_file": {
+      "iconPath": "./_sqfvm_sqf_file.svg"
+    }
+  },
+  "fileExtensions": {
+      "sqf": "_sqfvm_sqf_file"
+  }
+}

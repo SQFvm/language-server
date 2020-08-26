@@ -2,7 +2,8 @@
     "name": "sqf-vm-language-server",
     "displayName": "SQF-VM Language Server",
     "description": "",
-    "version": "0.1.5",
+	"icon": "icon.png",
+    "version": "0.1.6",
     "publisher": "SQF-VM",
     "repository": {
         "type": "git",
