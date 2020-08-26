@@ -4572,12 +4572,8 @@ namespace lsp
         virtual void on_textDocument_didChangeConfiguration(const lsp::data::did_change_configuration_params& params) {}
 
     public:
-        void textDocument_publishDiagnostics(const lsp::data::publish_diagnostics_params& params)
-        {
-            rpc.send({ {}, "textDocument/publishDiagnostics", params.to_json() });
-        }
-
-        void window_logMessage(lsp::data::message_type type, std::string message) { rpc.send({ {}, "window/logMessage", lsp::data::log_message_params{ type, message }.to_json() }); }
-        void window_logMessage(const lsp::data::log_message_params& params) { rpc.send({ {}, "window/logMessage", params.to_json() }); }
+        void textDocument_publishDiagnostics(const lsp::data::publish_diagnostics_params& params) { rpc.send({ {}, "textDocument/publishDiagnostics", params.to_json() }); }
+        void window_logMessage(lsp::data::message_type type, std::string message)                 { rpc.send({ {}, "window/logMessage", lsp::data::log_message_params{ type, message }.to_json() }); }
+        void window_logMessage(const lsp::data::log_message_params& params)                       { rpc.send({ {}, "window/logMessage", params.to_json() }); }
     };
 }
