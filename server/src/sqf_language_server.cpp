@@ -32,7 +32,12 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
                 window_logMessage(lsp::data::message_type::Error, sstream.str());
                 continue;
             }
-            sqfvm.fileio().add_mapping(workspacePath, "/");
+            {
+                std::stringstream sstream;
+                sstream << "Mapping " << workspacePath << " onto '/'";
+                window_logMessage(lsp::data::message_type::Log, sstream.str());
+                sqfvm.fileio().add_mapping(workspacePath, "/");
+            }
             std::filesystem::recursive_directory_iterator dir_end;
             size_t sqf_files_total = 0;
             // Read-In all $PBOPREFIX$ files
@@ -45,14 +50,17 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
                     // ToDo: If created, add mapping and reparse as whole. (or message the user that a reload is required)
                     auto pboprefix_path = path.parent_path().string();
                     auto pboprefix_contents_o = sqfvm.fileio().read_file_from_disk(path.string());
-                    auto pboprefix_contents = pboprefix_contents_o.value();
-                    pboprefix_contents = pboprefix_contents[0] != '/' ? "/" + pboprefix_contents : pboprefix_contents;
-                    std::replace(pboprefix_contents.begin(), pboprefix_contents.end(), '\\', '/');
-                    auto trimmed = sqf::runtime::util::trim(pboprefix_contents, " \t\r\n");
-                    sqfvm.fileio().add_mapping(pboprefix_path, trimmed);
-                    std::stringstream sstream;
-                    sstream << "Mapped " << pboprefix_path << " onto '" << trimmed << "'";
-                    window_logMessage(lsp::data::message_type::Log, sstream.str());
+                    if (pboprefix_contents_o.has_value())
+                    {
+                        auto pboprefix_contents = pboprefix_contents_o.value();
+                        add_mapping_to_sqf_vm(pboprefix_contents, pboprefix_path);
+                    }
+                    else
+                    {
+                        std::stringstream sstream;
+                        sstream << "Failed to read " << pboprefix_path << ". Skipping.";
+                        window_logMessage(lsp::data::message_type::Error, sstream.str());
+                    }
                 }
                 else if (path.has_extension() && path.extension() == ".sqf")
                 {
@@ -82,6 +90,26 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
         }
     }
     window_logMessage(lsp::data::message_type::Log, "SQF-VM Language Server is ready.");
+}
+
+void sqf_language_server::on_textDocument_didChangeConfiguration(const lsp::data::did_change_configuration_params& params)
+{
+    if (m_read_config) { return; }
+    m_read_config = true;
+    if (params.settings.has_value())
+    {
+        auto res = (*params.settings)["sqfVmLanguageServer"]["ls"]["additionalMappings"];
+        if (res.is_array())
+        {
+            for (auto el : res.items())
+            {
+                if (el.value().is_string())
+                {
+                    add_mapping_to_sqf_vm(el.value().get<std::string>(), el.key());
+                }
+            }
+        }
+    }
 }
 
 
@@ -130,4 +158,35 @@ text_document& sqf_language_server::get_or_create(lsp::data::uri uri)
         text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF };
         return text_documents[fpath];
     }
+}
+
+void sqf_language_server::add_mapping_to_sqf_vm(std::string phys, std::string virt)
+{
+    using namespace std::string_view_literals;
+    {
+        phys = phys[0] != '/' ? "/" + phys : phys;
+        std::replace(phys.begin(), phys.end(), '\\', '/');
+        phys = std::string(sqf::runtime::util::trim(phys, " \t\r\n"));
+    }
+    {
+        virt = virt[0] != '/' ? "/" + virt : virt;
+        std::replace(virt.begin(), virt.end(), '\\', '/');
+        virt = std::string(sqf::runtime::util::trim(virt, " \t\r\n"));
+    }
+
+    std::string msg;
+    msg.reserve(
+        "Mapping "sv.length() +
+        phys.length() +
+        " onto '"sv.length() +
+        virt.length() +
+        "'"sv.length()
+    );
+    msg.append("Mapping "sv);
+    msg.append(phys);
+    msg.append(" onto '");
+    msg.append(virt);
+    msg.append("'"sv);
+    window_logMessage(lsp::data::message_type::Log, msg);
+    sqfvm.fileio().add_mapping(phys, virt);
 }

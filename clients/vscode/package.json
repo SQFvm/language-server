@@ -99,7 +99,12 @@
                 "sqfVmLanguageServer.workdrive.path": {
                     "type": "string",
                     "default": "P:\\",
-                    "description": "Set the partition name for your workdrive (Used to open files from)"
+                    "description": "Set the partition name for your workdrive (Used to open files from). Used by sqfVmLanguageServer.openFilePath Task. Language server will map the drive-path to `/`."
+                },
+                "sqfVmLanguageServer.ls.additionalMappings": {
+                    "type": "array",
+                    "default": [],
+                    "markdownDescription": "Allows to declare additional mappings. The array is expected to have children of the following structure: \n\n`{ \"virtual path\": \"physical path\" }`.\n\nExample:\n\n```\n\n\"sqfVmLanguageServer.ls.additionalMappings\": [\n\n    { \"/x/tag/addon\": \"C:/sqfdev/extern/unpacked/tag_addon\" }\n\n]\n```"
                 }
             }
         }
