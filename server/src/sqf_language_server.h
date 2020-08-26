@@ -31,6 +31,7 @@ protected:
         res.capabilities.foldingRangeProvider->documentSelector = lsp::data::document_filter{ };
         res.capabilities.foldingRangeProvider->documentSelector->language = "sqf";
         res.capabilities.completionProvider = lsp::data::initialize_result::server_capabilities::completion_options{};
+        
         return res;
     }
     virtual void on_shutdown() override {}
@@ -40,6 +41,7 @@ protected:
 
     virtual void on_textDocument_didChange(const lsp::data::did_change_text_document_params& params) override;
     virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(const lsp::data::folding_range_params& params) override;
+    virtual std::optional<lsp::data::completion_list> on_textDocument_completion(const lsp::data::completion_params& params);
 
 public:
     std::unordered_map<std::string, text_document> text_documents;

@@ -5,7 +5,10 @@
 #include <parser/preprocessor/default.h>
 #include <runtime/d_string.h>
 
-void text_document::recalculate_ast(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::optional<std::string_view> contents_override)
+void text_document::recalculate_ast(
+    sqf_language_server& language_server,
+    sqf::runtime::runtime& sqfvm,
+    std::optional<std::string_view> contents_override)
 {
     auto parser = dynamic_cast<sqf::parser::sqf::impl_default&>(sqfvm.parser_sqf());
     bool errflag = false;
@@ -36,9 +39,17 @@ void text_document::recalculate_ast(sqf_language_server& language_server, sqf::r
     }
 }
 
-void text_document::recalculate_analysis_helper(sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration>& known, analysis_info parent_type)
+void text_document::recalculate_analysis_helper(
+    sqf::runtime::runtime& sqfvm,
+    sqf::parser::sqf::impl_default::astnode& current,
+    size_t level,
+    std::vector<variable_declaration>& known,
+    analysis_info parent_type)
 {
     using sqf::parser::sqf::impl_default;
+    m_asthints.push_back({ &current, current.adjusted_offset, current.line, current.column });
+
+
     switch (current.kind)
     {
     /*

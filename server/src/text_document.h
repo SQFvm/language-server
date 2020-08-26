@@ -17,6 +17,52 @@ public:
         NA,
         SQF
     };
+    struct asthint
+    {
+        sqf::parser::sqf::impl_default::astnode* actual;
+        size_t offset;
+        size_t line;
+        size_t column;
+    };
+
+    // Helper class to navigate an ast linear
+    class astnav
+    {
+    private:
+        size_t m_index;
+        std::vector<asthint>& m_hints;
+    public:
+        astnav(size_t index, std::vector<asthint>& hints) :
+            m_index(index),
+            m_hints(hints)
+        {
+
+        }
+
+        // Navigate to next asthint
+        bool next()
+        {
+            m_index++;
+            if (m_index >= m_hints.size())
+            {
+                m_index--;
+                return false;
+            }
+            return true;
+        }
+        // Navigate to previous asthint
+        bool previous()
+        {
+            if (m_index == 0)
+            {
+                return false;
+            }
+            m_index--;
+            return true;
+        }
+        asthint& operator*() const { return m_hints[m_index]; }
+        asthint* operator->() const { return &m_hints[m_index]; }
+    };
 private:
     enum class analysis_info
     {
@@ -29,6 +75,7 @@ private:
     std::string m_contents;
     sqf::parser::sqf::impl_default::astnode m_root_ast;
     std::vector<lsp::data::folding_range> m_foldings;
+    std::vector<asthint> m_asthints;
 
     std::vector<variable_declaration> m_private_declarations;
     std::vector<variable_declaration> m_global_declarations;
@@ -154,6 +201,7 @@ private:
     {
         m_private_declarations.clear();
         m_global_declarations.clear();
+        m_asthints.clear();
         std::vector<variable_declaration> known = { { 0, {}, "_this" } };
         recalculate_analysis_helper(sqfvm, m_root_ast, 0, known, analysis_info::NA);
     }
@@ -170,4 +218,47 @@ public:
     void analyze(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::optional<std::string_view> contents_override);
 
     std::vector<lsp::data::folding_range>& foldings() { return m_foldings; }
+
+    // Finds the closest astnode to the position provided and gives it back.
+    // Might return empty astnav if line is not existing, no astnode exists on that line or
+    // the file failed to parse
+    std::optional<astnav> navigate(size_t line, size_t column)
+    {
+        size_t i;
+
+        // Look for the perfect match, linewise
+        for (i = 0; i < m_asthints.size(); i++)
+        {
+            if (m_asthints[i].line == line)
+            {
+                // Found match. Break loop.
+                break;
+            }
+            if (m_asthints[i].line > line)
+            {
+                // Current line > targeted line. Match not found.
+                return {};
+            }
+        }
+        if (i == m_asthints.size())
+        {
+            return {};
+        }
+
+        // Look for the best match, columnwise (prioritize left)
+        size_t j;
+        for (j = i; j < m_asthints.size() && m_asthints[j].line == line; j++)
+        {
+            if (m_asthints[j].column == line)
+            {
+                // Perfect match. Return immediate
+                return astnav(j, m_asthints);
+            }
+            if (m_asthints[j].column > column)
+            { // Astnodes column > lookup column. Break loop.
+                break;
+            }
+        }
+        return astnav(j - 1, m_asthints);
+    }
 };

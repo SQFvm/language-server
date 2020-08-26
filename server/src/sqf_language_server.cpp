@@ -98,6 +98,20 @@ std::optional<std::vector<lsp::data::folding_range>> sqf_language_server::on_tex
     return doc.foldings();
 }
 
+std::optional<lsp::data::completion_list> sqf_language_server::on_textDocument_completion(const lsp::data::completion_params& params)
+{
+    
+    // Get navigation token
+    auto& doc = get_or_create(params.textDocument.uri);
+    auto nav_o = doc.navigate(params.position.line, params.position.character);
+    if (!nav_o.has_value()) { /* ToDo: Return default completion_list instead of empty results */ return {}; }
+
+    // ToDo: Handle the different astnode tokens for extended completion (eg. for `addAction [@p1, @p2, @p3, @p4, ...]` the different parameters inside of the list)
+
+    // ToDo: Return slide of default completion_list instead of empty results
+    return {};
+}
+
 text_document& sqf_language_server::get_or_create(lsp::data::uri uri)
 {
     using namespace std::string_view_literals;
