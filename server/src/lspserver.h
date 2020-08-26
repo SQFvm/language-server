@@ -177,21 +177,21 @@ namespace lsp
 
         enum class folding_range_kind
         {
-	        /**
-	         * Folding range for a comment
+            /**
+             * Folding range for a comment
              * 'comment'
-	         */
-	        Comment,
-	        /**
-	         * Folding range for a imports or includes
+             */
+            Comment,
+            /**
+             * Folding range for a imports or includes
              * 'imports'
-	         */
-	        Imports,
-	        /**
-	         * Folding range for a region (e.g. `#region`)
+             */
+            Imports,
+            /**
+             * Folding range for a region (e.g. `#region`)
              * 'region'
-	         */
-	        Region
+             */
+            Region
         };
         template<>
         inline void from_json<folding_range_kind>(const nlohmann::json& node, folding_range_kind& t)
@@ -623,20 +623,20 @@ namespace lsp
          */
         enum class insert_text_format
         {
-	        /**
-	         * The primary text to be inserted is treated as a plain string.
-	         */
-	        PlainText = 1,
+            /**
+             * The primary text to be inserted is treated as a plain string.
+             */
+            PlainText = 1,
 
-	        /**
-	         * The primary text to be inserted is treated as a snippet.
-	         *
-	         * A snippet can define tab stops and placeholders with `$1`, `$2`
-	         * and `${3:foo}`. `$0` defines the final tab stop, it defaults to
-	         * the end of the snippet. Placeholders with equal identifiers are linked,
-	         * that is typing in one will update others too.
-	         */
-	        Snippet = 2
+            /**
+             * The primary text to be inserted is treated as a snippet.
+             *
+             * A snippet can define tab stops and placeholders with `$1`, `$2`
+             * and `${3:foo}`. `$0` defines the final tab stop, it defaults to
+             * the end of the snippet. Placeholders with equal identifiers are linked,
+             * that is typing in one will update others too.
+             */
+            Snippet = 2
         };
         template<>
         inline void from_json<insert_text_format>(const nlohmann::json& node, insert_text_format& t)
@@ -651,22 +651,22 @@ namespace lsp
 
         enum class diagnostic_severity
         {
-	        /**
-	         * Reports an error.
-	         */
-	        Error = 1,
-	        /**
-	         * Reports a warning.
-	         */
-	        Warning = 2,
-	        /**
-	         * Reports an information.
-	         */
-	        Information = 3,
-	        /**
-	         * Reports a hint.
-	         */
-	        Hint = 4
+            /**
+             * Reports an error.
+             */
+            Error = 1,
+            /**
+             * Reports a warning.
+             */
+            Warning = 2,
+            /**
+             * Reports an information.
+             */
+            Information = 3,
+            /**
+             * Reports a hint.
+             */
+            Hint = 4
         };
         template<>
         inline void from_json<diagnostic_severity>(const nlohmann::json& node, diagnostic_severity& t)
@@ -982,15 +982,15 @@ namespace lsp
          */
         struct markup_content
         {
-	        /**
-	         * The type of the Markup
-	         */
-	        markup_kind kind;
+            /**
+             * The type of the Markup
+             */
+            markup_kind kind;
 
-	        /**
-	         * The content itself
-	         */
-	        std::string value;
+            /**
+             * The content itself
+             */
+            std::string value;
 
             static markup_content from_json(const nlohmann::json& node)
             {
@@ -1056,45 +1056,45 @@ namespace lsp
                     return json;
                 }
             };
-	        /**
-	         * The range at which the message applies.
-	         */
-	        range range;
+            /**
+             * The range at which the message applies.
+             */
+            range range;
 
-	        /**
-	         * The diagnostic's severity. Can be omitted. If omitted it is up to the
-	         * client to interpret diagnostics as error, warning, info or hint.
-	         */
-	        std::optional<diagnostic_severity> severity;
+            /**
+             * The diagnostic's severity. Can be omitted. If omitted it is up to the
+             * client to interpret diagnostics as error, warning, info or hint.
+             */
+            std::optional<diagnostic_severity> severity;
 
-	        /**
-	         * The diagnostic's code, which might appear in the user interface.
-	         */
-	        std::optional<std::string> code;
+            /**
+             * The diagnostic's code, which might appear in the user interface.
+             */
+            std::optional<std::string> code;
 
-	        /**
-	         * A human-readable string describing the source of this
-	         * diagnostic, e.g. 'typescript' or 'super lint'.
-	         */
+            /**
+             * A human-readable string describing the source of this
+             * diagnostic, e.g. 'typescript' or 'super lint'.
+             */
             std::optional<std::string> source;
 
-	        /**
-	         * The diagnostic's message.
-	         */
-	        std::string message;
+            /**
+             * The diagnostic's message.
+             */
+            std::string message;
 
-	        /**
-	         * Additional metadata about the diagnostic.
-	         *
-	         * @since 3.15.0
-	         */
+            /**
+             * Additional metadata about the diagnostic.
+             *
+             * @since 3.15.0
+             */
             std::optional<std::vector<diagnostic_tag>> tags;
 
-	        /**
-	         * An array of related diagnostic information, e.g. when symbol-names within
-	         * a scope collide all definitions can be marked via this property.
-	         */
-	        std::optional<std::vector<diagnostic_related_information>> relatedInformation;
+            /**
+             * An array of related diagnostic information, e.g. when symbol-names within
+             * a scope collide all definitions can be marked via this property.
+             */
+            std::optional<std::vector<diagnostic_related_information>> relatedInformation;
 
             static diagnostics from_json(const nlohmann::json& node)
             {
@@ -1123,32 +1123,32 @@ namespace lsp
         };
         struct folding_range
         {
-	        /**
-	         * The zero-based line number from where the folded range starts.
-	         */
-	        size_t startLine;
+            /**
+             * The zero-based line number from where the folded range starts.
+             */
+            size_t startLine;
 
-	        /**
-	         * The zero-based character offset from where the folded range starts. If not defined, defaults to the length of the start line.
-	         */
-	        std::optional<size_t> startCharacter;
+            /**
+             * The zero-based character offset from where the folded range starts. If not defined, defaults to the length of the start line.
+             */
+            std::optional<size_t> startCharacter;
 
-	        /**
-	         * The zero-based line number where the folded range ends.
-	         */
-	        size_t endLine;
+            /**
+             * The zero-based line number where the folded range ends.
+             */
+            size_t endLine;
 
-	        /**
-	         * The zero-based character offset before the folded range ends. If not defined, defaults to the length of the end line.
-	         */
-	        std::optional<size_t> endCharacter;
+            /**
+             * The zero-based character offset before the folded range ends. If not defined, defaults to the length of the end line.
+             */
+            std::optional<size_t> endCharacter;
 
-	        /**
-	         * Describes the kind of the folding range such as `comment` or `region`. The kind
-	         * is used to categorize folding ranges and used by commands like 'Fold all comments'. See
-	         * [FoldingRangeKind](#FoldingRangeKind) for an enumeration of standardized kinds.
-	         */
-	        std::optional<folding_range_kind> kind;
+            /**
+             * Describes the kind of the folding range such as `comment` or `region`. The kind
+             * is used to categorize folding ranges and used by commands like 'Fold all comments'. See
+             * [FoldingRangeKind](#FoldingRangeKind) for an enumeration of standardized kinds.
+             */
+            std::optional<folding_range_kind> kind;
 
             static struct folding_range from_json(const nlohmann::json& node)
             {
@@ -1173,19 +1173,19 @@ namespace lsp
         };
         struct command
         {
-	        /**
-	         * Title of the command, like `save`.
-	         */
-	        std::string title;
-	        /**
-	         * The identifier of the actual command handler.
-	         */
+            /**
+             * Title of the command, like `save`.
+             */
+            std::string title;
+            /**
+             * The identifier of the actual command handler.
+             */
             std::string command_;
-	        /**
-	         * Arguments that the command handler should be
-	         * invoked with.
-	         */
-	        std::optional<std::vector<nlohmann::json>> arguments;
+            /**
+             * Arguments that the command handler should be
+             * invoked with.
+             */
+            std::optional<std::vector<nlohmann::json>> arguments;
 
             static command from_json(const nlohmann::json& node)
             {
@@ -2257,29 +2257,29 @@ namespace lsp
                 std::optional<execute_command_options> executeCommandProvider;
 
                 /**
-                    * The server provides selection range support.
-                    *
-                    * @since 3.15.0
-                    *
-                    * Implementors note: Technically, this should support `boolean | SelectionRangeOptions | SelectionRangeRegistrationOptions` for backwards compatibility ... but we ignore that simply because
-                    *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
-                    *                    a server.
-                    */
+                * The server provides selection range support.
+                *
+                * @since 3.15.0
+                *
+                * Implementors note: Technically, this should support `boolean | SelectionRangeOptions | SelectionRangeRegistrationOptions` for backwards compatibility ... but we ignore that simply because
+                *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+                *                    a server.
+                */
                 std::optional<selection_range_registration_options> selectionRangeProvider;
 
                 /**
-                    * The server provides workspace symbol support.
-                    */
+                * The server provides workspace symbol support.
+                */
                 std::optional<bool> workspaceSymbolProvider;
 
                 /**
-                    * Workspace specific server capabilities
-                    */
+                * Workspace specific server capabilities
+                */
                 std::optional<Workspace> workspace;
 
                 /**
-                    * Experimental server capabilities.
-                    */
+                * Experimental server capabilities.
+                */
                 std::optional<nlohmann::json> experimental;
 
                 static server_capabilities from_json(const nlohmann::json& node)
@@ -4088,22 +4088,22 @@ namespace lsp
         };
         struct publish_diagnostics_params
         {
-	        /**
-	         * The URI for which diagnostic information is reported.
-	         */
-	        uri uri;
+            /**
+             * The URI for which diagnostic information is reported.
+             */
+            uri uri;
 
-	        /**
-	         * Optional the version number of the document the diagnostics are published for.
-	         *
-	         * @since 3.15.0
-	         */
-	        std::optional<size_t> version;
+            /**
+             * Optional the version number of the document the diagnostics are published for.
+             *
+             * @since 3.15.0
+             */
+            std::optional<size_t> version;
 
-	        /**
-	         * An array of diagnostic information items.
-	         */
-	        std::vector<diagnostics> diagnostics;
+            /**
+             * An array of diagnostic information items.
+             */
+            std::vector<diagnostics> diagnostics;
 
             static publish_diagnostics_params from_json(const nlohmann::json& node)
             {
@@ -4125,18 +4125,18 @@ namespace lsp
         struct folding_range_params
         {
             /**
-	         * An optional token that a server can use to report partial results (e.g. streaming) to
-	         * the client.
-	         */
+             * An optional token that a server can use to report partial results (e.g. streaming) to
+             * the client.
+             */
             std::optional<std::string> partialResultToken;
             /**
-	         * An optional token that a server can use to report work done progress.
-	         */
-	        std::optional<std::string> workDoneToken;
-	        /**
-	         * The text document.
-	         */
-	        text_document_identifier textDocument;
+             * An optional token that a server can use to report work done progress.
+             */
+            std::optional<std::string> workDoneToken;
+            /**
+             * The text document.
+             */
+            text_document_identifier textDocument;
 
             static folding_range_params from_json(const nlohmann::json& node)
             {
@@ -4258,24 +4258,44 @@ namespace lsp
                 return json;
             }
         };
+        struct did_change_configuration_params
+        {
+            /**
+             * The actual changed settings
+             */
+            std::optional<nlohmann::json> settings;
+
+            static did_change_configuration_params from_json(const nlohmann::json& node)
+            {
+                did_change_configuration_params res;
+                res.settings = node.contains("settings") ? node["settings"] : nlohmann::json(nullptr);
+                return res;
+            }
+            nlohmann::json to_json() const
+            {
+                nlohmann::json json;
+                if (settings.has_value()) { json["settings"] = *settings; }
+                return json;
+            }
+        };
         struct color_presentation {
-	        /**
-	         * The label of this color presentation. It will be shown on the color
-	         * picker header. By default this is also the text that is inserted when selecting
-	         * this color presentation.
-	         */
-	        std::string label;
-	        /**
-	         * An [edit](#TextEdit) which is applied to a document when selecting
-	         * this presentation for the color.  When `falsy` the [label](#ColorPresentation.label)
-	         * is used.
-	         */
+            /**
+             * The label of this color presentation. It will be shown on the color
+             * picker header. By default this is also the text that is inserted when selecting
+             * this color presentation.
+             */
+            std::string label;
+            /**
+             * An [edit](#TextEdit) which is applied to a document when selecting
+             * this presentation for the color.  When `falsy` the [label](#ColorPresentation.label)
+             * is used.
+             */
             std::optional<text_edit> textEdit;
-	        /**
-	         * An optional array of additional [text edits](#TextEdit) that are applied when
-	         * selecting this color presentation. Edits must not overlap with the main [edit](#ColorPresentation.textEdit) nor with themselves.
-	         */
-	        std::optional<std::vector<text_edit>> additionalTextEdits;
+            /**
+             * An optional array of additional [text edits](#TextEdit) that are applied when
+             * selecting this color presentation. Edits must not overlap with the main [edit](#ColorPresentation.textEdit) nor with themselves.
+             */
+            std::optional<std::vector<text_edit>> additionalTextEdits;
 
             static color_presentation from_json(const nlohmann::json& node)
             {
@@ -4304,20 +4324,20 @@ namespace lsp
              * An optional token that a server can use to report work done progress.
              */
             std::optional<std::string> workDoneToken;
-	        /**
-	         * The text document.
-	         */
-	        text_document_identifier textDocument;
+            /**
+             * The text document.
+             */
+            text_document_identifier textDocument;
 
-	        /**
-	         * The color information to request presentations for.
-	         */
-	        color color;
+            /**
+             * The color information to request presentations for.
+             */
+            color color;
 
-	        /**
-	         * The range where the color would be inserted. Serves as a context.
-	         */
-	        range range;
+            /**
+             * The range where the color would be inserted. Serves as a context.
+             */
+            range range;
 
             static color_presentation_params from_json(const nlohmann::json& node)
             {
@@ -4508,6 +4528,12 @@ namespace lsp
                     auto res = on_textDocument_colorPresentation(params);
                     rpc.send({ msg.id, to_json(res) });
                 });
+            rpc.register_method("textDocument/didChangeConfiguration", 
+                [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
+                {
+                    auto params = data::did_change_configuration_params::from_json(msg.params.value());
+                    on_textDocument_didChangeConfiguration(params);
+                });
         }
 
         void listen()
@@ -4543,6 +4569,7 @@ namespace lsp
         virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(const lsp::data::folding_range_params& params) { return {}; }
         virtual std::vector<lsp::data::color_information> on_textDocument_documentColor(const lsp::data::document_color_params& params) { return {}; }
         virtual std::vector<lsp::data::color_presentation> on_textDocument_colorPresentation(const lsp::data::color_presentation_params& params) { return {}; }
+        virtual void on_textDocument_didChangeConfiguration(const lsp::data::did_change_configuration_params& params) {}
 
     public:
         void textDocument_publishDiagnostics(const lsp::data::publish_diagnostics_params& params)
