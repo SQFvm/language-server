@@ -30,7 +30,7 @@ protected:
         res.capabilities.foldingRangeProvider = lsp::data::initialize_result::server_capabilities::folding_range_registration_options{};
         res.capabilities.foldingRangeProvider->documentSelector = lsp::data::document_filter{ };
         res.capabilities.foldingRangeProvider->documentSelector->language = "sqf";
-        res.capabilities.completionProvider = lsp::data::initialize_result::server_capabilities::completion_options{};
+        // res.capabilities.completionProvider = lsp::data::initialize_result::server_capabilities::completion_options{};
         
         return res;
     }
