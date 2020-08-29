@@ -3,7 +3,12 @@
 
 #include <runtime/runtime.h>
 #include <parser/preprocessor/default.h>
+#include <runtime/d_array.h>
 #include <runtime/d_string.h>
+#include <runtime/d_scalar.h>
+
+using namespace sqf::types;
+using namespace sqf::runtime;
 
 void text_document::recalculate_ast(
     sqf_language_server& language_server,
@@ -93,6 +98,49 @@ void text_document::analysis_ensure_L0001_L0003(sqf_language_server& language_se
         if (variable[0] != '_')
         {
             analysis_raise_L0003(node, orig);
+        }
+    }
+}
+
+void text_document::analysis_params(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known)
+{
+    if (current.children.empty()) { /* only handle if we have children */ return; }
+    for (auto child : current.children)
+    {
+        if (child.kind == sqf::parser::sqf::impl_default::nodetype::STRING)
+        { // Simple parsing - Add variable
+            auto variable = sqf::types::d_string::from_sqf(child.content);
+            analysis_ensure_L0001_L0003(language_server, known, level, child, variable, true, nullptr);
+        }
+        else
+        { // "Complex parsing" - Ensure correctness and add variable from first child
+            if (child.children.size() < 2 || child.children.size() > 4)
+            { // Ensure at least 2 children
+                analysis_raise_L0006_array_size_missmatch(child, 2, 4, child.children.size());
+            }
+            else
+            {
+                if (child.children.size() >= 1 && child.children[0].kind != sqf::parser::sqf::impl_default::nodetype::STRING)
+                {
+                    analysis_raise_L0007_type_error<1>(child.children[0], { t_string() }, {});
+                }
+                else
+                {
+                    auto variable = sqf::types::d_string::from_sqf(child.children[0].content);
+                    analysis_ensure_L0001_L0003(language_server, known, level, child.children[0], variable, true, nullptr);
+                }
+                if (child.children.size() >= 3 && child.children[2].kind != sqf::parser::sqf::impl_default::nodetype::ARRAY)
+                {
+                    analysis_raise_L0007_type_error<1>(child.children[2], { t_array() }, {});
+                }
+                if (child.children.size() >= 4 &&
+                    child.children[3].kind != sqf::parser::sqf::impl_default::nodetype::ARRAY &&
+                    child.children[3].kind != sqf::parser::sqf::impl_default::nodetype::NUMBER &&
+                    child.children[3].kind != sqf::parser::sqf::impl_default::nodetype::HEXNUMBER)
+                {
+                    analysis_raise_L0007_type_error<2>(child.children[3], { t_string(), t_scalar() }, {});
+                }
+            }
         }
     }
 }
@@ -232,6 +280,11 @@ void text_document::recalculate_analysis_helper(
 
             break;
         }
+        else if (op == "params")
+        {
+            analysis_params(language_server, sqfvm, current.children[2], level, known);
+            goto l_default;
+        }
         else if (op == "foreach")
         {
             for (auto child : current.children)
@@ -282,6 +335,11 @@ void text_document::recalculate_analysis_helper(
             }
 
             break;
+        }
+        else if (op == "params")
+        {
+            analysis_params(language_server, sqfvm, current.children[1], level, known);
+            goto l_default;
         }
         else if (op == "for" && current.children[1].kind == impl_default::nodetype::STRING)
         {

@@ -13,3 +13,6 @@ for "_i" from 0 to 1 do { _i + 1; };
 [] apply { _x + 1; };
 [] findIf { _x + 1; };
 [] select { _x + 1; };
+
+params ["_params_a", ["_params_b", 5]];
+_params_a + _params_b;

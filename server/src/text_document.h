@@ -6,6 +6,9 @@
 
 #include <string>
 #include <vector>
+#include <sstream>
+#include <array>
+#include <optional>
 
 class sqf_language_server;
 
@@ -69,7 +72,7 @@ private:
         NA,
         DECLARE_FOREACHINDEX_AND_X,
         DECLARE_X,
-        PRIVATE
+        PRIVATE,
     };
     std::string m_path;
     std::string m_contents;
@@ -155,6 +158,101 @@ private:
         diag.source = "SQF-VM LS";
         diagnostics.diagnostics.push_back(diag);
     }
+    void analysis_raise_L0004(sqf::parser::sqf::impl_default::astnode& node, const std::string& variable)
+    {
+        lsp::data::diagnostics diag;
+        diag.code = "L-0004";
+        diag.range.start.line = node.line - 1;
+        diag.range.start.character = node.column;
+        diag.range.end.line = node.line - 1;
+        diag.range.end.character = node.column;
+        diag.message = "Missing variable string.";
+        diag.severity = lsp::data::diagnostic_severity::Error;
+        diag.source = "SQF-VM LS";
+        diagnostics.diagnostics.push_back(diag);
+    }
+    void analysis_raise_L0005_format_error(sqf::parser::sqf::impl_default::astnode& node, const char* additional)
+    {
+        lsp::data::diagnostics diag;
+        diag.code = "L-0005";
+        diag.range.start.line = node.line - 1;
+        diag.range.start.character = node.column;
+        diag.range.end.line = node.line - 1;
+        diag.range.end.character = node.column;
+        diag.message = "Format Error: ";
+        diag.message.append(additional);
+        diag.severity = lsp::data::diagnostic_severity::Error;
+        diag.source = "SQF-VM LS";
+        diagnostics.diagnostics.push_back(diag);
+    }
+    void analysis_raise_L0006_array_size_missmatch(sqf::parser::sqf::impl_default::astnode& node, const std::optional<size_t> min_inclusive, std::optional<size_t> max_inclusive, size_t actual)
+    {
+        std::stringstream sstream;
+        sstream << "Array Size Missmatch. Got " << actual << ".";
+        if (min_inclusive.has_value() || max_inclusive.has_value())
+        {
+            if (!min_inclusive.has_value())
+            {
+                sstream << " " << "Value was expected to be greater then " << min_inclusive.value();
+            }
+            else if (!max_inclusive.has_value())
+            {
+                sstream << " " << "Value was expected to be less then or equal to " << max_inclusive.value();
+            }
+            else
+            {
+                sstream << " " << "Value was expected to be inbetween " << min_inclusive.value() << " - " << max_inclusive.value();
+            }
+        }
+
+        lsp::data::diagnostics diag;
+        diag.code = "L-0006";
+        diag.range.start.line = node.line - 1;
+        diag.range.start.character = node.column;
+        diag.range.end.line = node.line - 1;
+        diag.range.end.character = node.column;
+        diag.message = sstream.str();
+        diag.severity = lsp::data::diagnostic_severity::Error;
+        diag.source = "SQF-VM LS";
+        diagnostics.diagnostics.push_back(diag);
+    }
+    template<size_t size>
+    void analysis_raise_L0007_type_error(sqf::parser::sqf::impl_default::astnode& node, std::array<::sqf::runtime::type, size> expected, std::optional <::sqf::runtime::type> got)
+    {
+        std::stringstream sstream;
+        sstream << "Type Missmatch ";
+        if (got.has_value())
+        {
+            sstream << ". Got " << got->to_string();
+        }
+        if (size == 1)
+        {
+            sstream << ". Expected " << expected[0].to_string() << ".";
+        }
+        else
+        {
+            sstream << ". Expected one of { ";
+            for (size_t i = 0; i < size; i++)
+            {
+                if (i != 0)
+                {
+                    sstream << ", ";
+                }
+                sstream << expected[i].to_string();
+            }
+            sstream << " }.";
+        }
+        lsp::data::diagnostics diag;
+        diag.code = "L-0006";
+        diag.range.start.line = node.line - 1;
+        diag.range.start.character = node.column;
+        diag.range.end.line = node.line - 1;
+        diag.range.end.character = node.column;
+        diag.message = sstream.str();
+        diag.severity = lsp::data::diagnostic_severity::Error;
+        diag.source = "SQF-VM LS";
+        diagnostics.diagnostics.push_back(diag);
+    }
 
     // Performs the checks for L-0001 & L-0003.
     // 
@@ -166,6 +264,7 @@ private:
     void analysis_ensure_L0001_L0003(
         sqf_language_server& language_server, std::vector<variable_declaration::sptr>& known,
         size_t level, sqf::parser::sqf::impl_default::astnode& node, const std::string& orig, bool private_check, variable_declaration::sptr* out_var_decl);
+    void analysis_params(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known);
     void recalculate_analysis_helper(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known, analysis_info parent_type);
     void recalculate_analysis(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm);
 public:
