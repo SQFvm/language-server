@@ -4528,11 +4528,11 @@ namespace lsp
                     auto res = on_textDocument_colorPresentation(params);
                     rpc.send({ msg.id, to_json(res) });
                 });
-            rpc.register_method("textDocument/didChangeConfiguration", 
+            rpc.register_method("workspace/didChangeConfiguration", 
                 [&](jsonrpc& rpc, const jsonrpc::rpcmessage& msg)
                 {
                     auto params = data::did_change_configuration_params::from_json(msg.params.value());
-                    on_textDocument_didChangeConfiguration(params);
+                    on_workspace_didChangeConfiguration(params);
                 });
         }
 
@@ -4569,7 +4569,7 @@ namespace lsp
         virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(const lsp::data::folding_range_params& params) { return {}; }
         virtual std::vector<lsp::data::color_information> on_textDocument_documentColor(const lsp::data::document_color_params& params) { return {}; }
         virtual std::vector<lsp::data::color_presentation> on_textDocument_colorPresentation(const lsp::data::color_presentation_params& params) { return {}; }
-        virtual void on_textDocument_didChangeConfiguration(const lsp::data::did_change_configuration_params& params) {}
+        virtual void on_workspace_didChangeConfiguration(const lsp::data::did_change_configuration_params& params) {}
 
     public:
         void textDocument_publishDiagnostics(const lsp::data::publish_diagnostics_params& params) { rpc.send({ {}, "textDocument/publishDiagnostics", params.to_json() }); }

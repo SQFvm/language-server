@@ -2,6 +2,7 @@
 
 #include <runtime/runtime.h>
 #include <runtime/d_string.h>
+#include <runtime/d_code.h>
 #include <operators/ops.h>
 #include <runtime/util.h>
 
@@ -9,6 +10,9 @@
 #include <parser/sqf/default.h>
 #include <parser/preprocessor/default.h>
 #include <fileio/default.h>
+
+#include <sqc/sqc_parser.h>
+#include <fstream>
 
 void sqf_language_server::after_initialize(const lsp::data::initialize_params& params)
 {
@@ -92,12 +96,19 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
     window_logMessage(lsp::data::message_type::Log, "SQF-VM Language Server is ready.");
 }
 
-void sqf_language_server::on_textDocument_didChangeConfiguration(const lsp::data::did_change_configuration_params& params)
+void sqf_language_server::on_workspace_didChangeConfiguration(const lsp::data::did_change_configuration_params& params)
 {
-    if (m_read_config) { return; }
-    m_read_config = true;
     if (params.settings.has_value())
     {
+        m_sqc_support = (*params.settings)["sqfVmLanguageServer"]["ls"]["sqcSupport"];
+        if (m_sqc_support)
+        {
+            window_logMessage(lsp::data::message_type::Log, "SQC Auto-Compilation support enabled.");
+        }
+
+
+        if (m_read_config) { return; }
+        m_read_config = true;
         auto res = (*params.settings)["sqfVmLanguageServer"]["ls"]["additionalMappings"];
         if (res.is_array())
         {
@@ -114,8 +125,62 @@ void sqf_language_server::on_textDocument_didChangeConfiguration(const lsp::data
 
 void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_text_document_params& params)
 {
-    auto& doc = get_or_create(params.textDocument.uri);
-    doc.analyze(*this, sqfvm, params.contentChanges.front().text);
+    auto path = std::filesystem::path(sanitize_to_string(params.textDocument.uri)).lexically_normal();
+    if (path.extension().string() == ".sqc")
+    {
+        if (!sqc_support()) { return; }
+        {
+            std::stringstream sstream;
+            sstream << "Compiling file '" << path.string() << "'." << std::endl;
+            window_logMessage(lsp::data::message_type::Info, sstream.str());
+        }
+        auto preprocessed = sqfvm.parser_preprocessor().preprocess(sqfvm, { path.string(), {} });
+        if (preprocessed.has_value())
+        {
+            sqf::sqc::parser sqcParser(logger);
+            auto set = sqcParser.parse(sqfvm, preprocessed.value(), { path.string(), {} });
+
+            if (set.has_value())
+            {
+                path.replace_extension(".sqf");
+                std::ofstream out_file(path, std::ios_base::trunc);
+                if (out_file.good())
+                {
+                    auto dcode = std::make_shared<sqf::types::d_code>(*set);
+                    auto str = dcode->to_string_sqf();
+                    if (str.length() > 2)
+                    {
+                        std::string_view view(str.data() + 1, str.length() - 2);
+                        view = sqf::runtime::util::trim(view, " \t\r\n");
+                        out_file << view;
+                    }
+                }
+                else
+                {
+                    std::stringstream sstream;
+                    sstream << "Failed to open file '" << path.string() << "' for writing." << std::endl;
+                    window_logMessage(lsp::data::message_type::Error, sstream.str());
+                }
+            }
+            else
+            {
+                std::stringstream sstream;
+                sstream << "Failed to parse file '" << path.string() << "'." << std::endl;
+                window_logMessage(lsp::data::message_type::Error, sstream.str());
+            }
+        }
+        else
+        {
+            std::stringstream sstream;
+            sstream << "Failed to preprocess file '" << path.string() << "'." << std::endl;
+            window_logMessage(lsp::data::message_type::Error, sstream.str());
+        }
+    }
+    else
+    {
+        auto& doc = get_or_create(params.textDocument.uri);
+        doc.analyze(*this, sqfvm, params.contentChanges.front().text);
+    }
 }
 
 std::optional<std::vector<lsp::data::folding_range>> sqf_language_server::on_textDocument_foldingRange(const lsp::data::folding_range_params& params)

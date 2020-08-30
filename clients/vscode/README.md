@@ -1,8 +1,4 @@
-![](https://raw.githubusercontent.com/SQFvm/vscode/master/clients/vscode/assets/readme/indev_preview.png)
-
-***Use at your own Risk!***
-
-***Currently Windows-Only***
+***UNIX Support pending. (Windows Only as of now)***
 
 - - - -
 

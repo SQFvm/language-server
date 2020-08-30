@@ -2,7 +2,7 @@ private _keyword = 0;
 _keyword + 1;
 
 private "_string";
-_string + 1;
+_string + 1; 
 
 private ["_array"];
 _array + 1;

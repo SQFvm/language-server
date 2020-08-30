@@ -2,8 +2,8 @@
     "name": "sqf-vm-language-server",
     "displayName": "SQF-VM Language Server",
     "description": "",
-	"icon": "./assets/icon.png",
-    "version": "0.1.6",
+	"icon": "assets/icon.png",
+    "version": "0.1.9",
     "publisher": "SQF-VM",
     "repository": {
         "type": "git",
@@ -19,6 +19,7 @@
     ],
     "activationEvents": [
         "onLanguage:sqf",
+        "onLanguage:sqc",
         "onCommand:sqfVmLanguageServer.openFilePath",
         "onCommand:sqfVmLanguageServer.openRpt",
         "onCommand:sqfVmLanguageServer.alignEquals"
@@ -65,6 +66,17 @@
                     ".sqf"
                 ],
                 "configuration": "./grammar/sqf.configuration.json"
+            },
+            {
+                "id": "sqc",
+                "aliases": [
+                    "SQC",
+                    "Status Quo Function - C"
+                ],
+                "extensions": [
+                    ".sqc"
+                ],
+                "configuration": "./grammar/sqc.configuration.json"
             }
         ],
         "configuration": {
@@ -106,6 +118,11 @@
                     "type": "array",
                     "default": [],
                     "markdownDescription": "Allows to declare additional mappings. The array is expected to have children of the following structure: \n\n`{ \"virtual path\": \"physical path\" }`.\n\nExample:\n\n```\n\n\"sqfVmLanguageServer.ls.additionalMappings\": [\n\n    { \"/x/tag/addon\": \"C:/sqfdev/extern/unpacked/tag_addon\" }\n\n]\n```"
+                },
+                "sqfVmLanguageServer.ls.sqcSupport": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "Enables (or disables) SQC support. This involves auto-compilation upon typing inside a SQC file, outputting a compiled SQF file with the same name. Note that the 'compile on change' is done due to vscode not supplying textDocument/didSave to Language Servers."
                 }
             }
         }
