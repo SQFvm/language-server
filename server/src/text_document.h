@@ -18,7 +18,8 @@ public:
     enum class document_type
     {
         NA,
-        SQF
+        SQF,
+        SQC
     };
     struct asthint
     {

@@ -39,6 +39,11 @@
                 "language": "sqf",
                 "scopeName": "source.sqf",
                 "path": "./grammar/sqf.min.json"
+            },
+            {
+                "language": "sqc",
+                "scopeName": "source.sqc",
+                "path": "./grammar/sqc.gram.json"
             }
         ],
         "commands": [
@@ -71,7 +76,8 @@
                 "id": "sqc",
                 "aliases": [
                     "SQC",
-                    "Status Quo Function - C"
+                    "SQF - C Styled",
+                    "Status Quo Function - C-Styled"
                 ],
                 "extensions": [
                     ".sqc"

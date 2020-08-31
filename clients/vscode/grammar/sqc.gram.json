@@ -1,0 +1,86 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "sqc",
+	"patterns": [
+		{ "include": "#keywords" },
+		{ "include": "#strings" }
+	],
+	"repository": {
+		"all": {
+			"patterns": [
+				{ "include": "#keywords" },
+				{ "include": "#strings" },
+				{ "include": "#block" },
+				{ "include": "#array" },
+				{ "include": "#comment" }
+			]
+		},
+		"comment": {
+			"name": "comment.sqc",
+			"patterns": [{
+				"include": "#comment-block"
+			}, {
+				"include": "#comment-line"
+			}]
+		},
+		"comment-block": {
+			"begin": "/\\*",
+			"end": "\\*/",
+			"name": "comment.block.sqc"
+		},
+		"comment-line": {
+			"match": "(//).*$\\n?",
+			"name": "comment.line.sqc"
+		},
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.sqc",
+				"match": "\\b(if|while|for|return|switch|function|let|private|be|case|default|do|foreach|true|false|nil)\\b"
+			}]
+		},
+		"block": {
+			"begin": "\\{",
+			"beginCaptures": {
+				"0": {
+					"name": "meta.brace.curly.sqc"
+				}
+			},
+			"end": "\\}",
+			"endCaptures": {
+				"0": {
+					"name": "meta.brace.curly.sqc"
+				}
+			},
+			"name": "meta.block.sqc",
+			"patterns": [{ "include": "#all" }]
+		},
+		"array": {
+			"begin": "\\[",
+			"beginCaptures": {
+				"0": {
+					"name": "meta.brace.square.sqc"
+				}
+			},
+			"end": "\\]",
+			"endCaptures": {
+				"0": {
+					"name": "meta.brace.square.sqc"
+				}
+			},
+			"name": "meta.array.literal.sqc",
+			"patterns": [{ "include": "#all" }]
+		},
+		"strings": {
+			"name": "string.quoted.double.sqc",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.sqc",
+					"match": "\"\"."
+				}
+			]
+		}
+	},
+	"scopeName": "source.sqc"
+}

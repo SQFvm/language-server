@@ -125,6 +125,7 @@ void sqf_language_server::on_workspace_didChangeConfiguration(const lsp::data::d
 
 void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_text_document_params& params)
 {
+    auto& doc = get_or_create(params.textDocument.uri);
     auto path = std::filesystem::path(sanitize_to_string(params.textDocument.uri)).lexically_normal();
     if (path.extension().string() == ".sqc")
     {
@@ -134,7 +135,7 @@ void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_
             sstream << "Compiling file '" << path.string() << "'." << std::endl;
             window_logMessage(lsp::data::message_type::Info, sstream.str());
         }
-        auto preprocessed = sqfvm.parser_preprocessor().preprocess(sqfvm, { path.string(), {} });
+        auto preprocessed = sqfvm.parser_preprocessor().preprocess(sqfvm, params.contentChanges.front().text, { path.string(), {} });
         if (preprocessed.has_value())
         {
             sqf::sqc::parser sqcParser(logger);
@@ -176,11 +177,7 @@ void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_
             window_logMessage(lsp::data::message_type::Error, sstream.str());
         }
     }
-    else
-    {
-        auto& doc = get_or_create(params.textDocument.uri);
-        doc.analyze(*this, sqfvm, params.contentChanges.front().text);
-    }
+    doc.analyze(*this, sqfvm, params.contentChanges.front().text);
 }
 
 std::optional<std::vector<lsp::data::folding_range>> sqf_language_server::on_textDocument_foldingRange(const lsp::data::folding_range_params& params)
@@ -207,6 +204,7 @@ text_document& sqf_language_server::get_or_create(lsp::data::uri uri)
 {
     using namespace std::string_view_literals;
     auto fpath = sanitize_to_string(uri);
+    std::filesystem::path path(fpath);
 
     // Check if file already exists
     auto findRes = text_documents.find(fpath);
@@ -217,8 +215,15 @@ text_document& sqf_language_server::get_or_create(lsp::data::uri uri)
     }
     else
     {
+        auto ext = path.extension();
+        
         // Create file at fpath only if file is an actual sqf file and perform analysis.
-        text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF };
+        text_documents[fpath] = {
+            *this,
+            sqfvm,
+            fpath,
+            ext == ".sqc" ? text_document::document_type::SQC
+            : text_document::document_type::SQF };
         return text_documents[fpath];
     }
 }

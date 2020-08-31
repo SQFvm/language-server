@@ -405,11 +405,13 @@ void text_document::analyze(sqf_language_server& language_server, sqf::runtime::
     auto prev_gl = m_global_declarations;
     m_global_declarations.clear();
 
-    // Perform different analysis steps
-    recalculate_ast(language_server, sqfvm, contents_override);
-    recalculate_foldings(sqfvm);
-    recalculate_analysis(language_server, sqfvm);
-
+    if (type == document_type::SQF)
+    {
+        // Perform different analysis steps
+        recalculate_ast(language_server, sqfvm, contents_override);
+        recalculate_foldings(sqfvm);
+        recalculate_analysis(language_server, sqfvm);
+    }
     // calculate delta in the globals
     std::vector<variable_declaration::sptr> added;
     for (auto it : m_global_declarations)
