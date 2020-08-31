@@ -135,6 +135,7 @@ void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_
             sstream << "Compiling file '" << path.string() << "'." << std::endl;
             window_logMessage(lsp::data::message_type::Info, sstream.str());
         }
+        doc.diagnostics.diagnostics.clear();
         auto preprocessed = sqfvm.parser_preprocessor().preprocess(sqfvm, params.contentChanges.front().text, { path.string(), {} });
         if (preprocessed.has_value())
         {
@@ -176,8 +177,12 @@ void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_
             sstream << "Failed to preprocess file '" << path.string() << "'." << std::endl;
             window_logMessage(lsp::data::message_type::Error, sstream.str());
         }
+        textDocument_publishDiagnostics(doc.diagnostics);
     }
-    doc.analyze(*this, sqfvm, params.contentChanges.front().text);
+    else
+    {
+        doc.analyze(*this, sqfvm, params.contentChanges.front().text);
+    }
 }
 
 std::optional<std::vector<lsp::data::folding_range>> sqf_language_server::on_textDocument_foldingRange(const lsp::data::folding_range_params& params)

@@ -35,7 +35,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.sqc",
-				"match": "\\b(if|while|for|return|switch|function|let|private|be|case|default|do|foreach|true|false|nil)\\b"
+				"match": "\\b(if|while|for|return|switch|function|let|private|be|case|default|do|foreach|true|false|nil|else)\\b"
 			}]
 		},
 		"block": {

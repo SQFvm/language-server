@@ -1,1 +1,0 @@
-private _a = 12; if (_a != 12) then { diag_log "error" }
