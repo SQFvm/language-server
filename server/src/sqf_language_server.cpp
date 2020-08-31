@@ -176,6 +176,7 @@ void sqf_language_server::on_textDocument_didChange(const lsp::data::did_change_
             sstream << "Failed to preprocess file '" << path.string() << "'." << std::endl;
             window_logMessage(lsp::data::message_type::Error, sstream.str());
         }
+        textDocument_publishDiagnostics(doc.diagnostics);
     }
     doc.analyze(*this, sqfvm, params.contentChanges.front().text);
 }
