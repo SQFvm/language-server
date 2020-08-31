@@ -38,6 +38,11 @@
                 "language": "sqf",
                 "scopeName": "source.sqf",
                 "path": "./grammar/sqf.min.json"
+            },
+            {
+                "language": "sqc",
+                "scopeName": "source.sqc",
+                "path": "./grammar/sqc.gram.json"
             }
         ],
         "commands": [
@@ -65,6 +70,18 @@
                     ".sqf"
                 ],
                 "configuration": "./grammar/sqf.configuration.json"
+            },
+            {
+                "id": "sqc",
+                "aliases": [
+                    "SQC",
+                    "SQF-CStyled",
+                    "Status Quo Function - C-Styled"
+                ],
+                "extensions": [
+                    ".sqc"
+                ],
+                "configuration": "./grammar/sqc.configuration.json"
             }
         ],
         "configuration": {
