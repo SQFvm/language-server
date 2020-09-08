@@ -57,7 +57,7 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
                     if (pboprefix_contents_o.has_value())
                     {
                         auto pboprefix_contents = pboprefix_contents_o.value();
-                        add_mapping_to_sqf_vm(pboprefix_contents, pboprefix_path);
+                        add_mapping_to_sqf_vm(pboprefix_path, pboprefix_contents);
                     }
                     else
                     {
