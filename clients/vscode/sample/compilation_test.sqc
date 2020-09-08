@@ -1,6 +1,0 @@
-let a be 12;
-
-if (a != 12)
-{
-    diag_log("error");
-}
