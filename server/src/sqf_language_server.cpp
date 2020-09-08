@@ -14,6 +14,76 @@
 #include <sqc/sqc_parser.h>
 #include <fstream>
 
+#include <thread>
+
+void sqf_language_server::scan_documents_recursive_at(std::string directory)
+{
+    std::filesystem::recursive_directory_iterator dir_end;
+    std::vector<std::filesystem::path> files;
+    for (std::filesystem::recursive_directory_iterator it(directory, std::filesystem::directory_options::skip_permission_denied); it != dir_end; it++)
+    {
+        auto path = it->path();
+        if (it->is_directory() || !path.has_extension())
+        {
+            continue;
+        }
+        else
+        {
+            files.push_back(path);
+        }
+    }
+
+    // Lazy "Max-Files-per-Thread"
+    size_t files_per_thread = 0;
+    size_t thread_count;
+    do
+    {
+        files_per_thread += 20;
+        thread_count = files.size() / files_per_thread;
+    } while (thread_count > 12);
+
+    std::vector<std::thread> threads;
+    auto start = files.begin();
+    // First round, Globals might not be known here correctly
+    for (size_t i = 0; i < thread_count + 1; i++)
+    {
+        const auto localstart = start;
+        start += i == thread_count ? files.size() % files_per_thread : files_per_thread;
+        const auto localend = start;
+        threads.emplace_back([this, localstart, localend, i]()
+            {
+                size_t files = localend - localstart;
+                for (auto it = localstart; it < localend; ++it)
+                {
+                    auto path = *it;
+                    auto uri = sanitize_to_uri(path.string());
+                    auto fpath = sanitize_to_string(uri);
+                    if (path.extension() == ".sqf")
+                    {
+                        text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF };
+                        std::stringstream sstream;
+                        sstream << "[WORKER-" << i << "][" << std::setw(3) << (it - localstart) << "/" << std::setw(3) << files << "] Analyzing " << fpath << " ... ";
+                        window_logMessage(lsp::data::message_type::Log, sstream.str());
+                        text_documents[fpath].analyze(*this, sqfvm, {});
+                    }
+                    else
+                    {
+                        std::stringstream sstream;
+                        sstream << "[WORKER-" << i << "][" << std::setw(3) << (it - localstart) << "/" << std::setw(3) << files << "] Skipping " << fpath << ".";
+                        window_logMessage(lsp::data::message_type::Log, sstream.str());
+                    }
+                }
+            });
+    }
+    for (size_t i = 0; i < threads.size(); i++)
+    {
+        if (threads[i].joinable())
+        {
+            threads[i].join();
+        }
+    }
+}
+
 void sqf_language_server::after_initialize(const lsp::data::initialize_params& params)
 {
     // Prepare sqfvm
@@ -29,6 +99,7 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
         for (auto workspaceFolder : params.workspaceFolders.value())
         {
             auto workspacePath = sanitize_to_string(workspaceFolder.uri);
+            m_workspace_folders.push_back(workspacePath);
             if (!std::filesystem::exists(workspacePath))
             {
                 std::stringstream sstream;
@@ -71,26 +142,9 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
                     sqf_files_total++;
                 }
             }
-            size_t sqf_files_count = 0;
-            // ToDo: Make parsing async
-            for (std::filesystem::recursive_directory_iterator it(workspacePath, std::filesystem::directory_options::skip_permission_denied); it != dir_end; it++)
-            {
-                auto path = it->path();
-                if (it->is_directory() || !path.has_extension())
-                {
-                    continue;
-                }
-                else if (path.extension() == ".sqf")
-                {
-                    auto uri = sanitize_to_uri(path.string());
-                    auto fpath = sanitize_to_string(uri);
-                    text_documents[fpath] = { *this, sqfvm, fpath, text_document::document_type::SQF };
-                    std::stringstream sstream;
-                    sstream << "Analyzing " << fpath << " ... " << "(" << ++sqf_files_count << "/" << sqf_files_total << ")";
-                    window_logMessage(lsp::data::message_type::Log, sstream.str());
-                    text_documents[fpath].analyze(*this, sqfvm, {});
-                }
-            }
+            // Scan twice to "fix" undeclared gloabls
+            scan_documents_recursive_at(workspacePath);
+            scan_documents_recursive_at(workspacePath);
         }
     }
     window_logMessage(lsp::data::message_type::Log, "SQF-VM Language Server is ready.");
@@ -204,6 +258,7 @@ std::optional<lsp::data::completion_list> sqf_language_server::on_textDocument_c
     // ToDo: Return slide of default completion_list instead of empty results
     return {};
 }
+
 
 text_document& sqf_language_server::get_or_create(lsp::data::uri uri)
 {

@@ -266,7 +266,7 @@ private:
         sqf_language_server& language_server, std::vector<variable_declaration::sptr>& known,
         size_t level, sqf::parser::sqf::impl_default::astnode& node, const std::string& orig, bool private_check, variable_declaration::sptr* out_var_decl);
     void analysis_params(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known);
-    void recalculate_analysis_helper(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known, analysis_info parent_type);
+    void recalculate_analysis_helper(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known, analysis_info parent_type, const std::vector<variable_declaration::sptr>& actual_globals);
     void recalculate_analysis(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm);
 public:
     lsp::data::publish_diagnostics_params diagnostics;

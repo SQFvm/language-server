@@ -8,6 +8,7 @@
 #include <runtime/runtime.h>
 
 #include <unordered_map>
+#include <mutex>
 
 class sqf_language_server : public lsp::server
 {
@@ -46,10 +47,13 @@ protected:
     // ToDo: Add the ability to reload the config instead of just disabling it using this workaround
     bool m_read_config;
     bool m_sqc_support;
+    std::vector<variable_declaration::sptr> m_global_declarations;
+    std::vector<std::string> m_workspace_folders;
+    std::mutex m_mutex_global_declarations;
 public:
 
+    void scan_documents_recursive_at(std::string directory);
 
-    std::vector<variable_declaration::sptr> global_declarations;
     std::unordered_map<std::string, text_document> text_documents;
     lsp::data::initialize_params client;
     language_server_logger logger;
@@ -60,6 +64,17 @@ public:
     bool sqc_support() const { return m_sqc_support; }
 
     text_document& get_or_create(lsp::data::uri uri);
+
+    std::vector<variable_declaration::sptr> global_declarations()
+    {
+        std::scoped_lock scoped(m_mutex_global_declarations);
+        return m_global_declarations;
+    }
+    void with_global_declarations_do(std::function<void(std::vector<variable_declaration::sptr>&)> func)
+    {
+        std::scoped_lock scoped(m_mutex_global_declarations);
+        func(m_global_declarations);
+    }
 
     // Adds the provided physical - virtual mapping onto SQF-VM
     // and cleans up both strings before inserting them (trim, replace \ with /, append / if first char != /)
