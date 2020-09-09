@@ -32,3 +32,6 @@ player.getVariable("TAG_SomeVar");
 
 // Create array and assign it to `arr`
 private arr = [1,2,3];
+
+// select all elements > 2
+arr.select(function(it: "_x") { return _x > 2; });
