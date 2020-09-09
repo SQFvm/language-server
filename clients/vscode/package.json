@@ -129,6 +129,16 @@
                     "type": "boolean",
                     "default": false,
                     "markdownDescription": "Enables (or disables) SQC support. This involves auto-compilation upon typing inside a SQC file, outputting a compiled SQF file with the same name. Note that the 'compile on change' is done due to vscode not supplying textDocument/didSave to Language Servers."
+                },
+                "sqfVmLanguageServer.ls.logLevel.verbose": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "Enables (or disables) verbose logging."
+                },
+                "sqfVmLanguageServer.ls.logLevel.trace": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "Enables (or disables) trace logging."
                 }
             }
         }

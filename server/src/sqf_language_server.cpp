@@ -160,6 +160,9 @@ void sqf_language_server::on_workspace_didChangeConfiguration(const lsp::data::d
             window_logMessage(lsp::data::message_type::Log, "SQC Auto-Compilation support enabled.");
         }
 
+        logger.setEnabled(loglevel::verbose, (*params.settings)["sqfVmLanguageServer"]["ls"]["logLevel"]["verbose"]);
+        logger.setEnabled(loglevel::trace, (*params.settings)["sqfVmLanguageServer"]["ls"]["logLevel"]["trace"]);
+
 
         if (m_read_config) { return; }
         m_read_config = true;
