@@ -87,7 +87,7 @@ void sqf_language_server::scan_documents_recursive_at(std::string directory)
 void sqf_language_server::after_initialize(const lsp::data::initialize_params& params)
 {
     // Prepare sqfvm
-    sqfvm.fileio(std::make_unique<sqf::fileio::impl_default>());
+    sqfvm.fileio(std::make_unique<sqf::fileio::impl_default>(logger));
     sqfvm.parser_config(std::make_unique<sqf::parser::config::impl_default>(logger));
     sqfvm.parser_preprocessor(std::make_unique<sqf::parser::preprocessor::impl_default>(logger));
     sqfvm.parser_sqf(std::make_unique<sqf::parser::sqf::impl_default>(logger));
@@ -159,6 +159,9 @@ void sqf_language_server::on_workspace_didChangeConfiguration(const lsp::data::d
         {
             window_logMessage(lsp::data::message_type::Log, "SQC Auto-Compilation support enabled.");
         }
+
+        logger.setEnabled(loglevel::verbose, (*params.settings)["sqfVmLanguageServer"]["ls"]["logLevel"]["verbose"]);
+        logger.setEnabled(loglevel::trace, (*params.settings)["sqfVmLanguageServer"]["ls"]["logLevel"]["trace"]);
 
 
         if (m_read_config) { return; }
