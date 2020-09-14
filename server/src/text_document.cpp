@@ -110,7 +110,10 @@ void text_document::analysis_params(sqf_language_server& language_server, sqf::r
         if (child.kind == sqf::parser::sqf::impl_default::nodetype::STRING)
         { // Simple parsing - Add variable
             auto variable = sqf::types::d_string::from_sqf(child.content);
-            analysis_ensure_L0001_L0003(language_server, known, level, child, variable, true, nullptr);
+            if (variable != "")
+            {
+                analysis_ensure_L0001_L0003(language_server, known, level, child, variable, true, nullptr);
+            }
         }
         else
         { // "Complex parsing" - Ensure correctness and add variable from first child
@@ -127,7 +130,10 @@ void text_document::analysis_params(sqf_language_server& language_server, sqf::r
                 else
                 {
                     auto variable = sqf::types::d_string::from_sqf(child.children[0].content);
-                    analysis_ensure_L0001_L0003(language_server, known, level, child.children[0], variable, true, nullptr);
+                    if (variable != "")
+                    {
+                        analysis_ensure_L0001_L0003(language_server, known, level, child.children[0], variable, true, nullptr);
+                    }
                 }
                 if (child.children.size() >= 3 && child.children[2].kind != sqf::parser::sqf::impl_default::nodetype::ARRAY)
                 {
