@@ -41,7 +41,11 @@ void sqf_language_server::scan_documents_recursive_at(std::string directory)
         files_per_thread += 20;
         thread_count = files.size() / files_per_thread;
     } while (thread_count > 12);
-
+    {
+        std::stringstream sstream;
+        sstream << "Launching " << thread_count << " worker threads to handle parsing the whole project.";
+        window_logMessage(lsp::data::message_type::Log, sstream.str());
+    }
     std::vector<std::thread> threads;
     auto start = files.begin();
     // First round, Globals might not be known here correctly
