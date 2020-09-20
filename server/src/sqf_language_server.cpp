@@ -299,7 +299,6 @@ void sqf_language_server::add_mapping_to_sqf_vm(std::string phys, std::string vi
 {
     using namespace std::string_view_literals;
     {
-        phys = phys[0] != '/' ? "/" + phys : phys;
         std::replace(phys.begin(), phys.end(), '\\', '/');
         phys = std::string(sqf::runtime::util::trim(phys, " \t\r\n"));
     }

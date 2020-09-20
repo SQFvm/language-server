@@ -1,6 +1,6 @@
 #include "include.h"
-
-
+#include "/pboprefix/sample/include.h"
+#define TEST
 #define CFUNC(ARG) ARG
 
 systemChat CONCAT(test,value);
