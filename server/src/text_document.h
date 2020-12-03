@@ -2,7 +2,8 @@
 #include "variable_declaration.h"
 #include "util.h"
 
-#include <parser/sqf/default.h>
+#include <parser/sqf/sqf_parser.hpp>
+#include <parser/sqf/parser.tab.hh>
 
 #include <string>
 #include <vector>
@@ -23,7 +24,7 @@ public:
     };
     struct asthint
     {
-        sqf::parser::sqf::impl_default::astnode* actual;
+        sqf::parser::sqf::bison::astnode* actual;
         size_t offset;
         size_t line;
         size_t column;
@@ -77,7 +78,7 @@ private:
     };
     std::string m_path;
     std::string m_contents;
-    sqf::parser::sqf::impl_default::astnode m_root_ast;
+    sqf::parser::sqf::bison::astnode m_root_ast;
     std::vector<lsp::data::folding_range> m_foldings;
     std::vector<asthint> m_asthints;
 
@@ -85,28 +86,28 @@ private:
     std::vector<variable_declaration::sptr> m_global_declarations;
 
     void recalculate_ast(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, std::optional<std::string_view> contents_override);
-    void recalculate_foldings_recursive(sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current)
+    void recalculate_foldings_recursive(sqf::runtime::runtime& sqfvm, sqf::parser::sqf::bison::astnode& current)
     {
         switch (current.kind)
         {
-        case sqf::parser::sqf::impl_default::nodetype::ARRAY:
-        case sqf::parser::sqf::impl_default::nodetype::CODE:
+        case sqf::parser::sqf::bison::astkind::ARRAY:
+        case sqf::parser::sqf::bison::astkind::CODE:
         {
             // todo: find a way to force vscode into using offsets instead of lines
             lsp::data::folding_range frange;
-            frange.startCharacter = current.file_offset;
-            frange.startLine = current.line - 1; // lines start at 0
-            frange.endCharacter = current.file_offset + current.length;
+            frange.startCharacter = current.token.offset;
+            frange.startLine = current.token.line - 1; // lines start at 0
+            frange.endCharacter = current.token.offset + current.token.contents.length();
 
             // find current nodes, last child in tree and set its line as end.
-            sqf::parser::sqf::impl_default::astnode* prev = &current;
-            sqf::parser::sqf::impl_default::astnode* node = &current;
+            sqf::parser::sqf::bison::astnode* prev = &current;
+            sqf::parser::sqf::bison::astnode* node = &current;
             while (node)
             {
                 prev = node;
                 node = node->children.empty() ? nullptr : &node->children.back();
             }
-            frange.endLine = prev->line;
+            frange.endLine = prev->token.line;
             m_foldings.push_back(frange);
         } break;
         }
@@ -120,73 +121,73 @@ private:
         m_foldings.clear();
         recalculate_foldings_recursive(sqfvm, m_root_ast);
     }
-    void analysis_raise_L0001(sqf::parser::sqf::impl_default::astnode& node, const std::string& variable)
+    void analysis_raise_L0001(sqf::parser::sqf::bison::astnode& node, const std::string& variable)
     {
         lsp::data::diagnostics diag;
         diag.code = "L-0001";
-        diag.range.start.line = node.line - 1;
-        diag.range.start.character = node.column;
-        diag.range.end.line = node.line - 1;
-        diag.range.end.character = node.column;
+        diag.range.start.line = node.token.line - 1;
+        diag.range.start.character = node.token.column;
+        diag.range.end.line = node.token.line - 1;
+        diag.range.end.character = node.token.column;
         diag.message = "'" + variable + "' hides previous declaration.";
         diag.severity = lsp::data::diagnostic_severity::Warning;
         diag.source = "SQF-VM LS";
         diagnostics.diagnostics.push_back(diag);
     }
-    void analysis_raise_L0002(sqf::parser::sqf::impl_default::astnode& node, const std::string& variable)
+    void analysis_raise_L0002(sqf::parser::sqf::bison::astnode& node, const std::string& variable)
     {
         lsp::data::diagnostics diag;
         diag.code = "L-0002";
-        diag.range.start.line = node.line - 1;
-        diag.range.start.character = node.column;
-        diag.range.end.line = node.line - 1;
-        diag.range.end.character = node.column;
+        diag.range.start.line = node.token.line - 1;
+        diag.range.start.character = node.token.column;
+        diag.range.end.line = node.token.line - 1;
+        diag.range.end.character = node.token.column;
         diag.message = "Variable '" + variable + "' not defined.";
         diag.severity = lsp::data::diagnostic_severity::Warning;
         diag.source = "SQF-VM LS";
         diagnostics.diagnostics.push_back(diag);
     }
-    void analysis_raise_L0003(sqf::parser::sqf::impl_default::astnode& node, const std::string& variable)
+    void analysis_raise_L0003(sqf::parser::sqf::bison::astnode& node, const std::string& variable)
     {
         lsp::data::diagnostics diag;
         diag.code = "L-0003";
-        diag.range.start.line = node.line - 1;
-        diag.range.start.character = node.column;
-        diag.range.end.line = node.line - 1;
-        diag.range.end.character = node.column;
+        diag.range.start.line = node.token.line - 1;
+        diag.range.start.character = node.token.column;
+        diag.range.end.line = node.token.line - 1;
+        diag.range.end.character = node.token.column;
         diag.message = "'" + variable + "' is not starting with an underscore ('_').";
         diag.severity = lsp::data::diagnostic_severity::Error;
         diag.source = "SQF-VM LS";
         diagnostics.diagnostics.push_back(diag);
     }
-    void analysis_raise_L0004(sqf::parser::sqf::impl_default::astnode& node, const std::string& variable)
+    void analysis_raise_L0004(sqf::parser::sqf::bison::astnode& node, const std::string& variable)
     {
         lsp::data::diagnostics diag;
         diag.code = "L-0004";
-        diag.range.start.line = node.line - 1;
-        diag.range.start.character = node.column;
-        diag.range.end.line = node.line - 1;
-        diag.range.end.character = node.column;
+        diag.range.start.line = node.token.line - 1;
+        diag.range.start.character = node.token.column;
+        diag.range.end.line = node.token.line - 1;
+        diag.range.end.character = node.token.column;
         diag.message = "Missing variable string.";
         diag.severity = lsp::data::diagnostic_severity::Error;
         diag.source = "SQF-VM LS";
         diagnostics.diagnostics.push_back(diag);
     }
-    void analysis_raise_L0005_format_error(sqf::parser::sqf::impl_default::astnode& node, const char* additional)
+    void analysis_raise_L0005_format_error(sqf::parser::sqf::bison::astnode& node, const char* additional)
     {
         lsp::data::diagnostics diag;
         diag.code = "L-0005";
-        diag.range.start.line = node.line - 1;
-        diag.range.start.character = node.column;
-        diag.range.end.line = node.line - 1;
-        diag.range.end.character = node.column;
+        diag.range.start.line = node.token.line - 1;
+        diag.range.start.character = node.token.column;
+        diag.range.end.line = node.token.line - 1;
+        diag.range.end.character = node.token.column;
         diag.message = "Format Error: ";
         diag.message.append(additional);
         diag.severity = lsp::data::diagnostic_severity::Error;
         diag.source = "SQF-VM LS";
         diagnostics.diagnostics.push_back(diag);
     }
-    void analysis_raise_L0006_array_size_missmatch(sqf::parser::sqf::impl_default::astnode& node, const std::optional<size_t> min_inclusive, std::optional<size_t> max_inclusive, size_t actual)
+    void analysis_raise_L0006_array_size_missmatch(sqf::parser::sqf::bison::astnode& node, const std::optional<size_t> min_inclusive, std::optional<size_t> max_inclusive, size_t actual)
     {
         std::stringstream sstream;
         sstream << "Array Size Missmatch. Got " << actual << ".";
@@ -208,17 +209,17 @@ private:
 
         lsp::data::diagnostics diag;
         diag.code = "L-0006";
-        diag.range.start.line = node.line - 1;
-        diag.range.start.character = node.column;
-        diag.range.end.line = node.line - 1;
-        diag.range.end.character = node.column;
+        diag.range.start.line = node.token.line - 1;
+        diag.range.start.character = node.token.column;
+        diag.range.end.line = node.token.line - 1;
+        diag.range.end.character = node.token.column;
         diag.message = sstream.str();
         diag.severity = lsp::data::diagnostic_severity::Error;
         diag.source = "SQF-VM LS";
         diagnostics.diagnostics.push_back(diag);
     }
     template<size_t size>
-    void analysis_raise_L0007_type_error(sqf::parser::sqf::impl_default::astnode& node, std::array<::sqf::runtime::type, size> expected, std::optional <::sqf::runtime::type> got)
+    void analysis_raise_L0007_type_error(sqf::parser::sqf::bison::astnode& node, std::array<::sqf::runtime::type, size> expected, std::optional <::sqf::runtime::type> got)
     {
         std::stringstream sstream;
         sstream << "Type Missmatch ";
@@ -245,10 +246,10 @@ private:
         }
         lsp::data::diagnostics diag;
         diag.code = "L-0006";
-        diag.range.start.line = node.line - 1;
-        diag.range.start.character = node.column;
-        diag.range.end.line = node.line - 1;
-        diag.range.end.character = node.column;
+        diag.range.start.line = node.token.line - 1;
+        diag.range.start.character = node.token.column;
+        diag.range.end.line = node.token.line - 1;
+        diag.range.end.character = node.token.column;
         diag.message = sstream.str();
         diag.severity = lsp::data::diagnostic_severity::Error;
         diag.source = "SQF-VM LS";
@@ -264,9 +265,10 @@ private:
     // @param private_check:    Wether the variable should be treated as private declaration
     void analysis_ensure_L0001_L0003(
         sqf_language_server& language_server, std::vector<variable_declaration::sptr>& known,
-        size_t level, sqf::parser::sqf::impl_default::astnode& node, const std::string& orig, bool private_check, variable_declaration::sptr* out_var_decl);
-    void analysis_params(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known);
-    void recalculate_analysis_helper(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::impl_default::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known, analysis_info parent_type, const std::vector<variable_declaration::sptr>& actual_globals);
+        size_t level, sqf::parser::sqf::bison::astnode& node, const std::string& orig, bool private_check, variable_declaration::sptr* out_var_decl);
+    void analysis_params(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::bison::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known);
+    void recalculate_analysis_helper(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::bison::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known, analysis_info parent_type, const std::vector<variable_declaration::sptr>& actual_globals);
+    void recalculate_analysis_helper_ident(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm, sqf::parser::sqf::bison::astnode& current, size_t level, std::vector<variable_declaration::sptr>& known, analysis_info parent_type, const std::vector<variable_declaration::sptr>& actual_globals);
     void recalculate_analysis(sqf_language_server& language_server, sqf::runtime::runtime& sqfvm);
 public:
     lsp::data::publish_diagnostics_params diagnostics;

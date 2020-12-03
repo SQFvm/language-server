@@ -1,7 +1,7 @@
 #pragma once
 #include "lspserver.h"
 
-#include <parser/sqf/default.h>
+#include <parser/sqf/sqf_parser.hpp>
 
 #include <string>
 #include <vector>
@@ -39,9 +39,9 @@ struct variable_declaration
     // The uri of the owning file. Will be empty for private variables.
     std::string owner;
 
-    variable_declaration(size_t layer, sqf::parser::sqf::impl_default::astnode node, std::string variable) :
+    variable_declaration(size_t layer, size_t line, size_t column, std::string variable) :
         level(layer),
-        position({ node.line, node.column }),
+        position({ line, column }),
         variable(variable),
         usages() { }
 };
