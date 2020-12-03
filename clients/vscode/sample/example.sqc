@@ -1,4 +1,7 @@
 // Assign local values
+/* test */
+$"test {{{ 1 + 1 }}}";
+
 let a be 1;
 let b = 2;
 private c be 3;
@@ -35,3 +38,8 @@ private arr = [1,2,3];
 
 // select all elements > 2
 arr.select(function(it: "_x") { return _x > 2; });
+
+for i from 0 to 100
+{
+    diag_log("test");
+}

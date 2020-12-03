@@ -2,6 +2,7 @@
 #include "/pboprefix/sample/include.h"
 #define TEST
 #define CFUNC(ARG) ARG
+testvalue = "";
 
 systemChat CONCAT(test,value);
 
@@ -50,7 +51,7 @@ if (_newState isEqualTo "exit") exitWith
      
     };
     [_state] call CFUNC(macroFunction);
-};
+}; 
 
 // Local function declaration
 private _fnc_something = {
