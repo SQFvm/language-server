@@ -1,3 +1,12 @@
+for (it : arr)
+{
+    diag_log(it);
+    for (it2 : it)
+    {
+        diag_log(it, it2);
+    }
+}
+
 // Assign local values
 /* test */
 $"test {{{ 1 + 1 }}}";

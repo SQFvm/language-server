@@ -50,14 +50,20 @@ list(APPEND sqfvm_language_server_src "${CMAKE_CURRENT_BINARY_DIR}/git_sha1.cpp"
 
 
 find_package(Threads)
+find_package (SQLite3)
+
+
 option(SQFVM_LANGUAGE_SERVER_BUILD_EXECUTABLE "BUILD EXECUTABLE" ON)
 
 
 if (SQFVM_LANGUAGE_SERVER_BUILD_EXECUTABLE)
     add_executable(sqfvm_language_server ${sqfvm_language_server_src})
+	include_directories(sqfvm_language_server ${SQLite3_INCLUDE_DIRS})
+    include_directories(sqfvm_language_server PUBLIC ${PROJECT_SOURCE_DIR}/src)
+	
     target_link_libraries(sqfvm_language_server PRIVATE slibsqfvm_sqc)
     target_link_libraries(sqfvm_language_server ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${ST_CXXFS_LIBS})
-    target_include_directories(sqfvm_language_server PUBLIC ${PROJECT_SOURCE_DIR}/src)
+	target_link_libraries (sqfvm_language_server ${OUT_TARGET} ${SQLite3_LIBRARIES})
     
     target_compile_options(sqfvm_language_server PRIVATE
      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
