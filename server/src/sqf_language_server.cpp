@@ -6,7 +6,7 @@
 #include <operators/ops.h>
 #include <runtime/util.h>
 
-#include <parser/config/default.h>
+#include <parser/config/config_parser.hpp>
 #include <parser/sqf/sqf_parser.hpp>
 #include <parser/preprocessor/default.h>
 #include <fileio/default.h>
@@ -92,7 +92,7 @@ void sqf_language_server::after_initialize(const lsp::data::initialize_params& p
 {
     // Prepare sqfvm
     sqfvm.fileio(std::make_unique<sqf::fileio::impl_default>(logger));
-    sqfvm.parser_config(std::make_unique<sqf::parser::config::impl_default>(logger));
+    sqfvm.parser_config(std::make_unique<sqf::parser::config::parser>(logger));
     sqfvm.parser_preprocessor(std::make_unique<sqf::parser::preprocessor::impl_default>(logger));
     sqfvm.parser_sqf(std::make_unique<sqf::parser::sqf::parser>(logger));
     sqf::operators::ops(sqfvm);
