@@ -241,11 +241,11 @@ namespace sqlite
     public:
         prepared(const prepared&) = delete;
         prepared& operator=(const prepared&) = delete;
-        prepared(prepared&& p) : m_statement(p.m_statement), m_bindable(p.m_bindable), m_done(p.m_done)
+        prepared(prepared&& p) noexcept : m_statement(p.m_statement), m_bindable(p.m_bindable), m_done(p.m_done)
         {
             p.m_statement = nullptr;
         }
-        prepared& operator=(prepared&& p)
+        prepared& operator=(prepared&& p) noexcept
         {
             m_statement = m_statement;
             m_bindable = m_bindable;
@@ -279,8 +279,8 @@ namespace sqlite
     public:
         database(const database&) = delete;
         database& operator=(const database&) = delete;
-        database(database&& d) : m_db(d.m_db), m_good(d.m_good), m_path(d.m_path) { d.m_db = nullptr; }
-        database& operator=(database&& d)
+        database(database&& d) noexcept : m_db(d.m_db), m_good(d.m_good), m_path(d.m_path) { d.m_db = nullptr; }
+        database& operator=(database&& d) noexcept
         {
             m_good = m_good;
             m_db = m_db;
