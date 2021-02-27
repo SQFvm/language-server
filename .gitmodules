@@ -1,9 +1,6 @@
-[submodule "json"]
-	path = server/extern/json
-	url = https://github.com/nlohmann/json.git
 [submodule "vm"]
 	path = server/extern/vm
 	url = https://github.com/SQFvm/vm.git
-[submodule "server/extern/sqlite"]
-	path = server/extern/sqlite
-	url = https://github.com/sqlite/sqlite.git
+[submodule "server/extern/json"]
+	path = server/extern/json
+	url = https://github.com/nlohmann/json.git
