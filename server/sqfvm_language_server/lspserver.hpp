@@ -1,6 +1,6 @@
 #pragma once
-#include "jsonrpc.h"
-#include "uri.h"
+#include "jsonrpc.hpp"
+#include "uri.hpp"
 
 #include <optional>
 #include <string>
