@@ -1,5 +1,5 @@
 [submodule "vm"]
-	path = server/extern/vm
+	path = server/extern/runtime
 	url = https://github.com/SQFvm/vm.git
 [submodule "server/extern/json"]
 	path = server/extern/json

@@ -1,6 +1,8 @@
-# Build Requirements
-## Windows
-1. Install (https://github.com/microsoft/vcpkg)[https://github.com/microsoft/vcpkg]
-2. Execute `vcpkg install nlohmann-json` in PowerShell
-3. Execute `vcpkg install sqlite3` in PowerShell
-4. 
+# Build Setup (Setp-By-Step)
+1. Run `git clone https://github.com/SQFvm/language-server.git --recursive`
+2. Only if your IDE of choice is not supporting CMake projects.
+2.1 Download and install (`cmake`)[https://cmake.org/]
+2.2 Open a shell in here
+2.3 Execute `cmake ./CMakeLists.txt` (optionally provide your IDE informations)
+3. Take a step back and glance at your archivements for a moment
+4. Start developing

@@ -1,8 +1,9 @@
 ﻿// sqf-vm-language-server.cpp : Defines the entry point for the application.
 //
 
-#include "sqf-vm-language-server.h"
+#include "main.hpp"
 #include "sqlite.hpp"
+#include "lspsqf.hpp"
 #include <iostream>
 
 using namespace std;
@@ -10,6 +11,9 @@ using namespace std;
 
 int main()
 {
+    sqfvm::lsp::lssqf lssqf;
+
+
     sqlite::database db;
     db.open("my.db");
 
@@ -17,9 +21,9 @@ int main()
     {
         std::cout << "SQLite3 DB opened" << std::endl;
         auto [stmnt_, result] = db.create_statement("CREATE TABLE IF NOT EXISTS system__ ("
-                                         "    id INTEGER PRIMARY KEY,"
-                                         "    version INTEGER NOT NULL"
-                                         "); ");
+                                                    "    id INTEGER PRIMARY KEY,"
+                                                    "    version INTEGER NOT NULL"
+                                                    "); ");
         if (stmnt_.has_value())
         {
             auto result = stmnt_->next();
