@@ -30,7 +30,7 @@ namespace sqfvm::lsp::repositories
             if ((res = result_2) != sqlite::result::OK) { return { filepath, 0, {} }; }
             auto [state, result_3] = stmnt_->get_int(1);
             if ((res = result_3) != sqlite::result::OK) { return { filepath, 0, {} }; }
-            return { filepath, timestamp, static_cast<estate>(state) };
+            return { filepath, static_cast<uint64_t>(timestamp), static_cast<estate>(state) };
         }
         static sqlite::result set(sqlite::database& db, const file& f)
         {
@@ -93,10 +93,10 @@ namespace sqfvm::lsp::repositories
                 { 
                     return res;
                 }
-                std::filesystem::path filepath(value_0);
+                std::filesystem::path filepath(value_0.value());
                 uint64_t timestamp(value_1);
-                estate state(value_2);
-                ref_files.push_back({ filepaht, timestamp, state });
+                estate state(static_cast<estate>(value_2));
+                ref_files.push_back({ filepath, timestamp, state });
             }
             return res;
         }
@@ -119,14 +119,14 @@ namespace sqfvm::lsp::repositories
                 {
                     return res;
                 }
-                std::filesystem::path filepath(value_0);
+                std::filesystem::path filepath(value_0.value());
                 uint64_t timestamp(value_1);
-                estate state(value_2);
-                ref_files.push_back({ filepaht, timestamp, state });
+                estate state(static_cast<estate>(value_2));
+                ref_files.push_back({ filepath, timestamp, state });
             }
             return res;
         }
-        std::fileystem::path filepath;
+        std::filesystem::path filepath;
         uint64_t timestamp;
         estate state;
     };

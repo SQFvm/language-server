@@ -1,6 +1,7 @@
 ﻿#include "main.hpp"
 #include "sqlite.hpp"
 #include "lspsqf.hpp"
+#include "parser/sqf/astnode.hpp"
 #include <iostream>
 
 using namespace std;
@@ -14,7 +15,7 @@ int main()
     sqfvm::lsp::lssqf lssqf;
     lssqf.listen();
 
-
+    
     //sqlite::database db;
     //db.open("my.db");
 

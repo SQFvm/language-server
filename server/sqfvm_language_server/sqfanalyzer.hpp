@@ -1,20 +1,34 @@
 #pragma once
 #include "analyzer.hpp"
 #include <string>
-#include <algorithm>s
+#include <algorithm>
+#include <filesystem>
+#include "parser/sqf/tokenizer.hpp"
+#include "parser/sqf/astnode.hpp"
 
 namespace sqfvm::lsp
 {
+    class sqfanalyzer;
+    struct sqfvisitor
+    {
+        virtual ~sqfvisitor() { }
+        virtual void enter(sqfanalyzer& a, const sqf::parser::sqf::bison::astnode& node) = 0;
+        virtual void exit(sqfanalyzer& a, const sqf::parser::sqf::bison::astnode& node) = 0;
+    };
     class sqfanalyzer : public analyzer
     {
+        std::vector<sqfvisitor*> m_visitors;
+
+        void recurse(const sqf::parser::sqf::bison::astnode& parent);
     public:
-        virtual ~sqfanalyzer() { }
-        virtual bool handles(std::filesystem::path path) const override
+        sqfanalyzer();
+        virtual ~sqfanalyzer()
         {
-            auto str = path.extension().string();
-            std::transform(str.begin(), str.end(), str.begin(), [](char c) -> char { return (char)std::tolower(c); });
-            return str == ".sqf";
+            for (auto v : m_visitors)
+            {
+                delete v;
+            }
         }
-        virtual analyze_result analyze(std::string_view document) const override;
+        virtual void analyze(sqf::runtime::runtime& runtime, std::string& document, std::filesystem::path fpath) override;
     };
 }

@@ -4,6 +4,8 @@
 #include "git_sha1.h"
 #include "analyzer.hpp"
 
+#include "runtime/runtime.h"
+
 #include <filesystem>
 #include <vector>
 #include <memory>
@@ -16,7 +18,9 @@ namespace sqfvm::lsp
         ::lsp::data::initialize_params m_client_params;
         std::filesystem::path m_folder;
         std::filesystem::path m_db_path;
-        std::vector<std::shared_ptr<analyzer>> m_analyzers;
+        analyzer_factory m_analyzer_factory;
+        StdOutLogger m_logger;
+        sqf::runtime::runtime m_runtime;
     protected:
         virtual ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params& params) override
         {
