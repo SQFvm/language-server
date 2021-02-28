@@ -1,5 +1,4 @@
 #pragma once
-
 #include <filesystem>
 #include <optional>
 #include <utility>
@@ -266,9 +265,9 @@ namespace sqlite
         size_t columns() const;
         type type(int index) const;
         std::pair<std::optional<std::vector<char>>, result> get_blob(int index);
-        std::pair<std::optional<double>, result> get_double(int index);
-        std::pair<std::optional<int32_t>, result> get_int(int index);
-        std::pair<std::optional<int64_t>, result> get_int64(int index);
+        std::pair<double, result> get_double(int index);
+        std::pair<int32_t, result> get_int(int index);
+        std::pair<int64_t, result> get_int64(int index);
         std::pair<std::optional<std::string>, result> get_text(int index);
     };
     class database
@@ -293,7 +292,8 @@ namespace sqlite
         result open(std::filesystem::path path);
         result close();
         bool good() const { return m_good; }
-        std::pair<std::optional<sqlite::prepared>, result> create_statement(std::string_view view);
+        std::pair<std::optional<sqlite::prepared>, result> create_statement(std::string_view sql);
+        result execute(std::string_view sql);
         std::string_view last_error() const;
     };
 }

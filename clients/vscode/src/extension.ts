@@ -13,7 +13,7 @@ import * as AlignEquals from "./commands/align_equals";
 
 // Defines the search path of your language server DLL. (.NET Core)
 const languageServerPaths = [
-    "../../server/Debug/sqfvm_language_server.exe",
+    "../../server/out/build/x64-Debug (default)/sqfvm_language_server/sqfvm_language_server.exe",
     "./sqfvm_language_server.exe"
 ]
 

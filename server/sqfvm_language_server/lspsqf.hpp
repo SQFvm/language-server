@@ -2,7 +2,11 @@
 #include "lspserver.hpp"
 #include "sqlite.hpp"
 #include "git_sha1.h"
+#include "analyzer.hpp"
 
+#include <filesystem>
+#include <vector>
+#include <memory>
 
 namespace sqfvm::lsp
 {
@@ -10,6 +14,9 @@ namespace sqfvm::lsp
     {
         sqlite::database m_db;
         ::lsp::data::initialize_params m_client_params;
+        std::filesystem::path m_folder;
+        std::filesystem::path m_db_path;
+        std::vector<std::shared_ptr<analyzer>> m_analyzers;
     protected:
         virtual ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params& params) override
         {
@@ -41,6 +48,6 @@ namespace sqfvm::lsp
         virtual std::optional<std::vector<::lsp::data::folding_range>> on_textDocument_foldingRange(const ::lsp::data::folding_range_params& params) override;
         virtual std::optional<::lsp::data::completion_list> on_textDocument_completion(const ::lsp::data::completion_params& params);
     public:
-        lssqf() { }
+        lssqf();
     };
 }

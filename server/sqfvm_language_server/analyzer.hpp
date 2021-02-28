@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 #include <string_view>
+#include <filesystem>
+#include "uri.hpp"
 
 namespace sqfvm::lsp
 {
@@ -21,6 +23,7 @@ namespace sqfvm::lsp
         size_t line;
         size_t column;
         size_t length;
+        size_t offset;
     };
     struct argument
     {
@@ -38,16 +41,24 @@ namespace sqfvm::lsp
         variable_scope scope;
         std::vector<argument> args;
     };
+    struct strmtch
+    {
+        std::string name;
+        position pos;
+    };
     struct analyze_result
     {
         std::vector<argument> args;
-        std::vector<std::string> variables_used;
-        std::vector<std::string> variables_set;
-        std::vector<method> methods;
+        std::vector<strmtch> methods_used;
+        std::vector<method> methods_set;
+        std::vector<strmtch> variables_used;
+        std::vector<strmtch> variables_set;
     };
     class analyzer
     {
     public:
-        virtual void analyze(std::string_view document) const = 0;
+        virtual ~analyzer() { }
+        virtual bool handles(std::filesystem::path uri) const = 0;
+        virtual analyze_result analyze(std::string_view document) const = 0;
     };
 }

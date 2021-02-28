@@ -39,11 +39,11 @@ sqlite::result sqlite::database::close()
     return res;
 }
 
-std::pair<std::optional<sqlite::prepared>, sqlite::result> sqlite::database::create_statement(std::string_view view)
+std::pair<std::optional<sqlite::prepared>, sqlite::result> sqlite::database::create_statement(std::string_view sql)
 {
     const char* pzTail;
     sqlite3_stmt* statement;
-    result res = static_cast<result>(sqlite3_prepare_v2(DB, view.data(), view.length(), &statement, &pzTail));
+    result res = static_cast<result>(sqlite3_prepare_v2(DB, sql.data(), sql.length(), &statement, &pzTail));
     if (res == result::OK)
     {
         return std::make_pair(std::optional<sqlite::prepared>({ statement }), res);
@@ -52,6 +52,12 @@ std::pair<std::optional<sqlite::prepared>, sqlite::result> sqlite::database::cre
     {
         return std::make_pair(std::optional<sqlite::prepared>(), res);
     }
+}
+sqlite::result sqlite::database::execute(std::string_view sql)
+{
+    auto [stmnt_, result] = create_statement(sql);
+    if (result != sqlite::result::OK) { return result; }
+    return stmnt_->next();
 }
 std::string_view sqlite::database::last_error() const
 {
@@ -179,29 +185,29 @@ std::pair<std::optional<std::vector<char>>, sqlite::result> sqlite::prepared::ge
         return std::make_pair(std::optional<std::vector<char>>(vec), result::OK);
     }
 }
-std::pair<std::optional<double>, sqlite::result> sqlite::prepared::get_double(int index)
+std::pair<double, sqlite::result> sqlite::prepared::get_double(int index)
 {
-    if (!m_statement) { return std::make_pair(std::optional<double>(), result::MISUSE); }
-    if (m_bindable) { return std::make_pair(std::optional<double>(), result::MISUSE); }
-    if (m_done) { return std::make_pair(std::optional<double>(), result::MISUSE); }
+    if (!m_statement) { return std::make_pair(double(0), result::MISUSE); }
+    if (m_bindable) { return std::make_pair(double(0), result::MISUSE); }
+    if (m_done) { return std::make_pair(double(0), result::MISUSE); }
     auto value = sqlite3_column_double(STMNT, index);
-    return std::make_pair(std::optional<double>(value), result::OK);
+    return std::make_pair(value, result::OK);
 }
-std::pair<std::optional<int32_t>, sqlite::result> sqlite::prepared::get_int(int index)
+std::pair<int32_t, sqlite::result> sqlite::prepared::get_int(int index)
 {
-    if (!m_statement) { return std::make_pair(std::optional<int32_t>(), result::MISUSE); }
-    if (m_bindable) { return std::make_pair(std::optional<int32_t>(), result::MISUSE); }
-    if (m_done) { return std::make_pair(std::optional<int32_t>(), result::MISUSE); }
+    if (!m_statement) { return std::make_pair(int32_t(0), result::MISUSE); }
+    if (m_bindable) { return std::make_pair(int32_t(0), result::MISUSE); }
+    if (m_done) { return std::make_pair(int32_t(0), result::MISUSE); }
     auto value = sqlite3_column_int(STMNT, index);
-    return std::make_pair(std::optional<int32_t>(value), result::OK);
+    return std::make_pair(value, result::OK);
 }
-std::pair<std::optional<int64_t>, sqlite::result> sqlite::prepared::get_int64(int index)
+std::pair<int64_t, sqlite::result> sqlite::prepared::get_int64(int index)
 {
-    if (!m_statement) { return std::make_pair(std::optional<int64_t>(), result::MISUSE); }
-    if (m_bindable) { return std::make_pair(std::optional<int64_t>(), result::MISUSE); }
-    if (m_done) { return std::make_pair(std::optional<int64_t>(), result::MISUSE); }
+    if (!m_statement) { return std::make_pair(int64_t(0), result::MISUSE); }
+    if (m_bindable) { return std::make_pair(int64_t(0), result::MISUSE); }
+    if (m_done) { return std::make_pair(int64_t(0), result::MISUSE); }
     auto value = sqlite3_column_int64(STMNT, index);
-    return std::make_pair(std::optional<int64_t>(value), result::OK);
+    return std::make_pair(value, result::OK);
 }
 std::pair<std::optional<std::string>, sqlite::result> sqlite::prepared::get_text(int index)
 {

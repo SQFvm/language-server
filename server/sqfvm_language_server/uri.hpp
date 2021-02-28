@@ -26,7 +26,7 @@ namespace x39
         size_t m_query_length;
         size_t m_fragment_start;
         size_t m_fragment_length;
-    protected:
+    public:
         uri() :
             m_data(),
             m_schema_start(0),
@@ -47,7 +47,6 @@ namespace x39
             m_fragment_length(0)
         {
         }
-    public:
         uri(const char* input) : uri(std::string_view(input)) { }
         uri(const std::string& input) : uri(std::string_view(input)) { }
         uri(std::string_view input) : uri()

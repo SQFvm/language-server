@@ -1,16 +1,9 @@
 ﻿# CMakeList.txt : Top-level CMake project file, do global configuration
 # and include sub-projects here.
 #
+project ("sqfvm_language_server")
 cmake_minimum_required (VERSION 3.8)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_MACOSX_RPATH 1)
-
-project ("sqfvm_language_server")
-
-# Include sub-projects.
-add_subdirectory ("sqfvm_language_server")
-
 
 
 # Add SQF-VM
@@ -23,3 +16,6 @@ option(SQFVM_BUILD_STATIC_LIBRARY_SQC_SUPPORT "BUILD STATIC LIBRARY WITH SQC SUP
 option(SQFVM_BUILD_EXECUTABLE_SQC_SUPPORT "BUILD EXECUTABLE WITH SQC SUPPORT" OFF)
 option(SQFVM_BUILD_EXECUTABLE_FULL_DIAGNOSE "BUILD DIAGNOSE EXECUTABLE" OFF)
 add_subdirectory("${PROJECT_SOURCE_DIR}/extern/runtime")
+
+# Include sub-projects.
+add_subdirectory ("sqfvm_language_server")

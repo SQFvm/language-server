@@ -3801,7 +3801,7 @@ namespace lsp
                 folder is open. If both `rootPath` and `rootUri` are set
                 `rootUri` wins.
             */
-            std::optional<std::string> rootUri;
+            std::optional<uri> rootUri;
             /*
                 User provided initialization options.
             */
