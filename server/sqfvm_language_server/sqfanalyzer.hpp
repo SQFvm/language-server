@@ -12,12 +12,15 @@ namespace sqfvm::lsp
     struct sqfvisitor
     {
         virtual ~sqfvisitor() { }
-        virtual void enter(sqfanalyzer& a, const sqf::parser::sqf::bison::astnode& node) = 0;
-        virtual void exit(sqfanalyzer& a, const sqf::parser::sqf::bison::astnode& node) = 0;
+        virtual void start(sqfanalyzer& a) = 0;
+        virtual void enter(sqfanalyzer& a, const sqf::parser::sqf::bison::astnode& node, const std::vector<const ::sqf::parser::sqf::bison::astnode&>& astkinds) = 0;
+        virtual void exit(sqfanalyzer& a, const sqf::parser::sqf::bison::astnode& node, const std::vector<const ::sqf::parser::sqf::bison::astnode&>& astkinds) = 0;
+        virtual void end(sqfanalyzer& a) = 0;
     };
     class sqfanalyzer : public analyzer
     {
         std::vector<sqfvisitor*> m_visitors;
+        std::vector<const ::sqf::parser::sqf::bison::astnode&> m_astkinds;
 
         void recurse(const sqf::parser::sqf::bison::astnode& parent);
     public:

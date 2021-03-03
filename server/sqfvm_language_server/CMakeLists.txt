@@ -9,7 +9,7 @@ add_executable(sqfvm_language_server "main.cpp" "main.hpp" "jsonrpc.hpp" "lspser
                                      "sqfanalyzer.hpp" "analyzer.hpp" "git_sha1.h"
                                      "sqfanalyzer.cpp" "lspsqf.cpp" "migration/v0.cpp"
                                      "migration/migrator.hpp" "migration/v1.cpp" "dbutil.hpp"
-                                     "repositories/t_files.hpp" "visitors/sqf/get_variables_visitor.hpp")
+                                     "repositories/t_files.hpp" "visitors/sqf/variables_visitor.hpp")
 
 # Set C++ Version
 target_compile_features(sqfvm_language_server PUBLIC cxx_std_17)

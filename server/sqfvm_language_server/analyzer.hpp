@@ -45,11 +45,13 @@ namespace sqfvm::lsp
         std::string description;
         variable_type type;
         position position;
-        variable_scope scope;
+        variable_scope varscope;
+        std::string scope;
         std::vector<argument> args;
     };
     struct strmtch
     {
+        std::string scope;
         std::string name;
         position pos;
     };
