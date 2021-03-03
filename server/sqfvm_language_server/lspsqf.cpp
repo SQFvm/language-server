@@ -87,7 +87,14 @@ void sqfvm::lsp::lssqf::after_initialize(const::lsp::data::initialize_params& pa
             auto document_ = sqf::fileio::disabled::read_file_from_disk(f.filepath.string());
             if (document_.has_value())  
             {
+                // Drop File (to also remove all references via cascade)
+                file::drop(m_db, f);
+                
+                // Analyze actual file
                 analyzer.value()->analyze(m_runtime, *document_, f.filepath);
+
+                // Push analytics results IF available
+                file::set(m_db, f);
             }
             else
             {

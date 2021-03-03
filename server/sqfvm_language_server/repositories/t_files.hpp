@@ -75,6 +75,16 @@ namespace sqfvm::lsp::repositories
             if ((res = stmnt_->bind_int(0, static_cast<int>(state))) != sqlite::result::OK) { return res; }
             return stmnt_->next();
         }
+        static sqlite::result drop(sqlite::database& db, const file& f)
+        {
+            sqlite::result res;
+            auto [stmnt_, result_] = db.create_statement(
+                "DELETE FROM tFiles WHERE filepath = ?"
+            );
+            if ((res = result_) != sqlite::result::OK) { return res; }
+            if ((res = stmnt_->bind_text(0, f.filepath.string())) != sqlite::result::OK) { return res; }
+            return stmnt_->next();
+        }
         static sqlite::result all(sqlite::database& db, std::vector<file>& ref_files)
         {
             sqlite::result res;
