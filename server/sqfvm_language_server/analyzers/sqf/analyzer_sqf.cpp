@@ -1,5 +1,5 @@
 #include "analyzer_sqf.hpp"
-#include "../../repositories/t_files.hpp"
+#include "../../database/repositories/t_files.hpp"
 #include "visitors/sqf/variables_visitor.hpp"
 
 #include "parser/sqf/sqf_parser.hpp"

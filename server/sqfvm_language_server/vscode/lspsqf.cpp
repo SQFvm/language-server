@@ -26,36 +26,8 @@ void sqfvm::lsp::lssqf::after_initialize(const ::lsp::data::initialize_params &p
     m_db_path = m_folder / "sqlite3.db";
 
     // Handle SQLite3 database
-    sqlite::result dbresult;
-    if ((dbresult = m_db.open(m_db_path)) != sqlite::result::OK)
+    if (!open_db_connection())
     {
-        std::stringstream sstream;
-        sstream
-                << "Fatal error encountered while opening SQLite3 database file at '"
-                << m_db_path
-                << "': "
-                << "[0x"
-                << std::hex
-                << static_cast<int>(dbresult)
-                << "] "
-                << m_db.last_error();
-        window_logMessage(::lsp::data::message_type::Error, sstream.str());
-        kill();
-        return;
-    }
-    dbresult = sqfvm::lsp::migrator::migrate(m_db);
-    if (dbresult != sqlite::result::OK)
-    {
-        std::stringstream sstream;
-        sstream
-                << "Fatal error encountered while migrating to the latest SQL schema: "
-                << "[0x"
-                << std::hex
-                << static_cast<int>(dbresult)
-                << "] "
-                << m_db.last_error();
-        window_logMessage(::lsp::data::message_type::Error, sstream.str());
-        kill();
         return;
     }
 
@@ -130,6 +102,43 @@ void sqfvm::lsp::lssqf::after_initialize(const ::lsp::data::initialize_params &p
     // ToDo: Handle sending things to lsp client
 }
 
+bool sqfvm::lsp::lssqf::open_db_connection()
+{
+    sqlite::result dbresult;
+    if ((dbresult = m_db.open(m_db_path)) != sqlite::result::OK)
+    {
+        std::stringstream sstream;
+        sstream
+                << "Fatal error encountered while opening SQLite3 database file at '"
+                << m_db_path
+                << "': "
+                << "[0x"
+                << std::hex
+                << static_cast<int>(dbresult)
+                << "] "
+                << m_db.last_error();
+        window_logMessage(::lsp::data::message_type::Error, sstream.str());
+        kill();
+        return false;
+    }
+    dbresult = migrator::migrate(m_db);
+    if (dbresult != sqlite::result::OK)
+    {
+        std::stringstream sstream;
+        sstream
+                << "Fatal error encountered while migrating to the latest SQL schema: "
+                << "[0x"
+                << std::hex
+                << static_cast<int>(dbresult)
+                << "] "
+                << m_db.last_error();
+        window_logMessage(::lsp::data::message_type::Error, sstream.str());
+        kill();
+        return false;
+    }
+    return true;
+}
+
 void sqfvm::lsp::lssqf::on_workspace_didChangeConfiguration(const ::lsp::data::did_change_configuration_params &params)
 {
 }
@@ -141,13 +150,13 @@ void sqfvm::lsp::lssqf::on_textDocument_didChange(const ::lsp::data::did_change_
 std::optional<std::vector<::lsp::data::folding_range>>
 sqfvm::lsp::lssqf::on_textDocument_foldingRange(const ::lsp::data::folding_range_params &params)
 {
-    return {};
+    return { };
 }
 
 std::optional<::lsp::data::completion_list>
 sqfvm::lsp::lssqf::on_textDocument_completion(const ::lsp::data::completion_params &params)
 {
-    return {};
+    return { };
 }
 
 sqfvm::lsp::lssqf::lssqf() : m_logger(), m_runtime(m_logger, { })

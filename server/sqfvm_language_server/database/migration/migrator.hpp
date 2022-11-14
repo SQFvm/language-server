@@ -11,7 +11,7 @@ namespace sqfvm::lsp
         static std::pair<int, sqlite::result> get_version(sqlite::database& db)
         {
             auto [stmnt_, res1] = db.create_statement(
-                "SELECT value FROM system__ ORDER BY Id DESC LIMIT 1"
+                "SELECT value FROM tMigration ORDER BY Id DESC LIMIT 1"
             );
             if (res1 != sqlite::result::OK) { return std::make_pair(-1, res1); }
             auto res2 = stmnt_->next();

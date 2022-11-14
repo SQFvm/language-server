@@ -53,5 +53,7 @@ namespace sqfvm::lsp
         std::optional<::lsp::data::completion_list> on_textDocument_completion(const ::lsp::data::completion_params& params) override;
     public:
         lssqf();
+
+        bool open_db_connection();
     };
 }
