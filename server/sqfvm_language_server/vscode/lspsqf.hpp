@@ -1,8 +1,8 @@
 #pragma once
 #include "lspserver.hpp"
-#include "sqlite.hpp"
-#include "git_sha1.h"
-#include "analyzer.hpp"
+#include "../database/sqlite.hpp"
+#include "../git_sha1.h"
+#include "../analyzers/analyzer.hpp"
 
 #include "runtime/runtime.h"
 
@@ -22,7 +22,7 @@ namespace sqfvm::lsp
         StdOutLogger m_logger;
         sqf::runtime::runtime m_runtime;
     protected:
-        virtual ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params& params) override
+        ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params& params) override
         {
             m_client_params = params;
             ::lsp::data::initialize_result res;
@@ -42,15 +42,15 @@ namespace sqfvm::lsp
 
             return res;
         }
-        virtual void on_shutdown() override { }
-        virtual void after_initialize(const ::lsp::data::initialize_params& params) override;
-        virtual void on_workspace_didChangeConfiguration(const ::lsp::data::did_change_configuration_params& params) override;
-        virtual void on_textDocument_didChange(const ::lsp::data::did_change_text_document_params& params) override;
+        void on_shutdown() override { }
+        void after_initialize(const ::lsp::data::initialize_params& params) override;
+        void on_workspace_didChangeConfiguration(const ::lsp::data::did_change_configuration_params& params) override;
+        void on_textDocument_didChange(const ::lsp::data::did_change_text_document_params& params) override;
 
 
 
-        virtual std::optional<std::vector<::lsp::data::folding_range>> on_textDocument_foldingRange(const ::lsp::data::folding_range_params& params) override;
-        virtual std::optional<::lsp::data::completion_list> on_textDocument_completion(const ::lsp::data::completion_params& params);
+        std::optional<std::vector<::lsp::data::folding_range>> on_textDocument_foldingRange(const ::lsp::data::folding_range_params& params) override;
+        std::optional<::lsp::data::completion_list> on_textDocument_completion(const ::lsp::data::completion_params& params) override;
     public:
         lssqf();
     };

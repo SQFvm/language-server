@@ -4,12 +4,27 @@
 cmake_minimum_required (VERSION 3.8)
 
 # Add source to this project's executable.
-add_executable(sqfvm_language_server "main.cpp" "main.hpp" "jsonrpc.hpp" "lspserver.hpp"
-                                     "sqlite.hpp" "sqlite.cpp" "lspsqf.hpp" "uri.hpp"
-                                     "sqfanalyzer.hpp" "analyzer.hpp" "git_sha1.h"
-                                     "sqfanalyzer.cpp" "lspsqf.cpp" "migration/v0.cpp"
-                                     "migration/migrator.hpp" "migration/v1.cpp" "dbutil.hpp"
-                                     "repositories/t_files.hpp" "visitors/sqf/variables_visitor.hpp")
+add_executable(sqfvm_language_server
+        "analyzers/analyzer.hpp"
+        "analyzers/sqf/analyzer_sqf.hpp"
+        "analyzers/sqf/analyzer_sqf.cpp"
+        "analyzers/sqf/visitors/sqf/variables_visitor.hpp"
+        "database/migration/v0.cpp"
+        "database/migration/migrator.hpp"
+        "database/migration/v1.cpp"
+        "database/repositories/t_files.hpp"
+        "database/dbutil.hpp"
+        "database/sqlite.hpp"
+        "database/sqlite.cpp"
+        "vscode/jsonrpc.hpp"
+        "vscode/lspserver.hpp"
+        "vscode/lspsqf.hpp"
+        "vscode/lspsqf.cpp"
+        "main.cpp"
+        "main.hpp"
+        "uri.hpp"
+        "git_sha1.h"
+)
 
 # Set C++ Version
 target_compile_features(sqfvm_language_server PUBLIC cxx_std_17)

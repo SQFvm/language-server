@@ -224,7 +224,7 @@ l_user:
                     case user:
                     if (c == ':')
                     {
-                        auto atLocation = input.find("@");
+                        auto atLocation = input.find('@');
                         if (atLocation == std::string::npos)
                         { // no user present, pass to host state
                             state = host;
@@ -515,15 +515,15 @@ case_host:
         }
 
 
-        std::string_view full()     const { return m_data; }
-        std::string_view schema()   const { return std::string_view(m_data.data() + m_schema_start, m_schema_length); }
-        std::string_view user()     const { return std::string_view(m_data.data() + m_user_start, m_user_length); }
-        std::string_view password() const { return std::string_view(m_data.data() + m_password_start, m_password_length); }
-        std::string_view host()     const { return std::string_view(m_data.data() + m_host_start, m_host_length); }
-        std::string_view port()     const { return std::string_view(m_data.data() + m_port_start, m_port_length); }
-        std::string_view path()     const { return std::string_view(m_data.data() + m_path_start, m_path_length); }
-        std::string_view query()    const { return std::string_view(m_data.data() + m_query_start, m_query_length); }
-        std::string_view fragment() const { return std::string_view(m_data.data() + m_fragment_start, m_fragment_length); }
+        [[nodiscard]] std::string_view full()     const { return m_data; }
+        [[nodiscard]] std::string_view schema()   const { return std::string_view(m_data.data() + m_schema_start, m_schema_length); }
+        [[nodiscard]] std::string_view user()     const { return std::string_view(m_data.data() + m_user_start, m_user_length); }
+        [[nodiscard]] std::string_view password() const { return std::string_view(m_data.data() + m_password_start, m_password_length); }
+        [[nodiscard]] std::string_view host()     const { return std::string_view(m_data.data() + m_host_start, m_host_length); }
+        [[nodiscard]] std::string_view port()     const { return std::string_view(m_data.data() + m_port_start, m_port_length); }
+        [[nodiscard]] std::string_view path()     const { return std::string_view(m_data.data() + m_path_start, m_path_length); }
+        [[nodiscard]] std::string_view query()    const { return std::string_view(m_data.data() + m_query_start, m_query_length); }
+        [[nodiscard]] std::string_view fragment() const { return std::string_view(m_data.data() + m_fragment_start, m_fragment_length); }
 
         static std::array<char, 3> escape(char c)
         {

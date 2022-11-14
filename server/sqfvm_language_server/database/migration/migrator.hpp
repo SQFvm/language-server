@@ -28,7 +28,6 @@ namespace sqfvm::lsp
             sqlite::result res;
             if ((res = migrate_v0(db)) != sqlite::result::OK) { return res; }
             auto [v, r] = get_version(db);
-            int v = v;
             if ((res = r) != sqlite::result::OK) { return res; }
 
 

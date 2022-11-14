@@ -1,6 +1,6 @@
 ﻿#include "main.hpp"
-#include "sqlite.hpp"
-#include "lspsqf.hpp"
+#include "database/sqlite.hpp"
+#include "vscode/lspsqf.hpp"
 #include "parser/sqf/astnode.hpp"
 #include <iostream>
 

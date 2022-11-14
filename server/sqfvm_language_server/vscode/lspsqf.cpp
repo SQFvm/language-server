@@ -1,7 +1,7 @@
 #include "lspsqf.hpp"
-#include "migration/migrator.hpp"
-#include "sqfanalyzer.hpp"
-#include "repositories/t_files.hpp"
+#include "../database/migration/migrator.hpp"
+#include "../analyzers/sqf/analyzer_sqf.hpp"
+#include "../database/repositories/t_files.hpp"
 
 #include "fileio/default.h"
 #include "parser/sqf/sqf_parser.hpp"
@@ -18,7 +18,7 @@
 using namespace std::string_view_literals;
 using namespace sqfvm::lsp::repositories;
 
-void sqfvm::lsp::lssqf::after_initialize(const::lsp::data::initialize_params& params)
+void sqfvm::lsp::lssqf::after_initialize(const ::lsp::data::initialize_params &params)
 {
     std::filesystem::path uri(params.rootUri.has_value() ? params.rootUri.value().full() : "./"sv);
     uri = std::filesystem::absolute(uri);
@@ -30,8 +30,15 @@ void sqfvm::lsp::lssqf::after_initialize(const::lsp::data::initialize_params& pa
     if ((dbresult = m_db.open(m_db_path)) != sqlite::result::OK)
     {
         std::stringstream sstream;
-        sstream << "Fatal error encountered while opening SQLite3 database file at '" << m_db_path << "': "
-            << "[0x" << std::hex << static_cast<int>(dbresult) << "] " << m_db.last_error();
+        sstream
+                << "Fatal error encountered while opening SQLite3 database file at '"
+                << m_db_path
+                << "': "
+                << "[0x"
+                << std::hex
+                << static_cast<int>(dbresult)
+                << "] "
+                << m_db.last_error();
         window_logMessage(::lsp::data::message_type::Error, sstream.str());
         kill();
         return;
@@ -40,8 +47,13 @@ void sqfvm::lsp::lssqf::after_initialize(const::lsp::data::initialize_params& pa
     if (dbresult != sqlite::result::OK)
     {
         std::stringstream sstream;
-        sstream << "Fatal error encountered while migrating to the latest SQL schema: "
-            << "[0x" << std::hex << static_cast<int>(dbresult) << "] " << m_db.last_error();
+        sstream
+                << "Fatal error encountered while migrating to the latest SQL schema: "
+                << "[0x"
+                << std::hex
+                << static_cast<int>(dbresult)
+                << "] "
+                << m_db.last_error();
         window_logMessage(::lsp::data::message_type::Error, sstream.str());
         kill();
         return;
@@ -51,20 +63,23 @@ void sqfvm::lsp::lssqf::after_initialize(const::lsp::data::initialize_params& pa
     file::set_all_state(m_db, file::unset);
 
     // Mark all files according to their state
-    for (auto& workspaceFolder : params.workspaceFolders.value())
+    for (auto &workspaceFolder: params.workspaceFolders.value())
     {
         std::filesystem::path workspace_path(workspaceFolder.uri.full());
 
         // Iterate over all files recursive
-        std::filesystem::recursive_directory_iterator iter(workspace_path, std::filesystem::directory_options::skip_permission_denied);
+        std::filesystem::recursive_directory_iterator
+                iter(workspace_path, std::filesystem::directory_options::skip_permission_denied);
         std::filesystem::recursive_directory_iterator iter_end;
         for (; iter != iter_end; iter++)
         {
-            auto& file_path = iter->path();
+            auto &file_path = iter->path();
             if (m_analyzer_factory.has(file_path.extension().string()))
             {
                 auto last_write_time = iter->last_write_time();
-                uint64_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(last_write_time.time_since_epoch()).count();
+                uint64_t
+                        timestamp = std::chrono::duration_cast<std::chrono::seconds>(last_write_time.time_since_epoch())
+                        .count();
                 file f = file::get(m_db, file_path);
                 f.state = f.timestamp == timestamp ? file::estate::same : file::estate::differs;
                 file::set(m_db, f);
@@ -79,17 +94,17 @@ void sqfvm::lsp::lssqf::after_initialize(const::lsp::data::initialize_params& pa
 
     // Handle all differs (changed) files
     file::all(m_db, files, file::differs);
-    for (auto& f : files)
+    for (auto &f: files)
     {
         auto analyzer = m_analyzer_factory.get(f.filepath.extension().string());
         if (analyzer.has_value())
         {
             auto document_ = sqf::fileio::disabled::read_file_from_disk(f.filepath.string());
-            if (document_.has_value())  
+            if (document_.has_value())
             {
                 // Drop File (to also remove all references via cascade)
                 file::drop(m_db, f);
-                
+
                 // Analyze actual file
                 analyzer.value()->analyze(m_runtime, *document_, f.filepath);
 
@@ -115,25 +130,27 @@ void sqfvm::lsp::lssqf::after_initialize(const::lsp::data::initialize_params& pa
     // ToDo: Handle sending things to lsp client
 }
 
-void sqfvm::lsp::lssqf::on_workspace_didChangeConfiguration(const::lsp::data::did_change_configuration_params& params)
+void sqfvm::lsp::lssqf::on_workspace_didChangeConfiguration(const ::lsp::data::did_change_configuration_params &params)
 {
 }
 
-void sqfvm::lsp::lssqf::on_textDocument_didChange(const::lsp::data::did_change_text_document_params& params)
+void sqfvm::lsp::lssqf::on_textDocument_didChange(const ::lsp::data::did_change_text_document_params &params)
 {
 }
 
-std::optional<std::vector<::lsp::data::folding_range>> sqfvm::lsp::lssqf::on_textDocument_foldingRange(const::lsp::data::folding_range_params& params)
+std::optional<std::vector<::lsp::data::folding_range>>
+sqfvm::lsp::lssqf::on_textDocument_foldingRange(const ::lsp::data::folding_range_params &params)
 {
-    return std::optional<std::vector<::lsp::data::folding_range>>();
+    return {};
 }
 
-std::optional<::lsp::data::completion_list> sqfvm::lsp::lssqf::on_textDocument_completion(const::lsp::data::completion_params& params)
+std::optional<::lsp::data::completion_list>
+sqfvm::lsp::lssqf::on_textDocument_completion(const ::lsp::data::completion_params &params)
 {
-    return std::optional<::lsp::data::completion_list>();
+    return {};
 }
 
-sqfvm::lsp::lssqf::lssqf() : m_logger(), m_runtime(m_logger, {})
+sqfvm::lsp::lssqf::lssqf() : m_logger(), m_runtime(m_logger, { })
 {
     // Setup SQF-VM
     m_runtime.fileio(std::make_unique<sqf::fileio::impl_default>(m_logger));
@@ -143,5 +160,9 @@ sqfvm::lsp::lssqf::lssqf() : m_logger(), m_runtime(m_logger, {})
     sqf::operators::ops(m_runtime);
 
     // Setup analyzers
-    m_analyzer_factory.set(".sqf", []() -> std::unique_ptr<analyzer> { return std::make_unique<sqfanalyzer>(); });
+    m_analyzer_factory.set(
+            ".sqf", []() -> std::unique_ptr<analyzer>
+            {
+                return std::make_unique<analyzer_sqf>();
+            });
 }
