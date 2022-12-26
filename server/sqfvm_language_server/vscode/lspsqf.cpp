@@ -1,7 +1,7 @@
 #include "lspsqf.hpp"
 #include "../database/migration/migrator.hpp"
 #include "../analyzers/sqf/analyzer_sqf.hpp"
-#include "../database/repositories/t_files.hpp"
+#include "../database/repositories/t_file.hpp"
 
 #include "fileio/default.h"
 #include "parser/sqf/sqf_parser.hpp"
@@ -53,7 +53,7 @@ void sqfvm::lsp::lssqf::after_initialize(const ::lsp::data::initialize_params &p
                         timestamp = std::chrono::duration_cast<std::chrono::seconds>(last_write_time.time_since_epoch())
                         .count();
                 file f = file::get(m_db, file_path);
-                f.state = f.timestamp == timestamp ? file::estate::same : file::estate::differs;
+                f.state = f.last_changed == timestamp ? file::estate::same : file::estate::differs;
                 file::set(m_db, f);
             }
         }
@@ -68,32 +68,32 @@ void sqfvm::lsp::lssqf::after_initialize(const ::lsp::data::initialize_params &p
     file::all(m_db, files, file::differs);
     for (auto &f: files)
     {
-        auto analyzer = m_analyzer_factory.get(f.filepath.extension().string());
+        auto analyzer = m_analyzer_factory.get(f.path.extension().string());
         if (analyzer.has_value())
         {
-            auto document_ = sqf::fileio::disabled::read_file_from_disk(f.filepath.string());
+            auto document_ = sqf::fileio::disabled::read_file_from_disk(f.path.string());
             if (document_.has_value())
             {
-                // Drop File (to also remove all references via cascade)
+                // Drop File (to remove all references via cascade)
                 file::drop(m_db, f);
 
                 // Analyze actual file
-                analyzer.value()->analyze(m_runtime, *document_, f.filepath);
+                analyzer.value()->analyze(m_runtime, *document_, f);
 
-                // Push analytics results IF available
-                file::set(m_db, f);
+                // Update results via analyzer
+                analyzer.value()->commit(m_db, m_runtime, *document_, f);
             }
             else
             {
                 std::stringstream sstream;
-                sstream << "Could not load file '" << f.filepath << "'. Did not update analytics results.";
+                sstream << "Could not load file '" << f.path << "'. Did not update analytics results.";
                 window_logMessage(::lsp::data::message_type::Warning, sstream.str());
             }
         }
         else
         {
             std::stringstream sstream;
-            sstream << "Cannot find analyzer for '" << f.filepath << "'. Did not update analytics results.";
+            sstream << "Cannot find analyzer for '" << f.path << "'. Did not update analytics results.";
             window_logMessage(::lsp::data::message_type::Warning, sstream.str());
         }
     }

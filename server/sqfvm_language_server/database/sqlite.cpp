@@ -30,6 +30,12 @@ sqlite::result sqlite::database::open(const std::filesystem::path &path)
     return res;
 }
 
+int64_t sqlite::database::last_inserted_row_id() const
+{
+    return (int64_t) sqlite3_last_insert_rowid(DB);
+}
+
+
 sqlite::result sqlite::database::close()
 {
     if (!m_db)

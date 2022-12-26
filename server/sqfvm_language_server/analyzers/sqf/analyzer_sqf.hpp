@@ -6,28 +6,10 @@
 #include <filesystem>
 #include "parser/sqf/tokenizer.hpp"
 #include "parser/sqf/astnode.hpp"
+#include "sqfvisitor.hpp"
 
 namespace sqfvm::lsp
 {
-    class analyzer_sqf;
-
-    struct sqfvisitor
-    {
-        virtual ~sqfvisitor()
-        {
-        }
-
-        virtual void start(analyzer_sqf &a) = 0;
-
-        virtual void enter(analyzer_sqf &a, const sqf::parser::sqf::bison::astnode &node,
-                           const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) = 0;
-
-        virtual void exit(analyzer_sqf &a, const sqf::parser::sqf::bison::astnode &node,
-                          const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) = 0;
-
-        virtual void end(analyzer_sqf &a) = 0;
-    };
-
     class analyzer_sqf :
             public analyzer
     {
@@ -47,6 +29,7 @@ namespace sqfvm::lsp
             }
         }
 
-        void analyze(sqf::runtime::runtime &runtime, std::string &document, std::filesystem::path file_path) override;
+        void analyze(sqf::runtime::runtime &runtime, std::string &document, ::sqfvm::lsp::repositories::file& f) override;
+        void commit(sqlite::database& db, sqf::runtime::runtime &runtime, std::string &document, ::sqfvm::lsp::repositories::file& f) override;
     };
 }

@@ -22,18 +22,20 @@ namespace sqfvm::lsp::visitors::sqf
         {
         }
 
-        void enter(analyzer_sqf &a, const ::sqf::parser::sqf::bison::astnode &node,
-                   const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) override
+
+
+        void enter(
+                analyzer_sqf &a,
+                const ::sqf::parser::sqf::bison::astnode &node,
+                const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes
+                ) override
         {
             switch (node.kind)
             {
                 case ::sqf::parser::sqf::bison::astkind::CODE:
                 {
                     // Check if we are on the right side of an ASSIGNMENT
-                    if (assignment_temp_match.has_value()
-                        && parent_nodes.size() > 2
-                        && (*(parent_nodes.rbegin() + 1))->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT
-                        && &(*(parent_nodes.rbegin() + 1))->children[1] == &node)
+                    if (is_right_side_of_assignment(parent_nodes, node))
                     { // Yes - Change the temp of assignment to method_assigned and put to method_temps for later addition to methods used (with possible args)
                         method m = create_method();
                         method_temps.emplace_back(m);
@@ -64,19 +66,14 @@ namespace sqfvm::lsp::visitors::sqf
                     set_scope_name(match);
                     match.name = node.token.contents;
                     // Check if we are on the left side of an assignment
-                    if (parent_nodes.size() > 2
-                        && (*(parent_nodes.rbegin() + 1))->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT
-                        && &(*(parent_nodes.rbegin() + 1))->children[0] == &node)
+                    if (is_left_side_of_assignment(parent_nodes, node))
                     { // Yes - We set this IDENT so put it into temp for later evaluation in parent or the code following
                         assignment_temp_match = match;
                     }
                     else
                     { // No - We get this IDENT
                         // Check if we are on the right side of a CALL
-                        if (parent_nodes.size() > 2
-                            && (*(parent_nodes.rbegin() + 1))->kind == ::sqf::parser::sqf::bison::astkind::EXP4
-                            && (*(parent_nodes.rbegin() + 1))->token.contents == "call"
-                            && &(*(parent_nodes.rbegin() + 1))->children[1] == &node)
+                        if (is_right_side_of_call(node, parent_nodes))
                         { // Yes - We set this IDENT
                             a.res.methods_used.push_back(match);
                         }
@@ -91,11 +88,39 @@ namespace sqfvm::lsp::visitors::sqf
             }
         }
 
+        [[nodiscard]] static bool is_right_side_of_call(const ::sqf::parser::sqf::bison::astnode &node,
+                                   const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes)
+        {
+            return parent_nodes.size() > 2
+                               && (*(parent_nodes.rbegin() + 1))->kind == ::sqf::parser::sqf::bison::astkind::EXP4
+                               && (*(parent_nodes.rbegin() + 1))->token.contents == "call"
+                               && &(*(parent_nodes.rbegin() + 1))->children[1] == &node;
+        }
+
+        [[nodiscard]] static bool is_left_side_of_assignment(const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes,
+                                        const ::sqf::parser::sqf::bison::astnode &node)
+        {
+            return parent_nodes.size() > 2
+                               && (*(parent_nodes.rbegin() + 1))->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT
+                               && (*(parent_nodes.rbegin() + 1))->children.size() >= 1
+                               && &(*(parent_nodes.rbegin() + 1))->children[0] == &node;
+        }
+
+        [[nodiscard]] bool is_right_side_of_assignment(const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes,
+                                         const ::sqf::parser::sqf::bison::astnode &node) const
+        {
+            return assignment_temp_match.has_value()
+                   && parent_nodes.size() > 2
+                   && (*(parent_nodes.rbegin() + 1))->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT
+                   && (*(parent_nodes.rbegin() + 1))->children.size() >= 2
+                   && &(*(parent_nodes.rbegin() + 1))->children[1] == &node;
+        }
+
         [[nodiscard]] method create_method() const
         {
             method m;
             m.name = assignment_temp_match->name;
-            m.position = assignment_temp_match->pos;
+            m.position = assignment_temp_match->position;
             m.type = variable_type::method;
             bool is_private = m.name.length() > 1 && m.name[0] == '_';
             if (is_private)

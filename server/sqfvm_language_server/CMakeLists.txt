@@ -12,7 +12,7 @@ add_executable(sqfvm_language_server
         "database/migration/v0.cpp"
         "database/migration/migrator.hpp"
         "database/migration/v1.cpp"
-        "database/repositories/t_files.hpp"
+        "database/repositories/t_file.hpp"
         "database/dbutil.hpp"
         "database/sqlite.hpp"
         "database/sqlite.cpp"
@@ -24,7 +24,7 @@ add_executable(sqfvm_language_server
         "main.hpp"
         "uri.hpp"
         "git_sha1.h"
-)
+        database/repositories/t_reference.hpp database/repositories/t_variable.hpp database/repositories/repository_macros.h database/repositories/repositories.hpp)
 
 # Set C++ Version
 target_compile_features(sqfvm_language_server PUBLIC cxx_std_17)

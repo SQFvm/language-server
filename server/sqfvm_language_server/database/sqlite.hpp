@@ -239,6 +239,8 @@ namespace sqlite
         result execute(std::string_view sql);
 
         [[nodiscard]] std::string_view last_error() const;
+
+        int64_t last_inserted_row_id() const;
     };
 }
 

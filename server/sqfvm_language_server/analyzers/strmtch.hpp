@@ -9,6 +9,6 @@ namespace sqfvm::lsp
     {
         std::string scope;
         std::string name;
-        position pos;
+        position position;
     };
 }

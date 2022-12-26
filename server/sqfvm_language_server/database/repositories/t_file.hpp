@@ -14,8 +14,9 @@ namespace sqfvm::lsp::repositories
         {
             unset = 0, same, differs
         };
-        std::filesystem::path filepath;
-        uint64_t timestamp;
+        uint64_t id;
+        std::filesystem::path path;
+        uint64_t last_changed;
         estate state;
 
         static file get(sqlite::database &db, std::filesystem::path filepath)
@@ -60,11 +61,11 @@ namespace sqfvm::lsp::repositories
                 return res;
             }
 
-            if ((res = stmnt_->bind_text(0, f.filepath.string())) != sqlite::result::OK)
+            if ((res = stmnt_->bind_text(0, f.path.string())) != sqlite::result::OK)
             {
                 return res;
             }
-            if ((res = stmnt_->bind_int64(1, f.timestamp)) != sqlite::result::OK)
+            if ((res = stmnt_->bind_int64(1, f.last_changed)) != sqlite::result::OK)
             {
                 return res;
             }
@@ -129,7 +130,7 @@ namespace sqfvm::lsp::repositories
             {
                 return res;
             }
-            if ((res = stmnt_->bind_text(0, f.filepath.string())) != sqlite::result::OK)
+            if ((res = stmnt_->bind_text(0, f.path.string())) != sqlite::result::OK)
             {
                 return res;
             }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../database/repositories/repositories.hpp"
 #include "runtime/runtime.h"
 
 #include <vector>
@@ -26,7 +27,8 @@ namespace sqfvm::lsp
 
         virtual ~analyzer() = default;
 
-        virtual void analyze(sqf::runtime::runtime &runtime, std::string &document, std::filesystem::path fpath) = 0;
+        virtual void analyze(sqf::runtime::runtime &runtime, std::string &document, ::sqfvm::lsp::repositories::file& f) = 0;
+        virtual void commit(sqlite::database& db, sqf::runtime::runtime &runtime, std::string &document, ::sqfvm::lsp::repositories::file& f) = 0;
     };
 
     class analyzer_factory
@@ -34,23 +36,23 @@ namespace sqfvm::lsp
     public:
         using generator_func = std::unique_ptr<analyzer>(*)();
     private:
-        std::unordered_map<std::string, generator_func> generators;
+        std::unordered_map<std::string, generator_func> m_generators;
     public:
         [[nodiscard]] bool has(const std::string &ext) const
         {
-            auto res = generators.find(ext);
-            return res != generators.end();
+            auto res = m_generators.find(ext);
+            return res != m_generators.end();
         }
 
         [[nodiscard]] std::optional<std::unique_ptr<analyzer>> get(const std::string &ext) const
         {
-            auto res = generators.find(ext);
-            return res == generators.end() ? std::optional<std::unique_ptr<analyzer>> { } : res->second();
+            auto res = m_generators.find(ext);
+            return res == m_generators.end() ? std::optional<std::unique_ptr<analyzer>> { } : res->second();
         }
 
         void set(const std::string &ext, generator_func generator)
         {
-            generators[ext] = generator;
+            m_generators[ext] = generator;
         }
     };
 }
