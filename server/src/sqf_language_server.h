@@ -54,7 +54,7 @@ public:
 
     void scan_documents_recursive_at(std::string directory);
 
-    std::unordered_map<std::string, text_document> text_documents;
+    std::unordered_map<std::string, std::shared_ptr<text_document>> text_documents;
     lsp::data::initialize_params client;
     language_server_logger logger;
     sqf::runtime::runtime sqfvm;
@@ -63,7 +63,7 @@ public:
 
     bool sqc_support() const { return m_sqc_support; }
 
-    text_document& get_or_create(lsp::data::uri uri);
+    std::shared_ptr<text_document> get_or_create(lsp::data::uri uri);
 
     std::vector<variable_declaration::sptr> global_declarations()
     {

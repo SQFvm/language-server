@@ -24,14 +24,7 @@ set(RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/output)
 include_directories("${PROJECT_SOURCE_DIR}/extern/json/include")
 
 
-option(SQFVM_BUILD_EXECUTABLE "BUILD EXECUTABLE" OFF)
-option(SQFVM_BUILD_EXECUTABLE_ARMA2_LOCALKEYWORD "BUILD ARMA2 EXECUTABLE" OFF)
-option(SQFVM_BUILD_LIBRARY "BUILD LIBRARY" OFF)
-option(SQFVM_BUILD_LIBRARY_SQC_SUPPORT "BUILD LIBRARY WITH SQC SUPPORT" OFF)
-option(SQFVM_BUILD_STATIC_LIBRARY "BUILD STATIC LIBRARY" OFF)
-option(SQFVM_BUILD_STATIC_LIBRARY_SQC_SUPPORT "BUILD STATIC LIBRARY WITH SQC SUPPORT" ON)
-option(SQFVM_BUILD_EXECUTABLE_SQC_SUPPORT "BUILD EXECUTABLE WITH SQC SUPPORT" OFF)
-option(SQFVM_BUILD_EXECUTABLE_FULL_DIAGNOSE "BUILD DIAGNOSE EXECUTABLE" OFF)
+set(SQFVM_ENABLE_SQC_SUPPORT "ENABLE SQC SUPPORT IN BUILD" ON)
 add_subdirectory("${PROJECT_SOURCE_DIR}/extern/vm")
 
 file(GLOB sqfvm_language_server_src 
@@ -55,7 +48,7 @@ option(SQFVM_LANGUAGE_SERVER_BUILD_EXECUTABLE "BUILD EXECUTABLE" ON)
 
 if (SQFVM_LANGUAGE_SERVER_BUILD_EXECUTABLE)
     add_executable(sqfvm_language_server ${sqfvm_language_server_src})
-    target_link_libraries(sqfvm_language_server PRIVATE slibsqfvm_sqc)
+    target_link_libraries(sqfvm_language_server PRIVATE slibsqfvm)
     target_link_libraries(sqfvm_language_server ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${ST_CXXFS_LIBS})
     target_include_directories(sqfvm_language_server PUBLIC ${PROJECT_SOURCE_DIR}/src)
     

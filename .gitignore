@@ -353,3 +353,5 @@ build/git_sha1\.cpp
 
 *.diagsession
 git_sha1.cpp
+*/cmake-build-debug
+*/cmake-build-debug-event-trace
