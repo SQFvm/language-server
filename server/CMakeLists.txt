@@ -1,21 +1,17 @@
 ﻿# CMakeList.txt : Top-level CMake project file, do global configuration
 # and include sub-projects here.
 #
-project ("sqfvm_language_server")
-cmake_minimum_required (VERSION 3.8)
-set(CMAKE_CXX_STANDARD 17)
+cmake_minimum_required(VERSION 3.8)
+project(sqfvm_language_server)
+set(CMAKE_CXX_STANDARD 20)
 
+# Add SQLite3
+add_subdirectory("${PROJECT_SOURCE_DIR}/extern/sqlite-amalgamation")
+# Add sqlite_orm
+add_subdirectory(${PROJECT_SOURCE_DIR}/extern/fetch_content)
 
 # Add SQF-VM
-option(SQFVM_BUILD_EXECUTABLE "BUILD EXECUTABLE" OFF)
-option(SQFVM_BUILD_EXECUTABLE_ARMA2_LOCALKEYWORD "BUILD ARMA2 EXECUTABLE" OFF)
-option(SQFVM_BUILD_LIBRARY "BUILD LIBRARY" OFF)
-option(SQFVM_BUILD_LIBRARY_SQC_SUPPORT "BUILD LIBRARY WITH SQC SUPPORT" OFF)
-option(SQFVM_BUILD_STATIC_LIBRARY "BUILD STATIC LIBRARY" OFF)
-option(SQFVM_BUILD_STATIC_LIBRARY_SQC_SUPPORT "BUILD STATIC LIBRARY WITH SQC SUPPORT" ON)
-option(SQFVM_BUILD_EXECUTABLE_SQC_SUPPORT "BUILD EXECUTABLE WITH SQC SUPPORT" OFF)
-option(SQFVM_BUILD_EXECUTABLE_FULL_DIAGNOSE "BUILD DIAGNOSE EXECUTABLE" OFF)
 add_subdirectory("${PROJECT_SOURCE_DIR}/extern/runtime")
 
 # Include sub-projects.
-add_subdirectory ("sqfvm_language_server")
+add_subdirectory(sqfvm_language_server)
