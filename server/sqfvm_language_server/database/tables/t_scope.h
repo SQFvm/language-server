@@ -5,7 +5,7 @@
 #include <string>
 #include <optional>
 
-namespace sqfvm::lsp::database::tables {
+namespace sqfvm::language_server::database::tables {
     // Represents a variable scope, allowing to specify exactly in which scope a t_variable lives.
     struct t_scope {
         static constexpr const char *table_name = "tScope";

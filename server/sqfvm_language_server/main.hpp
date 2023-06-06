@@ -1,1 +1,7 @@
-﻿#pragma once
+﻿#ifndef SQFVM_LANGUAGE_SERVER_MAIN_HPP
+#define SQFVM_LANGUAGE_SERVER_MAIN_HPP
+
+int main(int argc, char **argv);
+
+
+#endif //SQFVM_LANGUAGE_SERVER_MAIN_HPP

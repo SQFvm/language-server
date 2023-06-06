@@ -1,26 +1,27 @@
-#pragma once
-#include "lspserver.hpp"
-#include "../database/sqlite.hpp"
-#include "../../git_sha1.h"
-#include "../analyzers/analyzer.hpp"
-
+#ifndef SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP
+#define SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP
+#include "lsp/lspserver.hpp"
+#include "git_sha1.h"
+#include "analysis/analyzer.hpp"
 #include "runtime/runtime.h"
+#include "database/context.hpp"
 
 #include <filesystem>
 #include <vector>
 #include <memory>
 
-namespace sqfvm::lsp
+namespace sqfvm::language_server
 {
-    class lssqf : public ::lsp::server
+    class language_server : public ::lsp::server
     {
-        sqlite::database m_db;
         ::lsp::data::initialize_params m_client_params;
         std::filesystem::path m_folder;
         std::filesystem::path m_db_path;
-        analyzer_factory m_analyzer_factory;
-        StdOutLogger m_logger;
-        sqf::runtime::runtime m_runtime;
+        analysis::analyzer_factory m_analyzer_factory;
+        std::shared_ptr<database::context> m_context;
+
+        void delete_file(database::tables::t_file file);
+        void analyse_file(database::tables::t_file file);
     protected:
         ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params& params) override
         {
@@ -52,8 +53,7 @@ namespace sqfvm::lsp
         std::optional<std::vector<::lsp::data::folding_range>> on_textDocument_foldingRange(const ::lsp::data::folding_range_params& params) override;
         std::optional<::lsp::data::completion_list> on_textDocument_completion(const ::lsp::data::completion_params& params) override;
     public:
-        lssqf();
-
-        bool open_db_connection();
+        language_server();
     };
 }
+#endif // SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP

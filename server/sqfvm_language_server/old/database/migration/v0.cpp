@@ -1,6 +1,6 @@
 #include "migrator.hpp"
 
-sqlite::result sqfvm::lsp::migrator::migrate_v0(sqlite::database &db)
+sqlite::result sqfvm::language_server::migrator::migrate_v0(sqlite::database &db)
 {
     sqlite::result result;
     if ((result = db.execute(

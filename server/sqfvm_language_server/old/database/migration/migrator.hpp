@@ -4,7 +4,7 @@
 #include <utility>
 
 
-namespace sqfvm::lsp
+namespace sqfvm::language_server
 {
     class migrator
     {

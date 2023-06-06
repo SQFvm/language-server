@@ -1,11 +1,12 @@
-#pragma once
+#ifndef SQFVM_LANGUAGE_SERVER_LSP_LSPSERVER_HPP
+#define SQFVM_LANGUAGE_SERVER_LSP_LSPSERVER_HPP
 
 #include "jsonrpc.hpp"
-#include "../../uri.hpp"
+#include "../uri.hpp"
 
 #include <optional>
 #include <string>
-#include "nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 #include <vector>
 #include <variant>
 
@@ -27,6 +28,12 @@ namespace lsp
 
         template<>
         inline void from_json<int>(const nlohmann::json &node, int &t)
+        {
+            t = node;
+        }
+
+        template<>
+        inline void from_json<unsigned int>(const nlohmann::json &node, unsigned int &t)
         {
             t = node;
         }
@@ -63,6 +70,12 @@ namespace lsp
 
         template<>
         inline nlohmann::json to_json<int>(const int &t)
+        {
+            return t;
+        }
+
+        template<>
+        inline nlohmann::json to_json<unsigned int>(const unsigned int &t)
         {
             return t;
         }
@@ -120,18 +133,18 @@ namespace lsp
         inline void from_json<resource_operations>(const nlohmann::json &node, resource_operations &t)
         {
             t = resource_operations::Empty;
-            for (auto resourceOperationJson: node)
+            for (const auto& resource_operation_json: node)
             {
-                std::string resourceOperationString = resourceOperationJson;
-                if (resourceOperationString == "create")
+                std::string resource_operation_string = resource_operation_json;
+                if (resource_operation_string == "create")
                 {
                     t = t | resource_operations::Create;
                 }
-                else if (resourceOperationString == "rename")
+                else if (resource_operation_string == "rename")
                 {
                     t = t | resource_operations::Rename;
                 }
-                else if (resourceOperationString == "delete")
+                else if (resource_operation_string == "delete")
                 {
                     t = t | resource_operations::Delete;
                 }
@@ -802,7 +815,7 @@ namespace lsp
         inline void from_json(const nlohmann::json &node, std::vector<T> &ts)
         {
             ts = std::vector<T>();
-            for (auto subnode: node)
+            for (const auto& subnode: node)
             {
                 T t;
                 from_json(subnode, t);
@@ -821,7 +834,7 @@ namespace lsp
         {
             if (node.contains(key) && !node[key].is_null())
             {
-                T t;
+                T t{};
                 from_json(node, key, t);
                 opt = t;
             }
@@ -835,7 +848,7 @@ namespace lsp
         inline nlohmann::json to_json(const std::vector<T> &ts)
         {
             nlohmann::json json = nlohmann::json::array();
-            for (auto t: ts)
+            for (const auto& t: ts)
             {
                 json.push_back(to_json(t));
             }
@@ -877,11 +890,11 @@ namespace lsp
             {
             }
 
-            uri(const std::string &input) : ::x39::uri(input)
+            explicit uri(const std::string &input) : ::x39::uri(input)
             {
             }
 
-            uri(std::string_view input) : ::x39::uri(input)
+            explicit uri(std::string_view input) : ::x39::uri(input)
             {
             }
 
@@ -893,10 +906,10 @@ namespace lsp
 
             static uri from_json(const nlohmann::json &node)
             {
-                return { node.get<std::string>() };
+                return uri(node.get<std::string>());
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 return encoded();
             }
@@ -941,7 +954,7 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "language", language);
@@ -958,13 +971,13 @@ namespace lsp
 
             static position from_json(const nlohmann::json &node)
             {
-                position res;
+                position res{};
                 data::from_json(node, "line", res.line);
                 data::from_json(node, "character", res.character);
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "line", line);
@@ -980,13 +993,13 @@ namespace lsp
 
             static range from_json(const nlohmann::json &node)
             {
-                range res;
+                range res{};
                 data::from_json(node, "start", res.start);
                 data::from_json(node, "end", res.end);
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "start", start);
@@ -997,22 +1010,22 @@ namespace lsp
 
         struct text_edit
         {
-            range range;
-            std::string newText;
+            range range{};
+            std::string new_text;
 
             static text_edit from_json(const nlohmann::json &node)
             {
                 text_edit res;
                 data::from_json(node, "range", res.range);
-                data::from_json(node, "newText", res.newText);
+                data::from_json(node, "newText", res.new_text);
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "range", range);
-                data::set_json(json, "newText", newText);
+                data::set_json(json, "newText", new_text);
                 return json;
             }
         };
@@ -1028,7 +1041,7 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "uri", uri);
@@ -1050,7 +1063,7 @@ namespace lsp
              * The version number of this document (it will increase after each
              * change, including undo/redo).
              */
-            size_t version;
+            size_t version{};
             /**
              * The content of the opened text document.
              */
@@ -1066,7 +1079,7 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "uri", uri);
@@ -1100,7 +1113,7 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "uri", uri);
@@ -1138,7 +1151,7 @@ namespace lsp
             /**
              * The type of the Markup
              */
-            markup_kind kind;
+            markup_kind kind = markup_kind::PlainText;
 
             /**
              * The content itself
@@ -1153,7 +1166,7 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "kind", kind);
@@ -1165,7 +1178,7 @@ namespace lsp
         struct location
         {
             uri uri;
-            range range;
+            range range{};
 
             static location from_json(const nlohmann::json &node)
             {
@@ -1175,7 +1188,7 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "uri", uri);
@@ -1206,7 +1219,7 @@ namespace lsp
                     return res;
                 }
 
-                nlohmann::json to_json() const
+                [[nodiscard]] nlohmann::json to_json() const
                 {
                     nlohmann::json json;
                     data::set_json(json, "location", location);
@@ -1218,7 +1231,7 @@ namespace lsp
             /**
              * The range at which the message applies.
              */
-            range range;
+            range range{};
 
             /**
              * The diagnostic's severity. Can be omitted. If omitted it is up to the
@@ -1268,7 +1281,7 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "range", range);
@@ -1287,7 +1300,7 @@ namespace lsp
             /**
              * The zero-based line number from where the folded range starts.
              */
-            size_t startLine;
+            size_t startLine{};
 
             /**
              * The zero-based character offset from where the folded range starts. If not defined, defaults to the length of the start line.
@@ -1297,7 +1310,7 @@ namespace lsp
             /**
              * The zero-based line number where the folded range ends.
              */
-            size_t endLine;
+            size_t endLine{};
 
             /**
              * The zero-based character offset before the folded range ends. If not defined, defaults to the length of the end line.
@@ -1322,7 +1335,7 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "startLine", startLine);
@@ -1343,7 +1356,7 @@ namespace lsp
             /**
              * The identifier of the actual command handler.
              */
-            std::string command_;
+            std::string command_identifier;
             /**
              * Arguments that the command handler should be
              * invoked with.
@@ -1354,12 +1367,12 @@ namespace lsp
             {
                 command res;
                 data::from_json(node, "title", res.title);
-                data::from_json(node, "command", res.command_);
-                auto argumentsFindRes = node.find("arguments");
-                if (argumentsFindRes != node.end())
+                data::from_json(node, "command", res.command_identifier);
+                auto arguments_find_res = node.find("arguments");
+                if (arguments_find_res != node.end())
                 {
                     res.arguments = std::vector<nlohmann::json> { };
-                    for (auto it: (*argumentsFindRes))
+                    for (auto it: (*arguments_find_res))
                     {
                         res.arguments->push_back(it);
                     }
@@ -1367,11 +1380,11 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "title", title);
-                data::set_json(json, "command", command_);
+                data::set_json(json, "command", command_identifier);
                 if (arguments.has_value())
                 {
                     json["arguments"] = arguments.value();
@@ -1434,13 +1447,13 @@ namespace lsp
              * A string that should be used when comparing this item
              * with other items. When `falsy` the label is used.
              */
-            std::optional<std::string> sortText;
+            std::optional<std::string> sort_text;
 
             /**
              * A string that should be used when filtering a set of
              * completion items. When `falsy` the label is used.
              */
-            std::optional<std::string> filterText;
+            std::optional<std::string> filter_text;
 
             /**
              * A string that should be inserted into a document when selecting
@@ -1453,14 +1466,14 @@ namespace lsp
              * will only insert `sole`. Therefore it is recommended to use `textEdit` instead
              * since it avoids additional client side interpretation.
              */
-            std::optional<std::string> insertText;
+            std::optional<std::string> insert_text;
 
             /**
              * The format of the insert text. The format applies to both the `insertText` property
              * and the `newText` property of a provided `textEdit`. If omitted defaults to
              * `InsertTextFormat.PlainText`.
              */
-            std::optional<insert_text_format> insertTextFormat;
+            std::optional<insert_text_format> insert_text_format;
 
             /**
              * An edit which is applied to a document when selecting this completion. When an edit is provided the value of
@@ -1512,10 +1525,10 @@ namespace lsp
                 data::from_json(node, "documentation", res.documentation);
                 data::from_json(node, "deprecated", res.deprecated);
                 data::from_json(node, "preselect", res.preselect);
-                data::from_json(node, "sortText", res.sortText);
-                data::from_json(node, "filterText", res.filterText);
-                data::from_json(node, "insertText", res.insertText);
-                data::from_json(node, "insertTextFormat", res.insertTextFormat);
+                data::from_json(node, "sortText", res.sort_text);
+                data::from_json(node, "filterText", res.filter_text);
+                data::from_json(node, "insertText", res.insert_text);
+                data::from_json(node, "insertTextFormat", res.insert_text_format);
                 data::from_json(node, "textEdit", res.textEdit);
                 data::from_json(node, "additionalTextEdits", res.additionalTextEdits);
                 data::from_json(node, "commitCharacters", res.commitCharacters);
@@ -1524,7 +1537,7 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "label", label);
@@ -1534,10 +1547,10 @@ namespace lsp
                 data::set_json(json, "documentation", documentation);
                 data::set_json(json, "deprecated", deprecated);
                 data::set_json(json, "preselect", preselect);
-                data::set_json(json, "sortText", sortText);
-                data::set_json(json, "filterText", filterText);
-                data::set_json(json, "insertText", insertText);
-                data::set_json(json, "insertTextFormat", insertTextFormat);
+                data::set_json(json, "sortText", sort_text);
+                data::set_json(json, "filterText", filter_text);
+                data::set_json(json, "insertText", insert_text);
+                data::set_json(json, "insertTextFormat", insert_text_format);
                 data::set_json(json, "textEdit", textEdit);
                 data::set_json(json, "additionalTextEdits", additionalTextEdits);
                 data::set_json(json, "commitCharacters", commitCharacters);
@@ -2613,7 +2626,7 @@ namespace lsp
                 return res;
             }
 
-            nlohmann::json to_json() const
+            [[nodiscard]] nlohmann::json to_json() const
             {
                 nlohmann::json json;
                 data::set_json(json, "capabilities", capabilities);
@@ -4129,7 +4142,7 @@ namespace lsp
 
                 @since 3.6.0
             */
-            std::optional<std::vector<workspace_folder>> workspaceFolders;
+            std::optional<std::vector<workspace_folder>> workspace_folders;
 
             static initialize_params from_json(const nlohmann::json &node)
             {
@@ -4143,7 +4156,7 @@ namespace lsp
                                             : nlohmann::json(nullptr);
                 data::from_json(node, "capabilities", res.capabilities);
                 data::from_json(node, "trace", res.trace);
-                data::from_json(node, "workspaceFolders", res.workspaceFolders);
+                data::from_json(node, "workspaceFolders", res.workspace_folders);
                 return res;
             }
 
@@ -4157,7 +4170,7 @@ namespace lsp
                 json["initializationOptions"] = initializationOptions;
                 data::set_json(json, "capabilities", capabilities);
                 data::set_json(json, "trace", trace);
-                data::set_json(json, "workspaceFolders", workspaceFolders);
+                data::set_json(json, "workspaceFolders", workspace_folders);
                 return json;
             }
         };
@@ -4949,3 +4962,5 @@ namespace lsp
         }
     };
 }
+
+#endif // SQFVM_LANGUAGE_SERVER_LSP_LSPSERVER_HPP

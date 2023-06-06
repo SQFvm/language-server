@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../analyzer.hpp"
+#include "../../../analysis/analyzer.hpp"
 #include <string>
 #include <algorithm>
 #include <filesystem>
@@ -8,7 +8,7 @@
 #include "parser/sqf/astnode.hpp"
 #include "sqfvisitor.hpp"
 
-namespace sqfvm::lsp
+namespace sqfvm::language_server
 {
     class analyzer_sqf :
             public analyzer
@@ -29,7 +29,7 @@ namespace sqfvm::lsp
             }
         }
 
-        void analyze(sqf::runtime::runtime &runtime, std::string &document, ::sqfvm::lsp::repositories::file& f) override;
-        void commit(sqlite::database& db, sqf::runtime::runtime &runtime, std::string &document, ::sqfvm::lsp::repositories::file& f) override;
+        void analyze(sqf::runtime::runtime &runtime, std::string &document, ::sqfvm::language_server::repositories::file& f) override;
+        void commit(sqlite::database& db, sqf::runtime::runtime &runtime, std::string &document, ::sqfvm::language_server::repositories::file& f) override;
     };
 }

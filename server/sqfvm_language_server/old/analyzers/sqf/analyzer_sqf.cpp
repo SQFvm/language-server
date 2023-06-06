@@ -8,19 +8,15 @@
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "misc-no-recursion"
 
-void sqfvm::lsp::analyzer_sqf::recurse(const sqf::parser::sqf::bison::astnode &parent)
-{
+void sqfvm::language_server::analyzer_sqf::recurse(const sqf::parser::sqf::bison::astnode &parent) {
     m_descend_ast_nodes.push_back(&parent);
-    for (auto &visitor: m_visitors)
-    {
+    for (auto &visitor: m_visitors) {
         visitor->enter(*this, parent, m_descend_ast_nodes);
     }
-    for (auto &child: parent.children)
-    {
+    for (auto &child: parent.children) {
         recurse(child);
     }
-    for (auto &visitor: m_visitors)
-    {
+    for (auto &visitor: m_visitors) {
         visitor->exit(*this, parent, m_descend_ast_nodes);
     }
     m_descend_ast_nodes.pop_back();
@@ -28,18 +24,15 @@ void sqfvm::lsp::analyzer_sqf::recurse(const sqf::parser::sqf::bison::astnode &p
 
 #pragma clang diagnostic pop
 
-sqfvm::lsp::analyzer_sqf::analyzer_sqf()
-{
-    m_visitors.push_back(new sqfvm::lsp::visitors::sqf::variables_visitor());
+sqfvm::language_server::analyzer_sqf::analyzer_sqf() {
+    m_visitors.push_back(new sqfvm::language_server::visitors::sqf::variables_visitor());
 }
 
-void sqfvm::lsp::analyzer_sqf::analyze(
+void sqfvm::language_server::analyzer_sqf::analyze(
         sqf::runtime::runtime &runtime,
         std::string &document,
-        ::sqfvm::lsp::repositories::file& f)
-{
-    for (auto &visitor: m_visitors)
-    {
+        ::sqfvm::language_server::repositories::file &f) {
+    for (auto &visitor: m_visitors) {
         visitor->start(*this);
     }
     auto logger = StdOutLogger();
@@ -48,20 +41,18 @@ void sqfvm::lsp::analyzer_sqf::analyze(
     sqf::parser::sqf::bison::astnode root;
     parser.get_tree(runtime, tokenizer, &root);
     recurse(root);
-    for (auto &visitor: m_visitors)
-    {
+    for (auto &visitor: m_visitors) {
         visitor->end(*this);
     }
 }
 
-void sqfvm::lsp::analyzer_sqf::commit(
-        sqlite::database& db,
+void sqfvm::language_server::analyzer_sqf::commit(
+        sqlite::database &db,
         sqf::runtime::runtime &runtime,
         std::string &document,
-        ::sqfvm::lsp::repositories::file& f)
-{
+        ::sqfvm::language_server::repositories::file &f) {
     repositories::file::set(db, f);
-    for (auto& it : res.methods_set) {
+    for (auto &it: res.methods_set) {
         repositories::reference ref = {
                 .id = 0,
                 .file_fk = f.id,
@@ -71,7 +62,7 @@ void sqfvm::lsp::analyzer_sqf::commit(
         };
         repositories::reference::add(db, ref);
     }
-    for (auto& it : res.methods_used) {
+    for (auto &it: res.methods_used) {
         repositories::reference ref = {
                 .id = 0,
                 .file_fk = f.id,
@@ -81,7 +72,7 @@ void sqfvm::lsp::analyzer_sqf::commit(
         };
         repositories::reference::add(db, ref);
     }
-    for (auto& it : res.variables_set) {
+    for (auto &it: res.variables_set) {
         repositories::reference ref = {
                 .id = 0,
                 .file_fk = f.id,
@@ -91,7 +82,7 @@ void sqfvm::lsp::analyzer_sqf::commit(
         };
         repositories::reference::add(db, ref);
     }
-    for (auto& it : res.variables_used) {
+    for (auto &it: res.variables_used) {
         repositories::reference ref = {
                 .id = 0,
                 .file_fk = f.id,

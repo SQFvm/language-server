@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../analyzer.hpp"
+#include "../../../analysis/analyzer.hpp"
 #include <string>
 #include <algorithm>
 #include <filesystem>
 #include "parser/sqf/tokenizer.hpp"
 #include "parser/sqf/astnode.hpp"
 
-namespace sqfvm::lsp
+namespace sqfvm::language_server
 {
     class analyzer_sqf;
 

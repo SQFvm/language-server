@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-namespace sqfvm::lsp::database::tables {
+namespace sqfvm::language_server::database::tables {
 // Represents a variable in code
     struct t_reference {
         static constexpr const char *table_name = "tReference";

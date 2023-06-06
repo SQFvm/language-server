@@ -7,7 +7,7 @@
 #include <chrono>
 #include <vector>
 
-namespace sqfvm::lsp::repositories
+namespace sqfvm::language_server::repositories
 {
     struct variable
     {

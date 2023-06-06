@@ -10,7 +10,7 @@
 #include "repository_macros.h"
 #include "../../analyzers/position.hpp"
 
-namespace sqfvm::lsp::repositories
+namespace sqfvm::language_server::repositories
 {
     struct reference
     {

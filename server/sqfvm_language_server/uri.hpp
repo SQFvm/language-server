@@ -1,13 +1,13 @@
-#pragma once
+#ifndef SQFVM_LANGUAGE_SERVER_URI_HPP
+#define SQFVM_LANGUAGE_SERVER_URI_HPP
+
 #include <string>
 #include <string_view>
 #include <array>
 #include <sstream>
 
-namespace x39
-{
-    class uri
-    {
+namespace x39 {
+    class uri {
     private:
         std::string m_data;
         size_t m_schema_start;
@@ -28,400 +28,376 @@ namespace x39
         size_t m_fragment_length;
     public:
         uri() :
-            m_data(),
-            m_schema_start(0),
-            m_schema_length(0),
-            m_user_start(0),
-            m_user_length(0),
-            m_password_start(0),
-            m_password_length(0),
-            m_host_start(0),
-            m_host_length(0),
-            m_port_start(0),
-            m_port_length(0),
-            m_path_start(0),
-            m_path_length(0),
-            m_query_start(0),
-            m_query_length(0),
-            m_fragment_start(0),
-            m_fragment_length(0)
-        {
+                m_data(),
+                m_schema_start(0),
+                m_schema_length(0),
+                m_user_start(0),
+                m_user_length(0),
+                m_password_start(0),
+                m_password_length(0),
+                m_host_start(0),
+                m_host_length(0),
+                m_port_start(0),
+                m_port_length(0),
+                m_path_start(0),
+                m_path_length(0),
+                m_query_start(0),
+                m_query_length(0),
+                m_fragment_start(0),
+                m_fragment_length(0) {
         }
-        uri(const char* input) : uri(std::string_view(input)) { }
-        uri(const std::string& input) : uri(std::string_view(input)) { }
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "google-explicit-constructor"
+
+        uri(const char *input) : uri(std::string_view(input)) {}
+
+        uri(const std::string &input) : uri(std::string_view(input)) {}
+
         uri(std::string_view input) : uri()
+#pragma clang diagnostic pop
         {
-            auto& output = m_data;
+            auto &output = m_data;
             output.reserve(input.size()); // parsed string is always at max as long as input
 
-            enum estate { schema_read, schema_wait_length, schema_wait_length_slash, user, password, host, port, path, query, fragment };
-            estate state = schema_read;
+            enum estate {
+                s_schema_read,
+                s_schema_wait_length,
+                s_schema_wait_length_slash,
+                s_user,
+                s_password,
+                s_host,
+                s_port,
+                s_path,
+                s_query,
+                s_fragment
+            };
+            estate state = s_schema_read;
             size_t start = 0;
             size_t current = 0;
             int specialCharacter = 0;
-            char specialBuffer[4] = { ' ', '\0', '\0', '\0' };
-            for (auto c : input)
-            {
-                if (specialCharacter != 0)
-                {
+            char specialBuffer[4] = {' ', '\0', '\0', '\0'};
+            for (auto c: input) {
+                if (specialCharacter != 0) {
                     specialBuffer[specialCharacter++] = c;
-                    if (specialCharacter == 3)
-                    {
+                    if (specialCharacter == 3) {
                         specialCharacter = 0;
-                        switch (specialBuffer[1])
-                        {
+                        switch (specialBuffer[1]) {
                             case '0':
-                            c = static_cast<char>(0x00);
-                            break;
+                                c = static_cast<char>(0x00);
+                                break;
                             case '1':
-                            c = static_cast<char>(0x10);
-                            break;
+                                c = static_cast<char>(0x10);
+                                break;
                             case '2':
-                            c = static_cast<char>(0x20);
-                            break;
+                                c = static_cast<char>(0x20);
+                                break;
                             case '3':
-                            c = static_cast<char>(0x30);
-                            break;
+                                c = static_cast<char>(0x30);
+                                break;
                             case '4':
-                            c = static_cast<char>(0x40);
-                            break;
+                                c = static_cast<char>(0x40);
+                                break;
                             case '5':
-                            c = static_cast<char>(0x50);
-                            break;
+                                c = static_cast<char>(0x50);
+                                break;
                             case '6':
-                            c = static_cast<char>(0x60);
-                            break;
+                                c = static_cast<char>(0x60);
+                                break;
                             case '7':
-                            c = static_cast<char>(0x70);
-                            break;
+                                c = static_cast<char>(0x70);
+                                break;
                             case '8':
-                            c = static_cast<char>(0x80);
-                            break;
+                                c = static_cast<char>(0x80);
+                                break;
                             case '9':
-                            c = static_cast<char>(0x90);
-                            break;
-                            case 'a': case 'A':
-                            c = static_cast<char>(0xA0);
-                            break;
-                            case 'b': case 'B':
-                            c = static_cast<char>(0xB0);
-                            break;
-                            case 'c': case 'C':
-                            c = static_cast<char>(0xC0);
-                            break;
-                            case 'd': case 'D':
-                            c = static_cast<char>(0xD0);
-                            break;
-                            case 'e': case 'E':
-                            c = static_cast<char>(0xE0);
-                            break;
-                            case 'f': case 'F':
-                            c = static_cast<char>(0xF0);
-                            break;
+                                c = static_cast<char>(0x90);
+                                break;
+                            case 'a':
+                            case 'A':
+                                c = static_cast<char>(0xA0);
+                                break;
+                            case 'b':
+                            case 'B':
+                                c = static_cast<char>(0xB0);
+                                break;
+                            case 'c':
+                            case 'C':
+                                c = static_cast<char>(0xC0);
+                                break;
+                            case 'd':
+                            case 'D':
+                                c = static_cast<char>(0xD0);
+                                break;
+                            case 'e':
+                            case 'E':
+                                c = static_cast<char>(0xE0);
+                                break;
+                            case 'f':
+                            case 'F':
+                                c = static_cast<char>(0xF0);
+                                break;
                         }
-                        switch (specialBuffer[2])
-                        {
+                        switch (specialBuffer[2]) {
                             case '0':
-                            c |= static_cast<char>(0x00);
-                            break;
+                                c |= static_cast<char>(0x00);
+                                break;
                             case '1':
-                            c |= static_cast<char>(0x01);
-                            break;
+                                c |= static_cast<char>(0x01);
+                                break;
                             case '2':
-                            c |= static_cast<char>(0x02);
-                            break;
+                                c |= static_cast<char>(0x02);
+                                break;
                             case '3':
-                            c |= static_cast<char>(0x03);
-                            break;
+                                c |= static_cast<char>(0x03);
+                                break;
                             case '4':
-                            c |= static_cast<char>(0x04);
-                            break;
+                                c |= static_cast<char>(0x04);
+                                break;
                             case '5':
-                            c |= static_cast<char>(0x05);
-                            break;
+                                c |= static_cast<char>(0x05);
+                                break;
                             case '6':
-                            c |= static_cast<char>(0x06);
-                            break;
+                                c |= static_cast<char>(0x06);
+                                break;
                             case '7':
-                            c |= static_cast<char>(0x07);
-                            break;
+                                c |= static_cast<char>(0x07);
+                                break;
                             case '8':
-                            c |= static_cast<char>(0x08);
-                            break;
+                                c |= static_cast<char>(0x08);
+                                break;
                             case '9':
-                            c |= static_cast<char>(0x09);
-                            break;
-                            case 'a': case 'A':
-                            c |= static_cast<char>(0x0A);
-                            break;
-                            case 'b': case 'B':
-                            c |= static_cast<char>(0x0B);
-                            break;
-                            case 'c': case 'C':
-                            c |= static_cast<char>(0x0C);
-                            break;
-                            case 'd': case 'D':
-                            c |= static_cast<char>(0x0D);
-                            break;
-                            case 'e': case 'E':
-                            c |= static_cast<char>(0x0E);
-                            break;
-                            case 'f': case 'F':
-                            c |= static_cast<char>(0x0F);
-                            break;
+                                c |= static_cast<char>(0x09);
+                                break;
+                            case 'a':
+                            case 'A':
+                                c |= static_cast<char>(0x0A);
+                                break;
+                            case 'b':
+                            case 'B':
+                                c |= static_cast<char>(0x0B);
+                                break;
+                            case 'c':
+                            case 'C':
+                                c |= static_cast<char>(0x0C);
+                                break;
+                            case 'd':
+                            case 'D':
+                                c |= static_cast<char>(0x0D);
+                                break;
+                            case 'e':
+                            case 'E':
+                                c |= static_cast<char>(0x0E);
+                                break;
+                            case 'f':
+                            case 'F':
+                                c |= static_cast<char>(0x0F);
+                                break;
                         }
                         current++;
                         output.append(&c, &c + 1);
                         continue;
-                    }
-                    else
-                    {
+                    } else {
                         continue;
                     }
-                }
-                else if (c == '%')
-                {
+                } else if (c == '%') {
                     specialCharacter++;
                     continue;
                 }
                 current++;
                 output.append(&c, &c + 1);
-                switch (state)
-                {
-                    case schema_read:
-                    if (c == ':')
-                    {
-                        state = schema_wait_length;
-                        m_schema_start = start;
-                        m_schema_length = current - start - 1;
-                    }
-                    break;
-                    case schema_wait_length:
-                    if (c == '/')
-                    {
-                        state = schema_wait_length_slash;
-                    }
-                    else if (c != ':')
-                    { // invalid uri. Still try to parse
-                        state = user;
-                        start = current - 1;
-                    }
-                    break;
-                    case schema_wait_length_slash:
-                    if (c != '/')
-                    { // invalid uri. Still try to parse
-                        state = user;
-                        start = current - 1;
-                        goto l_user;
-                    }
-                    else // char c is '/' here
-                    {
-                        state = user;
-                        start = current; // Skip current '/'
-                    }
-                    break;
-l_user:
-                    case user:
-                    if (c == ':')
-                    {
-                        auto atLocation = input.find('@');
-                        if (atLocation == std::string::npos)
-                        { // no user present, pass to host state
-                            state = host;
-                            goto case_host;
+                switch (state) {
+                    case s_schema_read:
+                        if (c == ':') {
+                            state = s_schema_wait_length;
+                            m_schema_start = start;
+                            m_schema_length = current - start - 1;
                         }
-                        m_user_start = start;
-                        m_user_length = current - start - 1;
-                        state = password;
-                        start = current;
-                    }
-                    else if (c == '@')
-                    {
-                        m_user_start = start;
-                        m_user_length = current - start - 1;
-                        state = host;
-                        start = current;
-                    }
-                    else if (c == '/')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = path;
-                        start = current;
-                    }
-                    else if (c == '?')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = query;
-                        start = current;
-                    }
-                    else if (c == '#')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = fragment;
-                        start = current;
-                    }
-                    else if (c == ':')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = port;
-                        start = current;
-                    }
-                    break;
-                    case password:
-                    if (c == '@')
-                    {
-                        m_password_start = start;
-                        m_password_length = current - start - 1;
-                        state = host;
-                        start = current;
-                    }
-                    else if (c == '/')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = path;
-                        start = current;
-                    }
-                    else if (c == '?')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = query;
-                        start = current;
-                    }
-                    else if (c == '#')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = fragment;
-                        start = current;
-                    }
-                    else if (c == ':')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = port;
-                        start = current;
-                    }
-                    break;
-                    case host:
-case_host:
-                    if (c == '/')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = path;
-                        start = current;
-                    }
-                    else if (c == '?')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = query;
-                        start = current;
-                    }
-                    else if (c == '#')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = fragment;
-                        start = current;
-                    }
-                    else if (c == ':')
-                    {
-                        m_host_start = start;
-                        m_host_length = current - start - 1;
-                        state = port;
-                        start = current;
-                    }
-                    break;
-                    case port:
-                    if (c == '/')
-                    {
-                        m_port_start = start;
-                        m_port_length = current - start - 1;
-                        if (m_port_length == 0)
+                        break;
+                    case s_schema_wait_length:
+                        if (c == '/') {
+                            state = s_schema_wait_length_slash;
+                        } else if (c != ':') { // invalid uri. Still try to parse
+                            state = s_user;
+                            start = current - 1;
+                        }
+                        break;
+                    case s_schema_wait_length_slash:
+                        if (c != '/') { // invalid uri. Still try to parse
+                            state = s_user;
+                            start = current - 1;
+                            goto l_user;
+                        } else // char c is '/' here
                         {
-                            m_host_length++;
+                            state = s_user;
+                            start = current; // Skip current '/'
                         }
-                        state = path;
-                        start = current;
-                    }
-                    else if (c == '?')
-                    {
-                        m_port_start = start;
-                        m_port_length = current - start - 1;
-                        state = query;
-                        start = current;
-                    }
-                    else if (c == '#')
-                    {
-                        m_port_start = start;
-                        m_port_length = current - start - 1;
-                        state = fragment;
-                        start = current;
-                    }
-                    break;
-                    case path:
-                    if (c == '?')
-                    {
-                        m_path_start = start;
-                        m_path_length = current - start - 1;
-                        state = query;
-                        start = current;
-                    }
-                    else if (c == '#')
-                    {
-                        m_path_start = start;
-                        m_path_length = current - start - 1;
-                        state = fragment;
-                        start = current;
-                    }
-                    break;
-                    case query:
-                    if (c == '#')
-                    {
-                        m_query_start = start;
-                        m_query_length = current - start - 1;
-                        state = fragment;
-                        start = current;
-                    }
-                    break;
-                    case fragment:
-                    break;
+                        break;
+                    l_user:
+                    case s_user:
+                        if (c == ':') {
+                            auto atLocation = input.find('@');
+                            if (atLocation == std::string::npos) { // no user present, pass to host state
+                                state = s_host;
+                                goto case_host;
+                            }
+                            m_user_start = start;
+                            m_user_length = current - start - 1;
+                            state = s_password;
+                            start = current;
+                        } else if (c == '@') {
+                            m_user_start = start;
+                            m_user_length = current - start - 1;
+                            state = s_host;
+                            start = current;
+                        } else if (c == '/') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_path;
+                            start = current;
+                        } else if (c == '?') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_query;
+                            start = current;
+                        } else if (c == '#') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_fragment;
+                            start = current;
+                        } else if (c == ':') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_port;
+                            start = current;
+                        }
+                        break;
+                    case s_password:
+                        if (c == '@') {
+                            m_password_start = start;
+                            m_password_length = current - start - 1;
+                            state = s_host;
+                            start = current;
+                        } else if (c == '/') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_path;
+                            start = current;
+                        } else if (c == '?') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_query;
+                            start = current;
+                        } else if (c == '#') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_fragment;
+                            start = current;
+                        } else if (c == ':') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_port;
+                            start = current;
+                        }
+                        break;
+                    case s_host:
+                    case_host:
+                        if (c == '/') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_path;
+                            start = current;
+                        } else if (c == '?') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_query;
+                            start = current;
+                        } else if (c == '#') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_fragment;
+                            start = current;
+                        } else if (c == ':') {
+                            m_host_start = start;
+                            m_host_length = current - start - 1;
+                            state = s_port;
+                            start = current;
+                        }
+                        break;
+                    case s_port:
+                        if (c == '/') {
+                            m_port_start = start;
+                            m_port_length = current - start - 1;
+                            if (m_port_length == 0) {
+                                m_host_length++;
+                            }
+                            state = s_path;
+                            start = current;
+                        } else if (c == '?') {
+                            m_port_start = start;
+                            m_port_length = current - start - 1;
+                            state = s_query;
+                            start = current;
+                        } else if (c == '#') {
+                            m_port_start = start;
+                            m_port_length = current - start - 1;
+                            state = s_fragment;
+                            start = current;
+                        }
+                        break;
+                    case s_path:
+                        if (c == '?') {
+                            m_path_start = start;
+                            m_path_length = current - start - 1;
+                            state = s_query;
+                            start = current;
+                        } else if (c == '#') {
+                            m_path_start = start;
+                            m_path_length = current - start - 1;
+                            state = s_fragment;
+                            start = current;
+                        }
+                        break;
+                    case s_query:
+                        if (c == '#') {
+                            m_query_start = start;
+                            m_query_length = current - start - 1;
+                            state = s_fragment;
+                            start = current;
+                        }
+                        break;
+                    case s_fragment:
+                        break;
                 }
             }
-            switch (state)
-            {
-                case user:
-                case password:
-                case host:
-                m_host_start = start;
-                m_host_length = current - start;
-                break;
-                case port:
-                m_port_start = start;
-                m_port_length = current - start;
-                break;
-                case path:
-                m_path_start = start;
-                m_path_length = current - start;
-                break;
-                case query:
-                m_query_start = start;
-                m_query_length = current - start;
-                break;
-                case fragment:
-                m_fragment_start = start;
-                m_fragment_length = current - start - 1;
-                break;
-                default: break;
+            switch (state) {
+                case s_user:
+                case s_password:
+                case s_host:
+                    m_host_start = start;
+                    m_host_length = current - start;
+                    break;
+                case s_port:
+                    m_port_start = start;
+                    m_port_length = current - start;
+                    break;
+                case s_path:
+                    m_path_start = start;
+                    m_path_length = current - start;
+                    break;
+                case s_query:
+                    m_query_start = start;
+                    m_query_length = current - start;
+                    break;
+                case s_fragment:
+                    m_fragment_start = start;
+                    m_fragment_length = current - start - 1;
+                    break;
+                default:
+                    break;
             }
         }
+
         uri(std::string_view schema,
             std::string_view user,
             std::string_view password,
@@ -429,19 +405,19 @@ case_host:
             std::string_view port,
             std::string_view path,
             std::string_view query,
-            std::string_view fragment) : uri()
-        {
+            std::string_view fragment) : uri() {
             using namespace std::string_view_literals;
             m_data.reserve(
-                schema.length() +
-                "://"sv.length() +
-                (user.empty() ? 0 : user.length() + "@"sv.length() + (password.empty() ? 0 : password.length() + ":"sv.length())) +
-                host.length() +
-                "/"sv.length() +
-                (port.empty() ? 0 : port.length() + ":"sv.length()) +
-                path.length() +
-                (query.empty() ? 0 : query.length() + "?"sv.length()) +
-                (fragment.empty() ? 0 : fragment.length() + "#"sv.length())
+                    schema.length() +
+                    "://"sv.length() +
+                    (user.empty() ? 0 : user.length() + "@"sv.length() +
+                                        (password.empty() ? 0 : password.length() + ":"sv.length())) +
+                    host.length() +
+                    "/"sv.length() +
+                    (port.empty() ? 0 : port.length() + ":"sv.length()) +
+                    path.length() +
+                    (query.empty() ? 0 : query.length() + "?"sv.length()) +
+                    (fragment.empty() ? 0 : fragment.length() + "#"sv.length())
             );
             size_t cur = 0;
 
@@ -452,14 +428,12 @@ case_host:
             m_data.append("://"sv);
             cur += "://"sv.length();
 
-            if (!user.empty())
-            {
+            if (!user.empty()) {
                 m_data.append(user);
                 m_user_start = cur;
                 cur += m_user_length = user.length();
 
-                if (!password.empty())
-                {
+                if (!password.empty()) {
                     m_data.append(":"sv);
                     cur += ":"sv.length();
 
@@ -476,8 +450,7 @@ case_host:
             m_host_start = cur;
             cur += m_host_length = host.length();
 
-            if (!port.empty())
-            {
+            if (!port.empty()) {
                 m_data.append(":"sv);
                 cur += ":"sv.length();
 
@@ -493,8 +466,7 @@ case_host:
             m_path_start = cur;
             cur += m_path_length = path.length();
 
-            if (!query.empty())
-            {
+            if (!query.empty()) {
                 m_data.append("?"sv);
                 cur += "?"sv.length();
 
@@ -503,8 +475,7 @@ case_host:
                 cur += m_query_length = query.length();
             }
 
-            if (!fragment.empty())
-            {
+            if (!fragment.empty()) {
                 m_data.append("#"sv);
                 cur += "#"sv.length();
 
@@ -515,125 +486,202 @@ case_host:
         }
 
 
-        [[nodiscard]] std::string_view full()     const { return m_data; }
-        [[nodiscard]] std::string_view schema()   const { return std::string_view(m_data.data() + m_schema_start, m_schema_length); }
-        [[nodiscard]] std::string_view user()     const { return std::string_view(m_data.data() + m_user_start, m_user_length); }
-        [[nodiscard]] std::string_view password() const { return std::string_view(m_data.data() + m_password_start, m_password_length); }
-        [[nodiscard]] std::string_view host()     const { return std::string_view(m_data.data() + m_host_start, m_host_length); }
-        [[nodiscard]] std::string_view port()     const { return std::string_view(m_data.data() + m_port_start, m_port_length); }
-        [[nodiscard]] std::string_view path()     const { return std::string_view(m_data.data() + m_path_start, m_path_length); }
-        [[nodiscard]] std::string_view query()    const { return std::string_view(m_data.data() + m_query_start, m_query_length); }
-        [[nodiscard]] std::string_view fragment() const { return std::string_view(m_data.data() + m_fragment_start, m_fragment_length); }
+        [[nodiscard]] std::string_view full() const { return m_data; }
 
-        static std::array<char, 3> escape(char c)
-        {
-            std::array<char, 3> arr = { '%', '\0', '\0' };
-            switch ((c & 0xF0) >> 4)
-            {
-                case 0:  arr[1] = '0'; break;
-                case 1:  arr[1] = '1'; break;
-                case 2:  arr[1] = '2'; break;
-                case 3:  arr[1] = '3'; break;
-                case 4:  arr[1] = '4'; break;
-                case 5:  arr[1] = '5'; break;
-                case 6:  arr[1] = '6'; break;
-                case 7:  arr[1] = '7'; break;
-                case 8:  arr[1] = '8'; break;
-                case 9:  arr[1] = '9'; break;
-                case 10: arr[1] = 'A'; break;
-                case 11: arr[1] = 'B'; break;
-                case 12: arr[1] = 'C'; break;
-                case 13: arr[1] = 'D'; break;
-                case 14: arr[1] = 'E'; break;
-                case 15: arr[1] = 'F'; break;
+        [[nodiscard]] std::string_view schema() const {
+            return {m_data.data() + m_schema_start, m_schema_length};
+        }
+
+        [[nodiscard]] std::string_view user() const {
+            return {m_data.data() + m_user_start, m_user_length};
+        }
+
+        [[nodiscard]] std::string_view password() const {
+            return {m_data.data() + m_password_start, m_password_length};
+        }
+
+        [[nodiscard]] std::string_view host() const {
+            return {m_data.data() + m_host_start, m_host_length};
+        }
+
+        [[nodiscard]] std::string_view port() const {
+            return {m_data.data() + m_port_start, m_port_length};
+        }
+
+        [[nodiscard]] std::string_view path() const {
+            return {m_data.data() + m_path_start, m_path_length};
+        }
+
+        [[nodiscard]] std::string_view query() const {
+            return {m_data.data() + m_query_start, m_query_length};
+        }
+
+        [[nodiscard]] std::string_view fragment() const {
+            return {m_data.data() + m_fragment_start, m_fragment_length};
+        }
+
+        static std::array<char, 3> escape(char c) {
+            std::array<char, 3> arr = {'%', '\0', '\0'};
+            switch ((c & 0xF0) >> 4) {
+                case 0:
+                    arr[1] = '0';
+                    break;
+                case 1:
+                    arr[1] = '1';
+                    break;
+                case 2:
+                    arr[1] = '2';
+                    break;
+                case 3:
+                    arr[1] = '3';
+                    break;
+                case 4:
+                    arr[1] = '4';
+                    break;
+                case 5:
+                    arr[1] = '5';
+                    break;
+                case 6:
+                    arr[1] = '6';
+                    break;
+                case 7:
+                    arr[1] = '7';
+                    break;
+                case 8:
+                    arr[1] = '8';
+                    break;
+                case 9:
+                    arr[1] = '9';
+                    break;
+                case 10:
+                    arr[1] = 'A';
+                    break;
+                case 11:
+                    arr[1] = 'B';
+                    break;
+                case 12:
+                    arr[1] = 'C';
+                    break;
+                case 13:
+                    arr[1] = 'D';
+                    break;
+                case 14:
+                    arr[1] = 'E';
+                    break;
+                case 15:
+                    arr[1] = 'F';
+                    break;
             }
-            switch (c & 0x0F)
-            {
+            switch (c & 0x0F) {
                 default:
-                case 0:  arr[2] = '0'; break;
-                case 1:  arr[2] = '1'; break;
-                case 2:  arr[2] = '2'; break;
-                case 3:  arr[2] = '3'; break;
-                case 4:  arr[2] = '4'; break;
-                case 5:  arr[2] = '5'; break;
-                case 6:  arr[2] = '6'; break;
-                case 7:  arr[2] = '7'; break;
-                case 8:  arr[2] = '8'; break;
-                case 9:  arr[2] = '9'; break;
-                case 10: arr[2] = 'A'; break;
-                case 11: arr[2] = 'B'; break;
-                case 12: arr[2] = 'C'; break;
-                case 13: arr[2] = 'D'; break;
-                case 14: arr[2] = 'E'; break;
-                case 15: arr[2] = 'F'; break;
+                case 0:
+                    arr[2] = '0';
+                    break;
+                case 1:
+                    arr[2] = '1';
+                    break;
+                case 2:
+                    arr[2] = '2';
+                    break;
+                case 3:
+                    arr[2] = '3';
+                    break;
+                case 4:
+                    arr[2] = '4';
+                    break;
+                case 5:
+                    arr[2] = '5';
+                    break;
+                case 6:
+                    arr[2] = '6';
+                    break;
+                case 7:
+                    arr[2] = '7';
+                    break;
+                case 8:
+                    arr[2] = '8';
+                    break;
+                case 9:
+                    arr[2] = '9';
+                    break;
+                case 10:
+                    arr[2] = 'A';
+                    break;
+                case 11:
+                    arr[2] = 'B';
+                    break;
+                case 12:
+                    arr[2] = 'C';
+                    break;
+                case 13:
+                    arr[2] = 'D';
+                    break;
+                case 14:
+                    arr[2] = 'E';
+                    break;
+                case 15:
+                    arr[2] = 'F';
+                    break;
             }
 
             return arr;
         }
 
     private:
-        void encode_helper(std::stringstream& sstream, std::string_view selected_view, const char* allowed) const
-        {
-            for (auto c : selected_view)
-            {
+        static void encode_helper(std::stringstream &sstream, std::string_view selected_view, const char *allowed) {
+            for (auto c: selected_view) {
                 bool flag = false;
-                for (const char* it = allowed; *it != '\0'; it++)
-                {
-                    if (*it == c)
-                    {
+                for (const char *it = allowed; *it != '\0'; it++) {
+                    if (*it == c) {
                         flag = true;
                         break;
                     }
                 }
-                if (flag)
-                {
+                if (flag) {
                     sstream << c;
-                }
-                else
-                {
+                } else {
                     auto res = escape(c);
                     sstream << std::string_view(res.data(), res.size());
                 }
             }
         }
+
     public:
-        std::string encoded() const
-        {
+        [[nodiscard]] std::string encoded() const {
             std::stringstream sstream;
 
             // ToDo: Parse into https://de.wikipedia.org/wiki/URL-Encoding
             encode_helper(sstream, schema(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
             sstream << "://";
-            if (!user().empty())
-            {
+            if (!user().empty()) {
                 encode_helper(sstream, user(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
-                if (!password().empty())
-                {
+                if (!password().empty()) {
                     sstream << ":";
-                    encode_helper(sstream, password(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
+                    encode_helper(sstream, password(),
+                                  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
                 }
                 sstream << "@";
             }
             encode_helper(sstream, host(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
-            if (!port().empty())
-            {
+            if (!port().empty()) {
                 sstream << ":";
                 encode_helper(sstream, port(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
             }
             sstream << "/";
             encode_helper(sstream, path(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~/");
-            if (!query().empty())
-            {
+            if (!query().empty()) {
                 sstream << "?";
                 encode_helper(sstream, query(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~&");
             }
-            if (!fragment().empty())
-            {
+            if (!fragment().empty()) {
                 sstream << "#";
-                encode_helper(sstream, fragment(), "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
+                encode_helper(sstream, fragment(),
+                              "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-._~");
             }
 
             return sstream.str();
         }
     };
 }
+
+#endif // SQFVM_LANGUAGE_SERVER_URI_HPP

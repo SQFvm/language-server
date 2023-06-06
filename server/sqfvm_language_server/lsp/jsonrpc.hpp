@@ -1,10 +1,14 @@
-#pragma once
+#ifndef SQFVM_LANGUAGE_SERVER_LSP_JSONRPC_HPP
+#define SQFVM_LANGUAGE_SERVER_LSP_JSONRPC_HPP
+
+
 #include <iostream>
 #include <unordered_map>
 #include <thread>
 #include <atomic>
 #include <mutex>
 #include <queue>
+#include <utility>
 #include <vector>
 #include <algorithm>
 #include <string>
@@ -38,12 +42,12 @@ public:
         std::optional<nlohmann::json> result;
         std::optional<nlohmann::json> params;
 
-        rpcmessage() : protocol_version("2.0"), id({}), method({}), result(), params() { }
-        rpcmessage(std::string id, std::string method) : protocol_version("2.0"), id(id), method(method), result(), params() { }
-        rpcmessage(std::string id, std::string method, nlohmann::json params) : protocol_version("2.0"), id(id), method(method), result(), params(params) { }
-        rpcmessage(std::string id, nlohmann::json result) : protocol_version("2.0"), id(id), method({}), result(result), params() { }
+        [[maybe_unused]] rpcmessage() : protocol_version("2.0"), id({}), method({}), result(), params() { }
+        [[maybe_unused]] rpcmessage(std::string id, std::string method) : protocol_version("2.0"), id(std::move(id)), method(std::move(method)), result(), params() { }
+        [[maybe_unused]] rpcmessage(std::string id, std::string method, nlohmann::json params) : protocol_version("2.0"), id(std::move(id)), method(std::move(method)), result(), params(params) { }
+        [[maybe_unused]] rpcmessage(std::string id, nlohmann::json result) : protocol_version("2.0"), id(std::move(id)), method({}), result(result), params() { }
 
-        nlohmann::json serialize() const
+        [[nodiscard]] nlohmann::json serialize() const
         {
             nlohmann::json res = { { "jsonrpc", protocol_version } };
             if (result.has_value())
@@ -86,7 +90,7 @@ public:
         {
             std::string key;
             std::string value;
-            header_kind kind;
+            header_kind kind = header_kind::other;
         };
         std::vector<header_value_pair> headers;
         rpcmessage message;
@@ -147,9 +151,9 @@ public:
         }
     }
 
-    void register_method(std::string name, mthd callback)
+    void register_method(const std::string& name, mthd callback)
     {
-        m_methods[name] = callback;
+        m_methods[name] = std::move(callback);
     }
 
 
@@ -159,7 +163,7 @@ public:
     {
         rpcframe frame;
         {
-            std::lock_guard ____lock(m_read_mutex);
+            std::lock_guard lock(m_read_mutex);
             if (m_qin.empty())
             {
                 return false;
@@ -180,7 +184,7 @@ public:
         frame.message = msg;
         frame.headers.push_back({ "Content-Type", "application/json-rpc;charset=utf-8", rpcframe::header_kind::other });
         {
-            std::lock_guard ____lock(m_write_mutex);
+            std::lock_guard lock(m_write_mutex);
             m_qout.push(frame);
         }
     }
@@ -196,8 +200,8 @@ private:
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
         std::filesystem::path p("jsonrpc-read-dump.txt");
         p = std::filesystem::absolute(p);
-        std::fstream __dbg_dump(p, std::fstream::out);
-        if (!__dbg_dump.good())
+        std::fstream dbg_dump(p, std::fstream::out);
+        if (!dbg_dump.good())
         {
             throw std::runtime_error("Failed to open dump file");
         }
@@ -216,8 +220,8 @@ private:
                     m_in.read(buffer, 1);
                     auto c = buffer[0];
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
-                    __dbg_dump << c;
-                    __dbg_dump.flush();
+                    dbg_dump << c;
+                    dbg_dump.flush();
 #endif
                     if (c == ':')
                     {
@@ -272,14 +276,14 @@ private:
                     m_in.read(buffer, 1);
                     auto c = buffer[0];
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
-                    __dbg_dump << c;
-                    __dbg_dump.flush();
+                    dbg_dump << c;
+                    dbg_dump.flush();
 #endif
                     if (c == '\n')
                     {
                         state = read_header;
-                        size_t off = 0;
-                        for (; off < message_buffer.size() && std::isspace(message_buffer[off]); off++);
+                        std::vector<char>::difference_type off = 0;
+                        for (; off < message_buffer.size() && std::isspace(message_buffer[off]) && off >= 0; off++);
                         header.value = std::string(message_buffer.begin() + off, message_buffer.end());
                         frame.headers.push_back(header);
                         message_buffer.clear();
@@ -299,7 +303,7 @@ private:
                         state = read_header;
                         frame.message = rpcmessage::deserialize(nlohmann::json::parse(data, nullptr, true, false));
                         {
-                            std::lock_guard ____lock(m_read_mutex);
+                            std::lock_guard lock(m_read_mutex);
                             m_qin.push(frame);
                         }
                         frame = {};
@@ -310,8 +314,8 @@ private:
                         message_buffer.insert(message_buffer.end(), buffer, buffer + read);
                         content_length -= read;
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
-                        __dbg_dump << std::string_view(buffer, read);
-                        __dbg_dump.flush();
+                        dbg_dump << std::string_view(buffer, read);
+                        dbg_dump.flush();
 #endif
                     }
                 } break;
@@ -327,8 +331,8 @@ private:
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
         std::filesystem::path p("jsonrpc-write-dump.txt");
         p = std::filesystem::absolute(p);
-        std::fstream __dbg_dump(p, std::fstream::out);
-        if (!__dbg_dump.good())
+        std::fstream dbg_dump(p, std::fstream::out);
+        if (!dbg_dump.good())
         {
             throw std::runtime_error("Failed to open dump file");
         }
@@ -339,7 +343,7 @@ private:
             bool queue_empty;
 
             {
-                std::lock_guard ____lock(m_write_mutex);
+                std::lock_guard lock(m_write_mutex);
                 queue_empty = m_qout.empty();
             }
             if (queue_empty)
@@ -352,7 +356,7 @@ private:
 
                 // Dequeue single frame
                 {
-                    std::lock_guard ____lock(m_write_mutex);
+                    std::lock_guard lock(m_write_mutex);
                     frame = m_qout.front();
                     m_qout.pop();
                 }
@@ -363,10 +367,10 @@ private:
                 // Send frame over m_out
                 m_out << "Content-Length: " << dumped.size() << newline;
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
-                __dbg_dump << "Content-Length: " << dumped.size() << newline;
-                __dbg_dump.flush();
+                dbg_dump << "Content-Length: " << dumped.size() << newline;
+                dbg_dump.flush();
 #endif
-                for (auto header : frame.headers)
+                for (const auto& header : frame.headers)
                 {
                     if (header.kind == rpcframe::header_kind::content_length)
                     {
@@ -374,14 +378,14 @@ private:
                     }
                     m_out << header.key << ": " << header.value << newline;
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
-                    __dbg_dump << header.key << ": " << header.value << newline;
-                    __dbg_dump.flush();
+                    dbg_dump << header.key << ": " << header.value << newline;
+                    dbg_dump.flush();
 #endif
                 }
                 m_out << newline << dumped;
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
-                __dbg_dump << newline << dumped;
-                __dbg_dump.flush();
+                dbg_dump << newline << dumped;
+                dbg_dump.flush();
 #endif
                 m_out.flush();
             }
@@ -390,3 +394,5 @@ private:
         delete terminate;
     }
 };
+
+#endif // SQFVM_LANGUAGE_SERVER_LSP_JSONRPC_HPP

@@ -5,7 +5,7 @@
 #include <string>
 #include <optional>
 
-namespace sqfvm::lsp::database::tables {
+namespace sqfvm::language_server::database::tables {
     // Represents an entry of a variable, referable by multiple t_file's using t_reference
     struct t_variable {
         static constexpr const char *table_name = "tVariable";
