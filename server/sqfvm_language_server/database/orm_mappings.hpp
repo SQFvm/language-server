@@ -14,7 +14,7 @@
 #define ORM_ENUM_MAPPING(TYPE, PRIMITIVE) \
 namespace sqlite_orm { \
     template<> \
-    struct type_printer<TYPE> : public text_printer {}; \
+    struct type_printer<TYPE> : public integer_printer {}; \
     template<> \
     struct statement_binder<TYPE> { \
         int bind(sqlite3_stmt* stmt, int index, const TYPE& value) { \
@@ -23,19 +23,15 @@ namespace sqlite_orm { \
     }; \
     template<> \
     struct field_printer<TYPE> { \
-        PRIMITIVE operator()(const TYPE& value) const { \
-            return static_cast<PRIMITIVE>(value); \
+        std::string operator()(const TYPE& value) const { \
+            return std::to_string(static_cast<PRIMITIVE>(value)); \
         } \
     }; \
     template<> \
     struct row_extractor<TYPE> { \
-        TYPE extract(PRIMITIVE row_value) { \
-            return static_cast<TYPE>(row_value); \
-        } \
-         \
         TYPE extract(sqlite3_stmt* stmt, int column_index) { \
-            auto value = sqlite3_column_int(stmt, column_index); \
-            return this->extract(value); \
+            auto value = sqlite3_column_int64(stmt, column_index); \
+            return static_cast<TYPE>(value); \
         } \
     }; \
     inline TYPE operator|(TYPE a, TYPE b) \
@@ -52,8 +48,8 @@ namespace sqlite_orm { \
     } \
 }
 
-ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_diagnostic::severity_level, uint8_t)
-ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_file::file_flags, uint8_t)
-ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_reference::type_flags, uint8_t)
-ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_reference::access_flags, uint8_t)
+ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_diagnostic::severity_level, int)
+ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_file::file_flags, int)
+ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_reference::type_flags, int)
+ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_reference::access_flags, int)
 #endif //SQFVM_LANGUAGE_SERVER_DATABASE_ORM_MAPPINGS_HPP
