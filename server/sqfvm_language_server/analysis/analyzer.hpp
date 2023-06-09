@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../database/context.hpp"
+#include "../sqfvm_factory.hpp"
 
 #include <runtime/runtime.h>
 #include <vector>
@@ -20,15 +21,17 @@ namespace sqfvm::language_server::analysis {
 
         // Perform an abstract analysis of the document, gathering references of variables, functions, etc.
         // to be committed to the database in the next step.
-        virtual void analyze(database::context &) = 0;
+        virtual void analyze() = 0;
 
         // Commit the analysis to the database.
-        virtual void commit(database::context &) = 0;
+        virtual void commit() = 0;
     };
 
     class analyzer_factory {
     public:
         using generator_func = std::unique_ptr<analyzer>(*)(
+                std::filesystem::path db_path,
+                sqfvm_factory &,
                 database::tables::t_file,
                 std::string &);
     private:
@@ -41,14 +44,16 @@ namespace sqfvm::language_server::analysis {
 
         [[nodiscard]] std::optional<std::unique_ptr<analyzer>> get(
                 const std::string &ext,
-                Logger& logger,
+                std::filesystem::path db_path,
+                sqfvm_factory &factory,
                 const database::tables::t_file &file,
-                sqf::runtime::runtime &runtime,
                 std::string &text) const {
             auto res = m_generators.find(ext);
             return res == m_generators.end()
                    ? std::optional<std::unique_ptr<analyzer>>{}
                    : res->second(
+                            db_path,
+                            factory,
                             file,
                             text);
         }

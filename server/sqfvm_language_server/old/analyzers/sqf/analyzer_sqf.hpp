@@ -6,12 +6,11 @@
 #include <filesystem>
 #include "parser/sqf/tokenizer.hpp"
 #include "parser/sqf/astnode.hpp"
-#include "sqfvisitor.hpp"
+#include "ast_visitor.hpp"
 
 namespace sqfvm::language_server
 {
-    class analyzer_sqf :
-            public analyzer
+    class analyzer_sqf :            public analyzer
     {
         std::vector<sqfvisitor *> m_visitors;
         std::vector<const ::sqf::parser::sqf::bison::astnode *> m_descend_ast_nodes;

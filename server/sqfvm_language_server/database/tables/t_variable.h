@@ -16,9 +16,11 @@ namespace sqfvm::language_server::database::tables {
         // The name of this t_variable.
         std::string name;
 
-        // Foreign Key of the t_scope this t_variable belongs to.
-        uint64_t scope_fk;
+        // Either the scope-qualified name of this t_variable, or the namespace this t_variable belongs to.
+        std::string scope;
 
+        // The file this t_variable belongs to. nullopt if this t_variable is a global.
+        std::optional<uint64_t> opt_file_fk;
     };
 }
 

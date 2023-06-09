@@ -1,5 +1,6 @@
 #ifndef SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP
 #define SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP
+#include "sqfvm_factory.hpp"
 #include "lsp/lspserver.hpp"
 #include "git_sha1.h"
 #include "analysis/analyzer.hpp"
@@ -19,9 +20,11 @@ namespace sqfvm::language_server
         std::filesystem::path m_db_path;
         analysis::analyzer_factory m_analyzer_factory;
         std::shared_ptr<database::context> m_context;
+        std::unordered_map<std::string, std::string> m_file_contents;
+        sqfvm_factory m_sqfvm_factory;
 
         void delete_file(database::tables::t_file file);
-        void analyse_file(database::tables::t_file file);
+        void analyse_file(const database::tables::t_file& file);
     protected:
         ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params& params) override
         {

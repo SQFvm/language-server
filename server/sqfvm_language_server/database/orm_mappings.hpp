@@ -8,7 +8,6 @@
 #include "tables/t_diagnostic.h"
 #include "tables/t_file.h"
 #include "tables/t_reference.h"
-#include "tables/t_scope.h"
 #include "tables/t_variable.h"
 
 #define ORM_ENUM_MAPPING(TYPE, PRIMITIVE) \
@@ -49,7 +48,6 @@ namespace sqlite_orm { \
 }
 
 ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_diagnostic::severity_level, int)
-ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_file::file_flags, int)
 ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_reference::type_flags, int)
 ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_reference::access_flags, int)
 #endif //SQFVM_LANGUAGE_SERVER_DATABASE_ORM_MAPPINGS_HPP

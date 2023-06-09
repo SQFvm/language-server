@@ -13,25 +13,23 @@ add_executable(sqfvm_language_server
         main.hpp
         uri.hpp
         git_sha1.h
-        analysis/assembly/assembly_analyzer.cpp
-        analysis/assembly/assembly_analyzer.hpp
-        analysis/sqf/sqf_analyzer.cpp
-        analysis/sqf/sqf_analyzer.hpp
+        analysis/sqf_ast/ast_visitor.hpp
+        analysis/sqf_ast/sqf_ast_analyzer.cpp
+        analysis/sqf_ast/sqf_ast_analyzer.hpp
+        analysis/sqf_ast/visitors/variables_visitor.hpp
         analysis/analyzer.hpp
         database/tables/t_diagnostic.h
         database/tables/t_file.h
         database/tables/t_reference.h
-        database/tables/t_scope.h
         database/tables/t_variable.h
         database/context.hpp
         database/orm_mappings.hpp
         database/orm_mappings.hpp
         util.hpp
-)
+        analysis/sqf_ast/visitors/variables_visitor.cpp sqfvm_factory.hpp runtime_logger.hpp sqfvm_factory.cpp)
 
 # Set C++ Version
 target_compile_features(sqfvm_language_server PUBLIC cxx_std_17)
-
 
 # Add local git revision header
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
@@ -40,13 +38,15 @@ get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 configure_file("${PROJECT_SOURCE_DIR}/cmake/git_sha1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/git_sha1.cpp" @ONLY)
 target_sources(sqfvm_language_server PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/git_sha1.cpp")
 
-# Add json
-target_include_directories(sqfvm_language_server PRIVATE "${PROJECT_SOURCE_DIR}/extern/json/include")
+# Find packages (use vcpkg to setup packages and pass -DCMAKE_TOOLCHAIN_FILE=[...]\vcpkg\scripts\buildsystems\vcpkg.cmake into cmake)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
+find_package(SqliteOrm CONFIG REQUIRED)
 
-# Add sqfvm
 target_link_libraries(sqfvm_language_server PRIVATE slibsqfvm)
-
-# Add sqlite_orm
+target_link_libraries(sqfvm_language_server PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(sqfvm_language_server PRIVATE unofficial::sqlite3::sqlite3)
 target_link_libraries(sqfvm_language_server PRIVATE sqlite_orm::sqlite_orm)
+
 
 # TODO: Add tests and install targets if needed.
