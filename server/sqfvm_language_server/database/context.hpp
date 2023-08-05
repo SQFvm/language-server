@@ -42,7 +42,7 @@ namespace sqfvm::language_server::database {
                                         make_table(t_variable::table_name,
                                                    make_column("id_pk", &t_variable::id_pk,
                                                                primary_key().autoincrement()),
-                                                   make_column("name", &t_variable::name),
+                                                   make_column("variable_name", &t_variable::variable_name),
                                                    make_column("scope", &t_variable::scope),
                                                    make_column("opt_file_fk", &t_variable::opt_file_fk),
                                                    foreign_key(&t_variable::opt_file_fk)

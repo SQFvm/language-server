@@ -16,9 +16,10 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze() {
     auto path_info = m_runtime->fileio().get_info(m_file.path, {});
     if (!path_info.has_value()) {
         m_diagnostics.push_back({
-                                        .severity = database::tables::t_diagnostic::severity_level::error,
-                                        .message = "Failed to get path info for file: " + m_file.path,
-                                });
+                .file_fk = m_file.id_pk,
+                .severity = database::tables::t_diagnostic::severity_level::error,
+                .message = "Failed to get path info for file: " + m_file.path,
+        });
         return;
     }
     analyze_ast(*m_runtime);
@@ -110,9 +111,11 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
                     }
                 } else {
                     // This variable is not in this file
-                    auto db_variable = storage.get_optional<database::tables::t_variable>(
-                            where(c(&database::tables::t_variable::scope) == visitor_variable.scope
-                                  && c(&database::tables::t_variable::name) == visitor_variable.name));
+                    std::optional<database::tables::t_variable> db_variable = {};
+                    auto result = storage.get_all<database::tables::t_variable>(
+                            where( (c(&database::tables::t_variable::scope) == visitor_variable.scope)
+                                   and (c(&database::tables::t_variable::variable_name) == visitor_variable.variable_name)));
+                    db_variable = result.empty() ? std::nullopt : std::optional(result[0]);
                     if (db_variable.has_value()) {
                         // Variable already exists
                         variable_map[visitor_id_pair{
@@ -124,10 +127,11 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
                         // Variable does not exist
                         auto copy = visitor_variable;
                         copy.id_pk = 0;
+                        auto insert_res = storage.insert(copy);
                         variable_map[visitor_id_pair{
                                 .visitor_index = static_cast<size_t>(visitor_diff),
                                 .id = visitor_variable.id_pk
-                        }] = storage.insert(copy);
+                        }] = insert_res;
                     }
                 }
             }
@@ -172,8 +176,18 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
                 where(c(&database::tables::t_diagnostic::file_fk) == m_file.id_pk));
 
         // Add new diagnostics
+        for (auto& it : m_diagnostics)
+        {
+            if (it.file_fk == 0)
+                it.file_fk = m_file.id_pk;
+        }
         storage.insert_range(m_diagnostics.begin(), m_diagnostics.end());
         for (auto &visitor: m_visitors) {
+            for (auto& it : visitor->m_diagnostics)
+            {
+                if (it.file_fk == 0)
+                    it.file_fk = m_file.id_pk;
+            }
             storage.insert_range(visitor->m_diagnostics.begin(), visitor->m_diagnostics.end());
         }
 #pragma endregion

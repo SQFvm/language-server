@@ -73,6 +73,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
         }
         case ::sqf::parser::sqf::bison::astkind::IDENT: {
             auto reference = make_reference(node);
+            reference.file_fk = file_of(a).id_pk;
             auto variable = get_or_create_variable(node.token.contents);
             reference.variable_fk = variable.id_pk;
 
@@ -209,14 +210,14 @@ t_variable sqfvm::language_server::analysis::sqf_ast::visitors::variables_visito
                     m_variables.begin(),
                     m_variables.end(),
                     [name, &scope](auto val) {
-                        return val.name == name && val.scope == scope.full_name;
+                        return val.variable_name == name && val.scope == scope.full_name;
                     });
             if (find_res != m_variables.end()) {
                 return *find_res;
             }
         }
         t_variable variable{};
-        variable.name = name;
+        variable.variable_name = name;
         variable.id_pk = m_variables.size() + 1;
         variable.scope = m_scope_stack.back().full_name;
         m_variables.push_back(variable);
@@ -226,13 +227,13 @@ t_variable sqfvm::language_server::analysis::sqf_ast::visitors::variables_visito
                 m_variables.begin(),
                 m_variables.end(),
                 [name](auto val) {
-                    return val.name == name;
+                    return val.variable_name == name;
                 });
         if (find_res != m_variables.end()) {
             return *find_res;
         } else {
             t_variable variable{};
-            variable.name = name;
+            variable.variable_name = name;
             variable.id_pk = m_variables.size() + 1;
             variable.scope = get_namespace();
             m_variables.push_back(variable);
@@ -247,14 +248,14 @@ namespace {
     diag_private_variable_value_is_never_used_001(const t_variable &variable, const t_reference &reference) {
         return {
                 .id_pk = {},
-                .file_fk = {},
+                .file_fk = reference.file_fk,
                 .line = reference.line,
                 .column = reference.column,
                 .offset = reference.offset,
                 .length = reference.length,
                 .severity = t_diagnostic::info,
-                .message = "Private variable '" + variable.name + "' is never used",
-                .content = variable.name,
+                .message = "Private variable '" + variable.variable_name + "' is never used",
+                .content = variable.variable_name,
                 .code = "VV-001",
         };
     }
@@ -263,14 +264,14 @@ namespace {
     diag_global_variable_value_is_never_used_in_file_002(const t_variable &variable, const t_reference &reference) {
         return {
                 .id_pk = {},
-                .file_fk = {},
+                .file_fk = reference.file_fk,
                 .line = reference.line,
                 .column = reference.column,
                 .offset = reference.offset,
                 .length = reference.length,
                 .severity = t_diagnostic::info,
-                .message = "Global variable '" + variable.name + "' is never used in this file",
-                .content = variable.name,
+                .message = "Global variable '" + variable.variable_name + "' is never used in this file",
+                .content = variable.variable_name,
                 .code = "VV-002",
         };
     }
@@ -278,14 +279,14 @@ namespace {
     t_diagnostic diag_private_variable_is_never_assigned_003(const t_variable &variable, const t_reference &reference) {
         return {
                 .id_pk = {},
-                .file_fk = {},
+                .file_fk = reference.file_fk,
                 .line = reference.line,
                 .column = reference.column,
                 .offset = reference.offset,
                 .length = reference.length,
                 .severity = t_diagnostic::info,
-                .message = "Private variable '" + variable.name + "' is never assigned",
-                .content = variable.name,
+                .message = "Private variable '" + variable.variable_name + "' is never assigned",
+                .content = variable.variable_name,
                 .code = "VV-003",
         };
     }
@@ -295,14 +296,14 @@ namespace {
     diag_global_variable_never_assigned_in_file_in_file_004(const t_variable &variable, const t_reference &reference) {
         return {
                 .id_pk = {},
-                .file_fk = {},
+                .file_fk = reference.file_fk,
                 .line = reference.line,
                 .column = reference.column,
                 .offset = reference.offset,
                 .length = reference.length,
                 .severity = t_diagnostic::verbose,
-                .message = "Global variable '" + variable.name + "' is never assigned in this file",
-                .content = variable.name,
+                .message = "Global variable '" + variable.variable_name + "' is never assigned in this file",
+                .content = variable.variable_name,
                 .code = "VV-004",
         };
     }
@@ -320,11 +321,18 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ana
                                                   return reference.variable_fk == variable.id_pk &&
                                                          reference.access == t_reference::access_flags::set;
                                               });
-        auto subsequent_reference = std::find_if(initial_reference + 1, m_references.end(),
-                                                 [&variable](const t_reference &reference) {
-                                                     return reference.variable_fk == variable.id_pk &&
-                                                            reference.access == t_reference::access_flags::get;
-                                                 });
+        if (initial_reference == m_references.end()) {
+            continue;
+        }
+        auto subsequent_reference = initial_reference == m_references.end()
+                                    ? m_references.end()
+                                    : std::find_if(initial_reference + 1, m_references.end(),
+                                                   [&variable](const t_reference &reference) {
+                                                       return reference.variable_fk ==
+                                                              variable.id_pk &&
+                                                              reference.access ==
+                                                              t_reference::access_flags::get;
+                                                   });
         if (subsequent_reference == m_references.end()) {
             if (is_private_variable(variable)) {
                 m_diagnostics.push_back(diag_private_variable_value_is_never_used_001(
@@ -343,14 +351,27 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ana
                                           return reference.variable_fk == variable.id_pk &&
                                                  reference.access == t_reference::access_flags::set;
                                       });
-        auto first_get = std::find_if(m_references.begin() + 1, m_references.end(),
+        auto first_get = std::find_if(first_set == m_references.end() ? m_references.begin() : first_set,
+                                      m_references.end(),
                                       [&variable](const t_reference &reference) {
                                           return reference.variable_fk == variable.id_pk &&
                                                  reference.access == t_reference::access_flags::set;
                                       });
         if (first_get < first_set) {
-
-            if (is_private_variable(variable)) {
+            if (first_get == m_references.end()) {
+                m_diagnostics.push_back({
+                        .id_pk = {},
+                        .file_fk = {},
+                        .line = 0,
+                        .column = 0,
+                        .offset = 0,
+                        .length = 0,
+                        .severity = t_diagnostic::info,
+                        .message = "Variable '" + variable.variable_name + "' has no reference",
+                        .content = variable.variable_name,
+                        .code = "FATAL",
+                });
+            } else if (is_private_variable(variable)) {
                 m_diagnostics.push_back(diag_private_variable_is_never_assigned_003(
                         variable, *first_get));
             } else {

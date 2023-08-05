@@ -36,11 +36,11 @@ namespace sqfvm::language_server::analysis::sqf_ast {
         }
 
         [[nodiscard]] bool is_private_variable(const database::tables::t_variable &variable) const {
-            return is_private_variable(variable.name);
+            return is_private_variable(variable.variable_name);
         }
 
         [[nodiscard]] bool is_global_variable(const database::tables::t_variable &variable) const {
-            return is_global_variable(variable.name);
+            return is_global_variable(variable.variable_name);
         }
 
 

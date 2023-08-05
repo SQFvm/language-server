@@ -28,13 +28,14 @@ namespace sqfvm::language_server {
             auto uri = sanitize_to_uri(location.path);
             auto path = sanitize_to_string(uri);
 
-            auto file_id = m_context.storage().get_optional<sqfvm::language_server::database::tables::t_file>(
+            auto file_results = m_context.storage().get_all<sqfvm::language_server::database::tables::t_file>(
                     where(c(&sqfvm::language_server::database::tables::t_file::path) == path));
+            auto file_id = file_results.empty() ? std::nullopt : std::optional(file_results[0]);
             if (!file_id.has_value()) {
                 m_func({
-                               .severity = sqfvm::language_server::database::tables::t_diagnostic::severity_level::error,
-                               .message = "Failed to get file: " + path,
-                       });
+                       .severity = sqfvm::language_server::database::tables::t_diagnostic::severity_level::error,
+                       .message = "Failed to find file '" + path + "' in database",
+               });
                 return;
             }
 

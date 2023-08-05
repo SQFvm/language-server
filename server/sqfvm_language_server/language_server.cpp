@@ -23,11 +23,11 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     // Handle SQLite3 database
     if (!m_context->good()) {
         std::stringstream sstream;
-        sstream << "Failed to open SQLite3 database '" << m_db_path << "': " << m_context->error() << ". Language server will not work.";
+        sstream << "Failed to open SQLite3 database '" << m_db_path << "': " << m_context->error()
+                << ". Language server will not work.";
         window_logMessage(::lsp::data::message_type::Error, sstream.str());
         return;
-    }
-    else {
+    } else {
         std::stringstream sstream;
         sstream << "Opened SQLite3 database at '" << m_db_path << "'.";
         window_logMessage(::lsp::data::message_type::Log, sstream.str());
@@ -39,12 +39,24 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
         for (auto &it: m_context->sync_result()) {
             sstream << it.first << ": ";
             switch (it.second) {
-                case sync_schema_result::new_table_created: sstream << "new_table_created\n"; break;
-                case sync_schema_result::already_in_sync: sstream << "already_in_sync\n"; break;
-                case sync_schema_result::old_columns_removed: sstream << "old_columns_removed\n"; break;
-                case sync_schema_result::new_columns_added: sstream << "new_columns_added\n"; break;
-                case sync_schema_result::new_columns_added_and_old_columns_removed: sstream << "new_columns_added_and_old_columns_removed\n"; break;
-                case sync_schema_result::dropped_and_recreated: sstream << "dropped_and_recreated\n"; break;
+                case sync_schema_result::new_table_created:
+                    sstream << "new_table_created\n";
+                    break;
+                case sync_schema_result::already_in_sync:
+                    sstream << "already_in_sync\n";
+                    break;
+                case sync_schema_result::old_columns_removed:
+                    sstream << "old_columns_removed\n";
+                    break;
+                case sync_schema_result::new_columns_added:
+                    sstream << "new_columns_added\n";
+                    break;
+                case sync_schema_result::new_columns_added_and_old_columns_removed:
+                    sstream << "new_columns_added_and_old_columns_removed\n";
+                    break;
+                case sync_schema_result::dropped_and_recreated:
+                    sstream << "dropped_and_recreated\n";
+                    break;
             }
         }
         window_logMessage(::lsp::data::message_type::Log, sstream.str());
@@ -79,21 +91,49 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
                 uint64_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(
                         last_write_time.time_since_epoch())
                         .count();
-                auto file = m_context->storage().get_optional<database::tables::t_file>(
-                        columns(&database::tables::t_file::path),
-                        where(is_equal(c(&database::tables::t_file::path), file_path.string())));
+                std::optional<database::tables::t_file> file;
+                try {
+                    auto file_results = m_context->storage().get_all<database::tables::t_file>(
+                            where(c(&database::tables::t_file::path) == file_path.string()));
+                    file = file_results.empty() ? std::nullopt : std::optional(file_results[0]);
+                }
+                catch (std::exception &e) {
+                    std::stringstream sstream;
+                    sstream << "Failed to find file '" << file_path.string() << "' with '" << e.what()
+                            << "'. Language server will not work.";
+                    window_logMessage(::lsp::data::message_type::Error, sstream.str());
+                    return;
+                }
                 if (file.has_value()) {
                     file->is_deleted = false;
-                    file->is_outdated = file->last_changed != timestamp;
+                    file->is_outdated = file->is_outdated || file->last_changed != timestamp;
                     file->last_changed = timestamp;
-                    m_context->storage().update(file.value());
+                    try {
+                        m_context->storage().update(file.value());
+                    }
+                    catch (std::exception &e) {
+                        std::stringstream sstream;
+                        sstream << "Failed to update file '" << file_path.string() << "' with '" << e.what()
+                                << "'. Language server will not work.";
+                        window_logMessage(::lsp::data::message_type::Error, sstream.str());
+                        return;
+                    }
                 } else {
                     database::tables::t_file f;
                     f.path = file_path.string();
                     f.last_changed = timestamp;
                     f.is_deleted = false;
                     f.is_outdated = true;
-                    m_context->storage().insert(f);
+                    try {
+                        m_context->storage().insert(f);
+                    }
+                    catch (std::exception &e) {
+                        std::stringstream sstream;
+                        sstream << "Failed to insert file '" << f.path << "' with '" << e.what()
+                                << "'. Language server will not work.";
+                        window_logMessage(::lsp::data::message_type::Error, sstream.str());
+                        return;
+                    }
                 }
             } else if (file_path.filename() == "$PBOPREFIX$") {
                 // ToDo: If modified, remove existing mapping and reparse as whole. (or message the user that a reload is required)
@@ -112,14 +152,32 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
         }
     }
 
-    for (const auto &file: m_context->storage().get_all<database::tables::t_file>(
-            where(c(&database::tables::t_file::is_deleted) == true))) {
-        delete_file(file);
+    try {
+        for (const auto &file: m_context->storage().get_all<database::tables::t_file>(
+                where(c(&database::tables::t_file::is_deleted) == true))) {
+            delete_file(file);
+        }
+    }
+    catch (std::exception &e) {
+        std::stringstream sstream;
+        sstream << "Failed to delete deleted files with '" << e.what()
+                << "'. Language server will not work.";
+        window_logMessage(::lsp::data::message_type::Error, sstream.str());
+        return;
     }
 
-    for (const auto &file: m_context->storage().get_all<database::tables::t_file>(
-            where(c(&database::tables::t_file::is_outdated) == true))) {
-        analyse_file(file);
+    try {
+        for (const auto &file: m_context->storage().get_all<database::tables::t_file>(
+                where(c(&database::tables::t_file::is_outdated) == true))) {
+            analyse_file(file);
+        }
+    }
+    catch (std::exception &e) {
+        std::stringstream sstream;
+        sstream << "Failed to analyze outdated files with '" << e.what()
+                << "'. Language server will not work.";
+        window_logMessage(::lsp::data::message_type::Error, sstream.str());
+        return;
     }
 }
 
@@ -187,7 +245,7 @@ sqfvm::language_server::language_server::analyse_file(const sqfvm::language_serv
         analyzer_opt.value()->analyze();
         analyzer_opt.value()->commit();
     }
-    catch (std::exception& e) {
+    catch (std::exception &e) {
         std::stringstream sstream;
         sstream << "Failed to analyze '" << file.path << "': " << e.what();
         window_logMessage(::lsp::data::message_type::Error, sstream.str());

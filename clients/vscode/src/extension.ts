@@ -30,7 +30,7 @@ async function activateLanguageServer(context: vscode.ExtensionContext) {
             serverModule = p;
             break;
         } catch (err) {
-            // Skip this path.
+            // Skip this path. 
         }
     }
     if (!serverModule) throw new URIError("Cannot find the language server module.");
