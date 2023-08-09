@@ -18,6 +18,10 @@ namespace sqfvm::language_server {
                   m_func(std::move(func)) {}
 
         void log(const LogMessageBase &base) override {
+            // Skip virtual file lookup errors
+            if (base.getErrorCode() >= 70000 && base.getErrorCode() < 80000 && base.getErrorCode() != 70014) {
+                return;
+            }
             using namespace sqlite_orm;
             auto &message = dynamic_cast<const logmessage::RuntimeLogMessageBase &>(base);
             if (message == nullptr) {
@@ -26,15 +30,16 @@ namespace sqfvm::language_server {
 
             auto location = message.location();
             auto uri = sanitize_to_uri(location.path);
-            auto path = sanitize_to_string(uri);
+            auto path_str = sanitize_to_string(uri);
+            auto path = std::filesystem::path(path_str).lexically_normal();
 
             auto file_results = m_context.storage().get_all<sqfvm::language_server::database::tables::t_file>(
-                    where(c(&sqfvm::language_server::database::tables::t_file::path) == path));
+                    where(c(&sqfvm::language_server::database::tables::t_file::path) == path.string()));
             auto file_id = file_results.empty() ? std::nullopt : std::optional(file_results[0]);
             if (!file_id.has_value()) {
                 m_func({
                        .severity = sqfvm::language_server::database::tables::t_diagnostic::severity_level::error,
-                       .message = "Failed to find file '" + path + "' in database",
+                       .message = "Failed to find file '" + path.string() + "' in database",
                });
                 return;
             }

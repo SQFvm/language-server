@@ -6,6 +6,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include <set>
 #include <sstream>
 
 using namespace std::string_view_literals;
@@ -14,9 +15,10 @@ using namespace sqlite_orm;
 void sqfvm::language_server::language_server::after_initialize(const ::lsp::data::initialize_params &params) {
     auto root_uri_string = params.rootUri.has_value() ? params.rootUri.value().path() : "./"sv;
     std::filesystem::path uri(root_uri_string);
-    uri = std::filesystem::absolute(uri);
+    uri = std::filesystem::absolute(uri).lexically_normal();
     m_folder = uri / ".vscode"sv / "sqfvm-lsp";
     m_db_path = m_folder / "sqlite3.db";
+    // ToDo: Start file system watcher to detect changes in the workspace not triggered by the language server
 
     m_context = std::make_shared<database::context>(m_db_path);
 
@@ -85,10 +87,10 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
                 iter(workspace_path, std::filesystem::directory_options::skip_permission_denied);
         std::filesystem::recursive_directory_iterator iter_end;
         for (; iter != iter_end; iter++) {
-            auto &file_path = iter->path();
+            auto file_path = iter->path().lexically_normal();
             if (m_analyzer_factory.has(file_path.extension().string())) {
                 auto last_write_time = iter->last_write_time();
-                uint64_t timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+                uint64_t timestamp = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
                         last_write_time.time_since_epoch())
                         .count();
                 std::optional<database::tables::t_file> file;
@@ -106,7 +108,7 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
                 }
                 if (file.has_value()) {
                     file->is_deleted = false;
-                    file->is_outdated = file->is_outdated || file->last_changed != timestamp;
+                    file->is_outdated = file->is_outdated || file->last_changed < timestamp;
                     file->last_changed = timestamp;
                     try {
                         m_context->storage().update(file.value());
@@ -117,6 +119,11 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
                                 << "'. Language server will not work.";
                         window_logMessage(::lsp::data::message_type::Error, sstream.str());
                         return;
+                    }
+                    if (file->is_outdated) {
+                        auto file_contents = sqf::fileio::passthrough::read_file_from_disk(file_path.string());
+                        if (file_contents.has_value())
+                            push_file_history(*file, *file_contents, true);
                     }
                 } else {
                     database::tables::t_file f;
@@ -168,15 +175,34 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
 
     try {
         for (const auto &file: m_context->storage().get_all<database::tables::t_file>(
-                where(c(&database::tables::t_file::is_outdated) == true))) {
+                where(c(&database::tables::t_file::is_outdated) == false))) {
+            publish_diagnostics(file);
+        }
+    }
+    catch (std::exception &e) {
+        std::stringstream sstream;
+        sstream << "Failed to republish diagnostics with '" << e.what()
+                << "'. Language server will not work.";
+        window_logMessage(::lsp::data::message_type::Error, sstream.str());
+        return;
+    }
+
+    analyze_outdated_files();
+}
+
+void sqfvm::language_server::language_server::analyze_outdated_files() {
+    try {
+        for (const auto &file: m_context->storage().get_all<database::tables::t_file>(
+                where(c(&database::tables::t_file::is_outdated) == true &&
+                      c(&database::tables::t_file::is_deleted) == false))) {
             analyse_file(file);
         }
     }
     catch (std::exception &e) {
         std::stringstream sstream;
         sstream << "Failed to analyze outdated files with '" << e.what()
-                << "'. Language server will not work.";
-        window_logMessage(::lsp::data::message_type::Error, sstream.str());
+                << "'.";
+        window_logMessage(lsp::data::message_type::Error, sstream.str());
         return;
     }
 }
@@ -185,8 +211,107 @@ void sqfvm::language_server::language_server::on_workspace_didChangeConfiguratio
         const ::lsp::data::did_change_configuration_params &params) {
 }
 
+std::optional<std::vector<lsp::data::location>> sqfvm::language_server::language_server::on_textDocument_references(
+        const lsp::data::references_params &params) {
+    auto path = std::filesystem::path(
+            std::string(params.textDocument.uri.path().begin(),
+                        params.textDocument.uri.path().end()))
+            .lexically_normal();
+    auto files = m_context->storage().get_all<database::tables::t_file>(
+            where(c(&database::tables::t_file::path) == path.string()));
+    if (files.empty())
+        return std::nullopt;
+    auto file = files.front();
+    auto references = m_context->storage().get_all<database::tables::t_reference>(
+            where(c(&database::tables::t_reference::file_fk) == file.id_pk
+                  && c(&database::tables::t_reference::line) == params.position.line + 1));
+    if (references.empty())
+        return std::nullopt;
+    std::optional<uint64_t> variable_id_opt;
+    for (auto& reference : references) {
+        if (reference.column >= params.position.character + 1 ||
+            reference.column + reference.length <= params.position.character + 1)
+            continue;
+        variable_id_opt = reference.variable_fk;
+        break;
+    }
+    if (!variable_id_opt.has_value())
+        return std::nullopt;
+    auto variable_id = variable_id_opt.value();
+    auto variable_references = m_context->storage().get_all<database::tables::t_reference>(
+            where(c(&database::tables::t_reference::variable_fk) == variable_id));
+    std::vector<lsp::data::location> locations;
+    for (const auto &reference: variable_references) {
+        auto file_opt = m_context->storage().get_optional<database::tables::t_file>(reference.file_fk);
+        auto file_path = file_opt->path;
+        lsp::data::uri file_uri("file:///" + file_path);
+        locations.emplace_back(lsp::data::location{
+                .uri = file_uri,
+                .range = lsp::data::range{
+                        .start = lsp::data::position{
+                                .line = reference.line - 1,
+                                .character = reference.column
+                        },
+                        .end = lsp::data::position{
+                                .line = reference.line - 1,
+                                .character = reference.column + reference.length
+                        }
+                }
+        });
+    }
+    return {locations};
+}
+
 void sqfvm::language_server::language_server::on_textDocument_didChange(
         const ::lsp::data::did_change_text_document_params &params) {
+    auto path = std::filesystem::path(
+            std::string(params.textDocument.uri.path().begin(),
+                        params.textDocument.uri.path().end()))
+            .lexically_normal();
+    auto files = m_context->storage().get_all<database::tables::t_file>(
+            where(c(&database::tables::t_file::path) == path.string()));
+    ::sqfvm::language_server::database::tables::t_file file;
+    if (files.empty()) {
+        file = database::tables::t_file{
+                .is_outdated = true,
+                .is_deleted = false,
+                .last_changed = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now().time_since_epoch()).count(),
+                .path = path.string(),
+        };
+        try {
+            auto result = m_context->storage().insert(file);
+            file.id_pk = result;
+        }
+        catch (std::exception &e) {
+            std::stringstream sstream;
+            sstream << "Failed to insert file '" << file.path << "' with '" << e.what()
+                    << "'. Language server will not work for this file.";
+            window_logMessage(::lsp::data::message_type::Error, sstream.str());
+            return;
+        }
+    } else {
+        file = files.front();
+        file.is_outdated = true;
+        m_context->storage().update(file);
+    }
+
+    push_file_history(file, params.contentChanges[0].text);
+    mark_related_files_as_outdated(file);
+    analyze_outdated_files();
+}
+
+void sqfvm::language_server::language_server::push_file_history(
+        ::sqfvm::language_server::database::tables::t_file file,
+        std::string contents,
+        bool is_external) {
+    m_context->storage().insert(database::tables::t_file_history{
+            .file_fk = file.id_pk,
+            .content = contents,
+            .time_stamp_created = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count(),
+            .is_external = false,
+    });
 }
 
 std::optional<std::vector<::lsp::data::folding_range>>
@@ -214,24 +339,62 @@ sqfvm::language_server::language_server::language_server() {
 }
 
 void sqfvm::language_server::language_server::delete_file(sqfvm::language_server::database::tables::t_file file) {
-    // Create analyzer
-    auto extension = std::filesystem::path(file.path).extension().string();
-    std::string content{};
-    auto analyzer_opt = m_analyzer_factory.get(extension, m_context->db_path(), m_sqfvm_factory, file, content);
-    if (!analyzer_opt.has_value()) {
-        return;
-    }
-    analyzer_opt.value()->analyze();
-    m_context->storage().remove<database::tables::t_file>(file.id_pk);
+    mark_related_files_as_outdated(file);
+    m_context->storage().remove_all<database::tables::t_diagnostic>(
+            where(c(&database::tables::t_diagnostic::file_fk) == file.id_pk));
+    m_context->storage().remove_all<database::tables::t_reference>(
+            where(c(&database::tables::t_reference::file_fk) == file.id_pk));
+    m_context->storage().remove_all<database::tables::t_variable>(
+            where(c(&database::tables::t_variable::opt_file_fk) == file.id_pk));
+    file.is_deleted = true;
+    m_context->storage().update<database::tables::t_file>(file);
 }
 
-void
-sqfvm::language_server::language_server::analyse_file(const sqfvm::language_server::database::tables::t_file &file) {
+void sqfvm::language_server::language_server::mark_related_files_as_outdated(
+        const sqfvm::language_server::database::tables::t_file &file) {
+    std::set<uint64_t> outdated_file_ids{};
+    auto variables = m_context->storage().get_all<database::tables::t_variable>(
+            where(c(&database::tables::t_variable::opt_file_fk) == file.id_pk
+                  and c(&database::tables::t_variable::scope) == "missionNamespace"));
+    for (const auto &variable: variables) {
+        auto non_local_references = m_context->storage().get_all<database::tables::t_reference>(
+                where(c(&database::tables::t_reference::variable_fk) == variable.id_pk
+                      and c(&database::tables::t_reference::file_fk) != file.id_pk));
+        for (const auto &reference: non_local_references) {
+            outdated_file_ids.insert(reference.file_fk);
+        }
+    }
+
+    // Mark all files as outdated
+    for (const auto &outdated_file_id: outdated_file_ids) {
+        auto outdated_file = m_context->storage().get<database::tables::t_file>(outdated_file_id);
+        outdated_file.is_outdated = true;
+        m_context->storage().update(outdated_file);
+    }
+
+}
+
+void sqfvm::language_server::language_server::analyse_file(
+        const sqfvm::language_server::database::tables::t_file &file) {
     auto runtime = m_sqfvm_factory.create([](auto &_) {}, *m_context);
 
     // Create analyzer
     auto extension = std::filesystem::path(file.path).extension().string();
-    std::string content = runtime->fileio().read_file_from_disk(file.path).value_or("");
+    auto contents = m_context->storage().get_all<sqfvm::language_server::database::tables::t_file_history>(
+            where(c(&database::tables::t_file_history::file_fk) == file.id_pk),
+            order_by(&database::tables::t_file_history::time_stamp_created).desc(),
+            limit(1));
+    std::string content;
+    if (contents.empty()) {
+        auto file_contents = sqf::fileio::passthrough::read_file_from_disk(file.path);
+        if (file_contents.has_value())
+            push_file_history(file, *file_contents, true);
+        else
+            return;
+        content = file_contents.value();
+    } else {
+        content = contents[0].content;
+    }
     auto analyzer_opt = m_analyzer_factory.get(extension, m_context->db_path(), m_sqfvm_factory, file, content);
     if (!analyzer_opt.has_value()) {
         return;
@@ -244,10 +407,39 @@ sqfvm::language_server::language_server::analyse_file(const sqfvm::language_serv
     try {
         analyzer_opt.value()->analyze();
         analyzer_opt.value()->commit();
+        publish_diagnostics(file);
     }
     catch (std::exception &e) {
         std::stringstream sstream;
         sstream << "Failed to analyze '" << file.path << "': " << e.what();
         window_logMessage(::lsp::data::message_type::Error, sstream.str());
     }
+}
+
+void sqfvm::language_server::language_server::publish_diagnostics(
+        const sqfvm::language_server::database::tables::t_file &file) {
+    auto file_diagnostics = m_context->storage().get_all<database::tables::t_diagnostic>(
+            where(c(&database::tables::t_diagnostic::file_fk) == file.id_pk));
+    lsp::data::publish_diagnostics_params params = {};
+    params.uri = sanitize_to_uri(file.path);
+    for (const auto &diagnostic: file_diagnostics) {
+        lsp::data::diagnostics diag = {};
+        diag.code = diagnostic.code;
+        diag.message = diagnostic.message;
+        diag.range.start.line = diagnostic.line;
+        diag.range.start.character = diagnostic.column;
+        diag.range.end.line = diagnostic.line;
+        diag.range.end.character = diagnostic.column + diagnostic.length;
+        diag.severity = diagnostic.severity == database::tables::t_diagnostic::fatal
+                        ? lsp::data::diagnostic_severity::Error
+                        : diagnostic.severity == database::tables::t_diagnostic::error
+                          ? lsp::data::diagnostic_severity::Error
+                          : diagnostic.severity == database::tables::t_diagnostic::warning
+                            ? lsp::data::diagnostic_severity::Warning
+                            : diagnostic.severity == database::tables::t_diagnostic::info
+                              ? lsp::data::diagnostic_severity::Information
+                              : lsp::data::diagnostic_severity::Hint;
+        params.diagnostics.push_back(diag);
+    }
+    textDocument_publishDiagnostics(params);
 }

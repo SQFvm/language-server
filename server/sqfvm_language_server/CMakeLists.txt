@@ -26,7 +26,9 @@ add_executable(sqfvm_language_server
         database/orm_mappings.hpp
         database/orm_mappings.hpp
         util.hpp
-        analysis/sqf_ast/visitors/variables_visitor.cpp sqfvm_factory.hpp runtime_logger.hpp sqfvm_factory.cpp)
+        analysis/sqf_ast/visitors/variables_visitor.cpp sqfvm_factory.hpp runtime_logger.hpp sqfvm_factory.cpp
+        database/tables/t_file_history.h
+        database/tables/t_file_history.h)
 
 # Set C++ Version
 target_compile_features(sqfvm_language_server PUBLIC cxx_std_17)

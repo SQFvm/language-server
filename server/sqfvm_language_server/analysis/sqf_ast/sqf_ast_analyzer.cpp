@@ -13,13 +13,13 @@
 #include <parser/config/config_parser.hpp>
 
 void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze() {
-    auto path_info = m_runtime->fileio().get_info(m_file.path, {});
+    auto path_info = m_runtime->fileio().get_info(m_file.path, {m_file.path, {}, {}});
     if (!path_info.has_value()) {
         m_diagnostics.push_back({
-                .file_fk = m_file.id_pk,
-                .severity = database::tables::t_diagnostic::severity_level::error,
-                .message = "Failed to get path info for file: " + m_file.path,
-        });
+                                        .file_fk = m_file.id_pk,
+                                        .severity = database::tables::t_diagnostic::severity_level::error,
+                                        .message = "Failed to get path info for file: " + m_file.path,
+                                });
         return;
     }
     analyze_ast(*m_runtime);
@@ -84,6 +84,7 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
         for (auto visitor_it = m_visitors.begin(); visitor_it != m_visitors.end(); ++visitor_it) {
             auto &visitor = *visitor_it;
             auto visitor_diff = visitor_it - m_visitors.begin();
+            auto visitor_index = static_cast<size_t>(visitor_diff);
             for (auto &visitor_variable: visitor->m_variables) {
                 if (visitor_variable.scope.length() > file_scope_name.length()
                     && std::string_view(visitor_variable.scope.begin(),
@@ -96,30 +97,32 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
                                                     });
                     if (db_variable != db_file_variables.end()) {
                         variable_map[visitor_id_pair{
-                                .visitor_index = static_cast<size_t>(visitor_diff),
+                                .visitor_index = visitor_index,
                                 .id = visitor_variable.id_pk
-                        }] = visitor_variable.id_pk;
-                        file_variables_mapped.push_back(visitor_variable);
+                        }] = db_variable->id_pk;
+                        file_variables_mapped.push_back(*db_variable);
                     } else {
                         auto copy = visitor_variable;
                         copy.id_pk = 0;
                         // Variable does not exist
+                        auto insert_res = storage.insert(copy);
                         variable_map[visitor_id_pair{
-                                .visitor_index = static_cast<size_t>(visitor_diff),
+                                .visitor_index = visitor_index,
                                 .id = visitor_variable.id_pk
-                        }] = storage.insert(copy);
+                        }] = insert_res;
                     }
                 } else {
                     // This variable is not in this file
                     std::optional<database::tables::t_variable> db_variable = {};
                     auto result = storage.get_all<database::tables::t_variable>(
-                            where( (c(&database::tables::t_variable::scope) == visitor_variable.scope)
-                                   and (c(&database::tables::t_variable::variable_name) == visitor_variable.variable_name)));
+                            where((c(&database::tables::t_variable::scope) == visitor_variable.scope)
+                                  and
+                                  (c(&database::tables::t_variable::variable_name) == visitor_variable.variable_name)));
                     db_variable = result.empty() ? std::nullopt : std::optional(result[0]);
                     if (db_variable.has_value()) {
                         // Variable already exists
                         variable_map[visitor_id_pair{
-                                .visitor_index = static_cast<size_t>(visitor_diff),
+                                .visitor_index = visitor_index,
                                 .id = visitor_variable.id_pk
                         }] = db_variable->id_pk;
                         file_variables_mapped.push_back(*db_variable);
@@ -129,7 +132,7 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
                         copy.id_pk = 0;
                         auto insert_res = storage.insert(copy);
                         variable_map[visitor_id_pair{
-                                .visitor_index = static_cast<size_t>(visitor_diff),
+                                .visitor_index = visitor_index,
                                 .id = visitor_variable.id_pk
                         }] = insert_res;
                     }
@@ -143,6 +146,8 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
                              [&](auto &variable) {
                                  return variable.scope == db_variable.scope;
                              }) == file_variables_mapped.end()) {
+                storage.remove_all<database::tables::t_reference>(
+                        where(c(&database::tables::t_reference::variable_fk) == db_variable.id_pk));
                 storage.remove<database::tables::t_variable>(db_variable.id_pk);
             }
         }
@@ -164,7 +169,7 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
                         .visitor_index = static_cast<size_t>(visitor_diff),
                         .id = visitor_reference.variable_fk
                 }];
-                storage.insert(copy);
+                insert(storage, copy);
             }
         }
 #pragma endregion
@@ -176,15 +181,13 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
                 where(c(&database::tables::t_diagnostic::file_fk) == m_file.id_pk));
 
         // Add new diagnostics
-        for (auto& it : m_diagnostics)
-        {
+        for (auto &it: m_diagnostics) {
             if (it.file_fk == 0)
                 it.file_fk = m_file.id_pk;
         }
         storage.insert_range(m_diagnostics.begin(), m_diagnostics.end());
         for (auto &visitor: m_visitors) {
-            for (auto& it : visitor->m_diagnostics)
-            {
+            for (auto &it: visitor->m_diagnostics) {
                 if (it.file_fk == 0)
                     it.file_fk = m_file.id_pk;
             }
@@ -206,11 +209,35 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
 
 }
 
+void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::insert(
+        database::context::storage_t &storage,
+        const database::tables::t_reference &copy) const {
+    try {
+        storage.insert(copy);
+    } catch (std::exception &e) {
+        std::stringstream sstream;
+        sstream << "Failed to insert into " << database::tables::t_reference::table_name << "." << "\n";
+        sstream << "What: " << "\n";
+        sstream << "    " << e.what() << "\n";
+        sstream << "Data: " << "\n";
+        sstream << "    file_fk: " << copy.file_fk << "\n";
+        sstream << "    variable_fk: " << copy.variable_fk << "\n";
+        sstream << "    access: " << static_cast<int>(copy.access) << "\n";
+        sstream << "    line: " << copy.line << "\n";
+        sstream << "    column: " << copy.column << "\n";
+        sstream << "    offset: " << copy.offset << "\n";
+        sstream << "    length: " << copy.length << "\n";
+        sstream << "    types: " << static_cast<int>(copy.types);
+
+        throw std::runtime_error(sstream.str());
+    }
+}
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "misc-no-recursion"
 
-void
-sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::recurse(const sqf::parser::sqf::bison::astnode &parent) {
+void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::recurse(
+        const sqf::parser::sqf::bison::astnode &parent) {
     m_descend_ast_nodes.push_back(&parent);
     for (auto &visitor: m_visitors) {
         visitor->enter(*this, parent, m_descend_ast_nodes);
@@ -231,11 +258,19 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze_ast(
     for (auto &visitor: m_visitors) {
         visitor->start(*this);
     }
-    auto logger = StdOutLogger();
-    auto parser = sqf::parser::sqf::parser(logger);
-    auto tokenizer = sqf::parser::sqf::tokenizer(m_text.begin(), m_text.end(), m_file.path);
+    auto preprocessor = sqf::parser::preprocessor::impl_default(runtime.get_logger());
+    auto preprocessed_opt = preprocessor.preprocess(runtime, m_text, {m_file.path, {}, {}});
+    if (!preprocessed_opt.has_value()) {
+        return;
+    }
+    auto &preprocessed = preprocessed_opt.value();
+    auto parser = sqf::parser::sqf::parser(runtime.get_logger());
+    auto tokenizer = sqf::parser::sqf::tokenizer(preprocessed.begin(), preprocessed.end(), m_file.path);
     sqf::parser::sqf::bison::astnode root;
-    parser.get_tree(runtime, tokenizer, &root);
+    auto success = parser.get_tree(runtime, tokenizer, &root);
+    if (!success) {
+        return;
+    }
     recurse(root);
     for (auto &visitor: m_visitors) {
         visitor->end(*this);
@@ -260,4 +295,3 @@ sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::~sqf_ast_analyzer()
         delete v;
     }
 }
-

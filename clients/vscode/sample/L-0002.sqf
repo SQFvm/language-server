@@ -14,3 +14,7 @@ _op_string + 1;
 
 fnc_something = { private _shouldAppear = 5; };
 _shouldAppear + 1;
+
+sad = s =
+
+5 + 5 

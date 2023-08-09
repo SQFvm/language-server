@@ -4,6 +4,8 @@
 #define CFUNC(ARG) ARG
 testvalue = "";
 
+
+
 systemChat CONCAT(test,value);
 
 private _something = [];
@@ -15,7 +17,7 @@ private _input = _this select 0;
     _x;
     _forEachIndex;
 } forEach _something;
-
+ 
 path = "a3\air_f\config.cpp";
 private "_code";
 private ["_state", "_args"];

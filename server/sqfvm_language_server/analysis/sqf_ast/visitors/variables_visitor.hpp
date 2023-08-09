@@ -34,7 +34,8 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
 
         [[nodiscard]] database::tables::t_reference make_reference(const ::sqf::parser::sqf::bison::astnode &node) const;
         [[nodiscard]] database::tables::t_variable get_or_create_variable(std::string_view name);
-        std::string push_scope();
+        std::string push_scope(const ::sqf::parser::sqf::bison::astnode &node,
+                               const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes);
         void pop_scope();
         void push_namespace(std::string name) {
             m_namespace_stack.push(std::move(name));

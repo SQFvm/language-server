@@ -6,6 +6,7 @@
 #include <utility>
 #include <sqlite_orm/sqlite_orm.h>
 #include "tables/t_file.h"
+#include "tables/t_file_history.h"
 #include "tables/t_reference.h"
 #include "tables/t_variable.h"
 #include "orm_mappings.hpp"
@@ -24,6 +25,13 @@ namespace sqfvm::language_server::database {
                                                    make_column("path", &t_file::path),
                                                    make_column("is_outdated", &t_file::is_outdated),
                                                    make_column("is_deleted", &t_file::is_deleted)),
+                                        make_table(t_file_history::table_name,
+                                                   make_column("id_pk", &t_file_history::id_pk, primary_key().autoincrement()),
+                                                   make_column("file_fk", &t_file_history::file_fk),
+                                                   make_column("content", &t_file_history::content),
+                                                   make_column("is_external", &t_file_history::is_external),
+                                                   make_column("time_stamp_created", &t_file_history::time_stamp_created),
+                                                   foreign_key(&t_file_history::file_fk).references(&t_file::id_pk)),
                                         make_table(t_reference::table_name,
                                                    make_column("id_pk", &t_reference::id_pk,
                                                                primary_key().autoincrement()),
@@ -65,9 +73,11 @@ namespace sqfvm::language_server::database {
         }
     }
     class context {
+    public:
+        using storage_t = decltype(internal::create_storage(std::string{}));
+    private:
         std::filesystem::path m_db_path;
         bool m_bad;
-        using storage_t = decltype(internal::create_storage(std::string{}));
         storage_t m_storage;
         std::map<std::string, sqlite_orm::sync_schema_result> m_sync_result;
         std::string m_error;

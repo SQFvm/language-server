@@ -30,6 +30,9 @@ namespace sqfvm::language_server::analysis::sqf_ast {
             scope.append("://"sv);
             return scope;
         }
+        void insert(
+                database::context::storage_t &storage,
+                const database::tables::t_reference& copy) const;
 
     public:
         sqf_ast_analyzer(

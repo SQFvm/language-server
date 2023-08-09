@@ -4050,6 +4050,69 @@ namespace lsp {
             }
         };
 
+        struct references_params {
+            struct ReferenceContext {
+                /**
+                 * Include the declaration of the current symbol.
+                 */
+                bool includeDeclaration;
+
+
+                static ReferenceContext from_json(const nlohmann::json &node) {
+                    ReferenceContext res;
+                    data::from_json(node, "includeDeclaration", res.includeDeclaration);
+                    return res;
+                }
+
+                nlohmann::json to_json() const {
+                    nlohmann::json json;
+                    data::set_json(json, "includeDeclaration", includeDeclaration);
+                    return json;
+                }
+            };
+
+            /**
+            * An optional token that a server can use to report partial results (e.g. streaming) to
+            * the client.
+            */
+            std::optional<std::string> partialResultToken;
+            /**
+            * An optional token that a server can use to report work done progress.
+            */
+            std::optional<std::string> workDoneToken;
+            /**
+            * The text document.
+            */
+            text_document_identifier textDocument;
+
+            /**
+            * The position inside the text document.
+            */
+            position position;
+
+            ReferenceContext context;
+
+            static references_params from_json(const nlohmann::json &node) {
+                references_params res;
+                data::from_json(node, "partialResultToken", res.partialResultToken);
+                data::from_json(node, "workDoneToken", res.workDoneToken);
+                data::from_json(node, "textDocument", res.textDocument);
+                data::from_json(node, "position", res.position);
+                data::from_json(node, "context", res.context);
+                return res;
+            }
+
+            nlohmann::json to_json() const {
+                nlohmann::json json;
+                data::set_json(json, "partialResultToken", partialResultToken);
+                data::set_json(json, "workDoneToken", workDoneToken);
+                data::set_json(json, "textDocument", textDocument);
+                data::set_json(json, "position", position);
+                data::set_json(json, "context", context);
+                return json;
+            }
+        };
+
         struct publish_diagnostics_params {
             /**
              * The URI for which diagnostic information is reported.
@@ -4490,6 +4553,19 @@ namespace lsp {
                         }
                     });
             rpc.register_method(
+                    "textDocument/references", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
+                        try {
+                            auto params = data::references_params::from_json(msg.params.value());
+                            auto res = on_textDocument_references(params);
+                            rpc.send({msg.id, to_json(res)});
+                        }
+                        catch (const std::exception &e) {
+                            std::stringstream sstream;
+                            sstream << "rpc call 'workspace/didChangeConfiguration' failed with: '" << e.what() << "'.";
+                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                        }
+                    });
+            rpc.register_method(
                     "textDocument/colorPresentation", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
                         try {
                             auto params = data::color_presentation_params::from_json(msg.params.value());
@@ -4578,6 +4654,10 @@ namespace lsp {
 
         virtual std::vector<lsp::data::color_presentation>
         on_textDocument_colorPresentation(const lsp::data::color_presentation_params &params) {
+            return {};
+        }
+
+        virtual std::optional<std::vector<lsp::data::location>> on_textDocument_references(const lsp::data::references_params &params) {
             return {};
         }
 

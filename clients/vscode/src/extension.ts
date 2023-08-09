@@ -21,7 +21,7 @@ let client: languageClient.LanguageClient | undefined;
 
 async function activateLanguageServer(context: vscode.ExtensionContext) {
     // The server is implemented in an executable application.
-    let serverModule: string | undefined;
+    let serverModule: string | undefined;66
     for (let p of languageServerPaths) {
         p = context.asAbsolutePath(p);
         console.log(p);

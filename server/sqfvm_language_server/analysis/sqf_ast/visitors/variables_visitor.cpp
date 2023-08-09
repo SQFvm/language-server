@@ -3,6 +3,8 @@
 
 #include <algorithm>
 
+#define LINE_OFFSET -1
+
 using namespace sqfvm::language_server::database::tables;
 using namespace std::string_view_literals;
 
@@ -30,7 +32,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             }
 
             // Push scope info
-            push_scope();
+            push_scope(node, parent_nodes);
             break;
         }
         case ::sqf::parser::sqf::bison::astkind::BOOLEAN_FALSE:
@@ -71,6 +73,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             }
             break;
         }
+        case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL:
         case ::sqf::parser::sqf::bison::astkind::IDENT: {
             auto reference = make_reference(node);
             reference.file_fk = file_of(a).id_pk;
@@ -126,13 +129,14 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::end
 bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_left_side_of_assignment(
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes,
         const ::sqf::parser::sqf::bison::astnode &node) {
-    return parent_nodes.size() > 2
-           && (
-                   (*(parent_nodes.rbegin() + 1))->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT
-                   || (*(parent_nodes.rbegin() + 1))->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL
-           )
-           && (*(parent_nodes.rbegin() + 1))->children.size() >= 1
-           && &(*(parent_nodes.rbegin() + 1))->children[0] == &node;
+    return node.kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL
+           || parent_nodes.size() > 2
+              && (
+                      (*(parent_nodes.rbegin() + 1))->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT
+                      || (*(parent_nodes.rbegin() + 1))->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL
+              )
+              && (*(parent_nodes.rbegin() + 1))->children.size() >= 1
+              && &(*(parent_nodes.rbegin() + 1))->children[0] == &node;
 }
 
 bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_right_side_of_assignment(
@@ -158,7 +162,10 @@ t_reference sqfvm::language_server::analysis::sqf_ast::visitors::variables_visit
     return reference;
 }
 
-std::string sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::push_scope() {
+std::string sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::push_scope(
+        const ::sqf::parser::sqf::bison::astnode &node,
+        const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes
+) {
     std::string scope{};
     if (m_scope_stack.empty()) {
         scope = "scope://";
@@ -192,7 +199,8 @@ std::string sqfvm::language_server::analysis::sqf_ast::visitors::variables_visit
         scope.append(std::to_string(back.child_count));
         m_scope_stack.back().child_count++;
     }
-    m_scope_stack.push_back({0, scope});
+    variables_visitor::scope s{0, scope};
+    m_scope_stack.push_back(s);
     return scope;
 }
 
@@ -249,7 +257,7 @@ namespace {
         return {
                 .id_pk = {},
                 .file_fk = reference.file_fk,
-                .line = reference.line,
+                .line = reference.line + LINE_OFFSET,
                 .column = reference.column,
                 .offset = reference.offset,
                 .length = reference.length,
@@ -265,7 +273,7 @@ namespace {
         return {
                 .id_pk = {},
                 .file_fk = reference.file_fk,
-                .line = reference.line,
+                .line = reference.line + LINE_OFFSET,
                 .column = reference.column,
                 .offset = reference.offset,
                 .length = reference.length,
@@ -280,11 +288,11 @@ namespace {
         return {
                 .id_pk = {},
                 .file_fk = reference.file_fk,
-                .line = reference.line,
+                .line = reference.line + LINE_OFFSET,
                 .column = reference.column,
                 .offset = reference.offset,
                 .length = reference.length,
-                .severity = t_diagnostic::info,
+                .severity = t_diagnostic::warning,
                 .message = "Private variable '" + variable.variable_name + "' is never assigned",
                 .content = variable.variable_name,
                 .code = "VV-003",
@@ -297,7 +305,7 @@ namespace {
         return {
                 .id_pk = {},
                 .file_fk = reference.file_fk,
-                .line = reference.line,
+                .line = reference.line + LINE_OFFSET,
                 .column = reference.column,
                 .offset = reference.offset,
                 .length = reference.length,
@@ -316,67 +324,49 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ana
 
     // Find all variables which are only set once and never read
     for (auto &variable: m_variables) {
-        auto initial_reference = std::find_if(m_references.begin(), m_references.end(),
-                                              [&variable](const t_reference &reference) {
-                                                  return reference.variable_fk == variable.id_pk &&
-                                                         reference.access == t_reference::access_flags::set;
-                                              });
-        if (initial_reference == m_references.end()) {
-            continue;
-        }
-        auto subsequent_reference = initial_reference == m_references.end()
-                                    ? m_references.end()
-                                    : std::find_if(initial_reference + 1, m_references.end(),
-                                                   [&variable](const t_reference &reference) {
-                                                       return reference.variable_fk ==
-                                                              variable.id_pk &&
-                                                              reference.access ==
-                                                              t_reference::access_flags::get;
-                                                   });
-        if (subsequent_reference == m_references.end()) {
-            if (is_private_variable(variable)) {
-                m_diagnostics.push_back(diag_private_variable_value_is_never_used_001(
-                        variable, *initial_reference));
-            } else {
-                m_diagnostics.push_back(diag_global_variable_value_is_never_used_in_file_002(
-                        variable, *initial_reference));
+        for (auto it = m_references.begin(); it != m_references.end(); it++) {
+            if (it->variable_fk != variable.id_pk || it->access != t_reference::access_flags::set)
+                continue; // ToDo: Optimize the lookup as we are O(N^M) here
+            auto initial_reference = it;
+            // We just need to check the following references due to read order
+            auto next_reference = std::find_if(initial_reference + 1, m_references.end(),
+                                               [&variable](const t_reference &reference) {
+                                                   return reference.variable_fk == variable.id_pk;
+                                               });
+            if (next_reference == m_references.end() || next_reference->access != t_reference::access_flags::get) {
+                if (is_private_variable(variable)) {
+                    m_diagnostics.push_back(diag_private_variable_value_is_never_used_001(
+                            variable, *initial_reference));
+                } else {
+                    m_diagnostics.push_back(diag_global_variable_value_is_never_used_in_file_002(
+                            variable, *initial_reference));
+                }
             }
         }
     }
 
     // Find all variables which are never set
     for (auto &variable: m_variables) {
-        auto first_set = std::find_if(m_references.begin(), m_references.end(),
-                                      [&variable](const t_reference &reference) {
-                                          return reference.variable_fk == variable.id_pk &&
-                                                 reference.access == t_reference::access_flags::set;
-                                      });
-        auto first_get = std::find_if(first_set == m_references.end() ? m_references.begin() : first_set,
-                                      m_references.end(),
-                                      [&variable](const t_reference &reference) {
-                                          return reference.variable_fk == variable.id_pk &&
-                                                 reference.access == t_reference::access_flags::set;
-                                      });
-        if (first_get < first_set) {
-            if (first_get == m_references.end()) {
-                m_diagnostics.push_back({
-                        .id_pk = {},
-                        .file_fk = {},
-                        .line = 0,
-                        .column = 0,
-                        .offset = 0,
-                        .length = 0,
-                        .severity = t_diagnostic::info,
-                        .message = "Variable '" + variable.variable_name + "' has no reference",
-                        .content = variable.variable_name,
-                        .code = "FATAL",
-                });
-            } else if (is_private_variable(variable)) {
-                m_diagnostics.push_back(diag_private_variable_is_never_assigned_003(
-                        variable, *first_get));
-            } else {
-                m_diagnostics.push_back(diag_global_variable_never_assigned_in_file_in_file_004(
-                        variable, *first_get));
+        for (auto it = m_references.begin(); it != m_references.end(); it++) {
+            if (it->variable_fk != variable.id_pk || it->access != t_reference::access_flags::get)
+                continue; // ToDo: Optimize the lookup as we are O(N^M) here
+            auto initial_reference = it;
+            // We just need to check the previous references due to read order
+            auto previous_set = std::find_if(
+                    m_references.begin(),
+                    initial_reference,
+                    [&variable](const t_reference &reference) {
+                        return reference.variable_fk == variable.id_pk
+                               && reference.access == t_reference::access_flags::set;
+                    });
+            if (previous_set == initial_reference) {
+                if (is_private_variable(variable)) {
+                    m_diagnostics.push_back(diag_private_variable_is_never_assigned_003(
+                            variable, *initial_reference));
+                } else {
+                    m_diagnostics.push_back(diag_global_variable_never_assigned_in_file_in_file_004(
+                            variable, *initial_reference));
+                }
             }
         }
     }
