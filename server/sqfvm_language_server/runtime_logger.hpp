@@ -33,10 +33,8 @@ namespace sqfvm::language_server {
             auto path_str = sanitize_to_string(uri);
             auto path = std::filesystem::path(path_str).lexically_normal();
 
-            auto file_results = m_context.storage().get_all<sqfvm::language_server::database::tables::t_file>(
-                    where(c(&sqfvm::language_server::database::tables::t_file::path) == path.string()));
-            auto file_id = file_results.empty() ? std::nullopt : std::optional(file_results[0]);
-            if (!file_id.has_value()) {
+            auto file = db_get_file_from_path(m_context, path, true);
+            if (!file.has_value()) {
                 m_func({
                        .severity = sqfvm::language_server::database::tables::t_diagnostic::severity_level::error,
                        .message = "Failed to find file '" + path.string() + "' in database",
@@ -45,13 +43,18 @@ namespace sqfvm::language_server {
             }
 
             sqfvm::language_server::database::tables::t_diagnostic msg;
-            msg.file_fk = file_id->id_pk;
+            msg.file_fk = file->id_pk;
             msg.line = location.line - 1;
             msg.column = location.col;
             msg.offset = location.offset;
             msg.length = location.length;
             msg.content = std::to_string(base.getErrorCode());
             msg.message = message.formatMessage();
+            {
+                std::stringstream sstream;
+                sstream << "SQFVM-" << std::setfill('0') << std::setw(5) << base.getErrorCode();
+                msg.code = sstream.str();
+            }
             msg.severity = static_cast<sqfvm::language_server::database::tables::t_diagnostic::severity_level>(base.getLevel());
 
             m_func(msg);

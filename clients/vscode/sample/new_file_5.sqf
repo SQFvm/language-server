@@ -2,3 +2,4 @@
 a * b;
 
 systemChat "test";
+private ["true"]; 

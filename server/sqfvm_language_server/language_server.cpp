@@ -3,6 +3,7 @@
 #include "analysis/sqf_ast/sqf_ast_analyzer.hpp"
 
 
+#include <Poco/Delegate.h>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -16,11 +17,25 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     auto root_uri_string = params.rootUri.has_value() ? params.rootUri.value().path() : "./"sv;
     std::filesystem::path uri(root_uri_string);
     uri = std::filesystem::absolute(uri).lexically_normal();
-    m_folder = uri / ".vscode"sv / "sqfvm-lsp";
-    m_db_path = m_folder / "sqlite3.db";
+    m_lsp_folder = uri / ".vscode"sv / "sqfvm-lsp";
+    m_db_path = m_lsp_folder / "sqlite3.db";
     // ToDo: Start file system watcher to detect changes in the workspace not triggered by the language server
 
     m_context = std::make_shared<database::context>(m_db_path);
+    m_sqfvm_factory.add_mapping(uri.string(), "");
+    m_directory_watcher = std::make_shared<Poco::DirectoryWatcher>(
+            uri.string(),
+            Poco::DirectoryWatcher::DW_FILTER_ENABLE_ALL,
+            2048);
+    m_directory_watcher->itemAdded += Poco::delegate(
+            this,
+            &sqfvm::language_server::language_server::file_system_item_added);
+    m_directory_watcher->itemRemoved += Poco::delegate(
+            this,
+            &sqfvm::language_server::language_server::file_system_item_removed);
+    m_directory_watcher->itemModified += Poco::delegate(
+            this,
+            &sqfvm::language_server::language_server::file_system_item_modified);
 
     // Handle SQLite3 database
     if (!m_context->good()) {
@@ -228,7 +243,7 @@ std::optional<std::vector<lsp::data::location>> sqfvm::language_server::language
     if (references.empty())
         return std::nullopt;
     std::optional<uint64_t> variable_id_opt;
-    for (auto& reference : references) {
+    for (auto &reference: references) {
         if (reference.column >= params.position.character + 1 ||
             reference.column + reference.length <= params.position.character + 1)
             continue;
@@ -262,39 +277,34 @@ std::optional<std::vector<lsp::data::location>> sqfvm::language_server::language
     return {locations};
 }
 
+std::optional<::sqfvm::language_server::database::tables::t_file>
+sqfvm::language_server::language_server::get_file_from_path(
+        std::filesystem::path path,
+        bool create_if_not_exists) {
+    try {
+        return db_get_file_from_path(*m_context, path, create_if_not_exists);
+    }
+    catch (std::exception &e) {
+        std::stringstream sstream;
+        sstream << "Failed to insert file '" << path << "' with '" << e.what()
+                << "'. Language server will not work for this file.";
+        window_logMessage(::lsp::data::message_type::Error, sstream.str());
+        return {};
+    }
+}
+
 void sqfvm::language_server::language_server::on_textDocument_didChange(
         const ::lsp::data::did_change_text_document_params &params) {
     auto path = std::filesystem::path(
             std::string(params.textDocument.uri.path().begin(),
                         params.textDocument.uri.path().end()))
             .lexically_normal();
-    auto files = m_context->storage().get_all<database::tables::t_file>(
-            where(c(&database::tables::t_file::path) == path.string()));
-    ::sqfvm::language_server::database::tables::t_file file;
-    if (files.empty()) {
-        file = database::tables::t_file{
-                .is_outdated = true,
-                .is_deleted = false,
-                .last_changed = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::system_clock::now().time_since_epoch()).count(),
-                .path = path.string(),
-        };
-        try {
-            auto result = m_context->storage().insert(file);
-            file.id_pk = result;
-        }
-        catch (std::exception &e) {
-            std::stringstream sstream;
-            sstream << "Failed to insert file '" << file.path << "' with '" << e.what()
-                    << "'. Language server will not work for this file.";
-            window_logMessage(::lsp::data::message_type::Error, sstream.str());
-            return;
-        }
-    } else {
-        file = files.front();
-        file.is_outdated = true;
-        m_context->storage().update(file);
-    }
+    auto file_opt = get_file_from_path(path, true);
+    if (!file_opt.has_value())
+        return;
+    auto file = file_opt.value();
+    file.is_outdated = true;
+    m_context->storage().update(file);
 
     push_file_history(file, params.contentChanges[0].text);
     mark_related_files_as_outdated(file);
@@ -442,4 +452,45 @@ void sqfvm::language_server::language_server::publish_diagnostics(
         params.diagnostics.push_back(diag);
     }
     textDocument_publishDiagnostics(params);
+}
+
+void sqfvm::language_server::language_server::file_system_item_removed(
+        const Poco::DirectoryWatcher::DirectoryEvent &event) {
+    std::filesystem::path path = event.item.path();
+    if (is_subpath(path, m_lsp_folder.parent_path()))
+        return;
+    auto file_opt = get_file_from_path(path.string(), true);
+    if (!file_opt.has_value()) {
+        return;
+    }
+    delete_file(file_opt.value());
+    analyze_outdated_files();
+}
+
+void sqfvm::language_server::language_server::file_system_item_added(
+        const Poco::DirectoryWatcher::DirectoryEvent &event) {
+    std::filesystem::path path = event.item.path();
+    if (is_subpath(path, m_lsp_folder.parent_path()))
+        return;
+    auto file_opt = get_file_from_path(path.string(), true);
+    if (!file_opt.has_value()) {
+        return;
+    }
+    analyze_outdated_files();
+}
+
+void sqfvm::language_server::language_server::file_system_item_modified(
+        const Poco::DirectoryWatcher::DirectoryEvent &event) {
+    std::filesystem::path path = event.item.path();
+    if (is_subpath(path, m_lsp_folder.parent_path()))
+        return;
+    auto file_opt = get_file_from_path(path.string(), true);
+    if (!file_opt.has_value()) {
+        return;
+    }
+    auto file = file_opt.value();
+    file.is_outdated = true;
+    m_context->storage().update(file);
+    mark_related_files_as_outdated(file);
+    analyze_outdated_files();
 }

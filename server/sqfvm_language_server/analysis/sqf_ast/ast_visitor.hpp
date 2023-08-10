@@ -23,6 +23,10 @@ namespace sqfvm::language_server::analysis::sqf_ast {
             return a.m_file;
         }
 
+        const std::string_view text_of(sqf_ast_analyzer &a) const {
+            return a.m_preprocessed_text;
+        }
+
         std::string scope_name_of(sqf_ast_analyzer &a) const {
             return a.scope_name();
         }
@@ -61,7 +65,9 @@ namespace sqfvm::language_server::analysis::sqf_ast {
 
         virtual void end(sqf_ast_analyzer &a) = 0;
 
-        virtual void analyze(const database::context &context) {}
+        virtual void analyze(
+                sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &sqf_ast_analyzer,
+                const database::context &context) {}
     };
 }
 #endif // SQFVM_LANGUAGE_SERVER_ANALYSIS_SQF_AST_AST_VISITOR_HPP

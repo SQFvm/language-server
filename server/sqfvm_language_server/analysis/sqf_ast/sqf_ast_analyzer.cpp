@@ -67,7 +67,7 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
 
         // Call analyze on all visitors
         for (auto &visitor: m_visitors) {
-            visitor->analyze(m_context);
+            visitor->analyze(*this, m_context);
         }
 
 
@@ -238,17 +238,17 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::insert(
 
 void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::recurse(
         const sqf::parser::sqf::bison::astnode &parent) {
-    m_descend_ast_nodes.push_back(&parent);
     for (auto &visitor: m_visitors) {
         visitor->enter(*this, parent, m_descend_ast_nodes);
     }
+    m_descend_ast_nodes.push_back(&parent);
     for (auto &child: parent.children) {
         recurse(child);
     }
+    m_descend_ast_nodes.pop_back();
     for (auto &visitor: m_visitors) {
         visitor->exit(*this, parent, m_descend_ast_nodes);
     }
-    m_descend_ast_nodes.pop_back();
 }
 
 #pragma clang diagnostic pop
@@ -263,9 +263,9 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze_ast(
     if (!preprocessed_opt.has_value()) {
         return;
     }
-    auto &preprocessed = preprocessed_opt.value();
+    m_preprocessed_text = preprocessed_opt.value();
     auto parser = sqf::parser::sqf::parser(runtime.get_logger());
-    auto tokenizer = sqf::parser::sqf::tokenizer(preprocessed.begin(), preprocessed.end(), m_file.path);
+    auto tokenizer = sqf::parser::sqf::tokenizer(m_preprocessed_text.begin(), m_preprocessed_text.end(), m_file.path);
     sqf::parser::sqf::bison::astnode root;
     auto success = parser.get_tree(runtime, tokenizer, &root);
     if (!success) {
@@ -284,6 +284,7 @@ sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::sqf_ast_analyzer(
         std::string &text)
         : m_file(std::move(file)),
           m_text(text),
+          m_preprocessed_text(text),
           m_runtime(),
           m_context(db_path) {
     m_runtime = factory.create([&](auto &msg) { m_diagnostics.push_back(msg); }, m_context);

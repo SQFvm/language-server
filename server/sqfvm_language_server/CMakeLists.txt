@@ -20,15 +20,18 @@ add_executable(sqfvm_language_server
         analysis/analyzer.hpp
         database/tables/t_diagnostic.h
         database/tables/t_file.h
+        database/tables/t_file_history.h
         database/tables/t_reference.h
         database/tables/t_variable.h
         database/context.hpp
         database/orm_mappings.hpp
         database/orm_mappings.hpp
         util.hpp
-        analysis/sqf_ast/visitors/variables_visitor.cpp sqfvm_factory.hpp runtime_logger.hpp sqfvm_factory.cpp
-        database/tables/t_file_history.h
-        database/tables/t_file_history.h)
+        analysis/sqf_ast/visitors/variables_visitor.cpp
+        sqfvm_factory.cpp
+        sqfvm_factory.hpp
+        runtime_logger.hpp
+)
 
 # Set C++ Version
 target_compile_features(sqfvm_language_server PUBLIC cxx_std_17)
@@ -44,11 +47,13 @@ target_sources(sqfvm_language_server PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/git_sh
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(SqliteOrm CONFIG REQUIRED)
+find_package(Poco REQUIRED COMPONENTS Foundation)
 
 target_link_libraries(sqfvm_language_server PRIVATE slibsqfvm)
 target_link_libraries(sqfvm_language_server PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(sqfvm_language_server PRIVATE unofficial::sqlite3::sqlite3)
 target_link_libraries(sqfvm_language_server PRIVATE sqlite_orm::sqlite_orm)
+target_link_libraries(sqfvm_language_server PRIVATE Poco::Foundation)
 
 
 # TODO: Add tests and install targets if needed.

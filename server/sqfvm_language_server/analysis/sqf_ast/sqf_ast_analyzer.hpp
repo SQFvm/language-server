@@ -13,6 +13,7 @@ namespace sqfvm::language_server::analysis::sqf_ast {
         friend class ast_visitor;
         database::tables::t_file m_file;
         std::string m_text;
+        std::string m_preprocessed_text;
         std::vector<database::tables::t_diagnostic> m_diagnostics;
         std::vector<ast_visitor*> m_visitors;
         std::vector<const ::sqf::parser::sqf::bison::astnode *> m_descend_ast_nodes;

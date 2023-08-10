@@ -3,7 +3,7 @@
     "displayName": "SQF-VM Language Server",
     "description": "",
 	"icon": "assets/icon.png",
-    "version": "0.1.16",
+    "version": "0.2.0",
     "publisher": "SQF-VM",
     "repository": {
         "type": "git",
@@ -11,7 +11,7 @@
     },
     "license": "LGPL-3.0-only",
     "engines": {
-        "vscode": "^1.43.0"
+        "vscode": "^1.63.0"
     },
     "categories": [
         "Programming Languages",

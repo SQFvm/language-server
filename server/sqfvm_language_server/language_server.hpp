@@ -8,6 +8,7 @@
 #include "runtime/runtime.h"
 #include "database/context.hpp"
 
+#include <Poco/DirectoryWatcher.h>
 #include <filesystem>
 #include <vector>
 #include <memory>
@@ -15,12 +16,13 @@
 namespace sqfvm::language_server {
     class language_server : public ::lsp::server {
         ::lsp::data::initialize_params m_client_params;
-        std::filesystem::path m_folder;
+        std::filesystem::path m_lsp_folder;
         std::filesystem::path m_db_path;
         analysis::analyzer_factory m_analyzer_factory;
         std::shared_ptr<database::context> m_context;
         std::unordered_map<std::string, std::string> m_file_contents;
         sqfvm_factory m_sqfvm_factory;
+        std::shared_ptr<Poco::DirectoryWatcher> m_directory_watcher;
 
         void delete_file(database::tables::t_file file);
 
@@ -36,6 +38,11 @@ namespace sqfvm::language_server {
                 ::sqfvm::language_server::database::tables::t_file file,
                 std::string contents,
                 bool is_external = false);
+
+        void file_system_item_added(const Poco::DirectoryWatcher::DirectoryEvent &event);
+        void file_system_item_removed(const Poco::DirectoryWatcher::DirectoryEvent &event);
+        void file_system_item_modified(const Poco::DirectoryWatcher::DirectoryEvent &event);
+        std::optional<database::tables::t_file> get_file_from_path(std::filesystem::path path, bool create_if_not_exists = false);
 
     protected:
         ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params &params) override {
@@ -77,6 +84,7 @@ namespace sqfvm::language_server {
 
     public:
         language_server();
+
     };
 }
 #endif // SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP
