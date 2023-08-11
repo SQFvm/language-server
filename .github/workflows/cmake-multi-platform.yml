@@ -46,10 +46,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-
-    - name: cd into language server
-      run: |
-        cd server
+    
+    - name: Setup vcpkg (it does not install any package yet)
+      uses: lukka/run-vcpkg@v11
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
