@@ -502,7 +502,11 @@ void sqfvm::language_server::language_server::ensure_git_ignore_file_exists() {
     std::filesystem::path git_ignore_path = m_lsp_folder / ".gitignore";
     if (!std::filesystem::exists(git_ignore_path)) {
         std::ofstream file(git_ignore_path);
-        file << "../" << m_lsp_folder.filename() << std::endl;
+        file << ".gitignore" << std::endl;
+        file << "sqlite3.db" << std::endl;
+        file << "sqlite3.db-journal" << std::endl;
+        file << "sqlite3.db-wal" << std::endl;
+        file << "sqlite3.db-shm" << std::endl;
         file.close();
     }
 }
