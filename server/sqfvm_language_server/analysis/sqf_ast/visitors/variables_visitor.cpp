@@ -753,6 +753,10 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::add
                 magic_variables.emplace_back("_x");
             } else if (iequal(parent->token.contents, "count")) {
                 magic_variables.emplace_back("_x");
+            } else if (iequal(parent->token.contents, "findIf")) {
+                magic_variables.emplace_back("_x");
+            } else if (iequal(parent->token.contents, "catch")) {
+                magic_variables.emplace_back("_exception");
             } else if (iequal(parent->token.contents, "forEach")) {
                 magic_variables.emplace_back("_x");
                 magic_variables.emplace_back("_y");
@@ -794,6 +798,7 @@ bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_
                 || iequal(parent->token.contents, "forEach")
                 || iequal(parent->token.contents, "apply")
                 || iequal(parent->token.contents, "select")
+                || iequal(parent->token.contents, "findIf")
         )) {
             is_detached = true;
         }
