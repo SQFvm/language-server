@@ -95,7 +95,7 @@ jobs:
       - name: Print results
         run: |
           echo "Results:"
-          ls -l *
+          find ./
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@v2
