@@ -363,8 +363,15 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             }
             break;
         }
-        case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL:
-        case ::sqf::parser::sqf::bison::astkind::IDENT: {
+        case ::sqf::parser::sqf::bison::astkind::IDENT:{
+            if (m_assignment_candidate.has_value()) {
+                m_assignment_candidate->id_pk = m_references.size() + 1;
+                m_references.push_back(*m_assignment_candidate);
+                m_assignment_candidate = {};
+            }
+
+        } // fallthrough
+        case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL:{
             auto reference = make_reference(node);
             reference.file_fk = file_of(a).id_pk;
             auto variable = get_or_create_variable(node.token.contents);
