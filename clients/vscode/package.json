@@ -89,57 +89,6 @@
             "type": "object",
             "title": "SQF VM Language server",
             "properties": {
-                "sqfVmLanguageServer.mode": {
-                    "enum": [
-                        "Arma2",
-                        "Arma3",
-                        "VBS3",
-                        "VBS4"
-                    ],
-                    "default": "Arma3",
-                    "description": "Controls which game version to run the LS for."
-                },
-                "sqfVmLanguageServer.maxNumberOfProblems": {
-                    "type": "number",
-                    "default": 100,
-                    "description": "Controls the maximum number of problems produced by the server."
-                },
-                "sqfVmLanguageServer.trace.server": {
-                    "scope": "window",
-                    "type": "string",
-                    "enum": [
-                        "off",
-                        "messages",
-                        "verbose"
-                    ],
-                    "default": "off",
-                    "description": "Traces the communication between VSCode and the sqfVmLanguageServer service."
-                },
-                "sqfVmLanguageServer.workdrive.path": {
-                    "type": "string",
-                    "default": "P:\\",
-                    "description": "Set the partition name for your workdrive (Used to open files from). Used by sqfVmLanguageServer.openFilePath Task. Language server will map the drive-path to `/`."
-                },
-                "sqfVmLanguageServer.ls.additionalMappings": {
-                    "type": "array",
-                    "default": [],
-                    "markdownDescription": "Allows to declare additional mappings. The array is expected to have children of the following structure: \n\n`{ \"virtual path\": \"physical path\" }`.\n\nExample:\n\n```\n\n\"sqfVmLanguageServer.ls.additionalMappings\": [\n\n    { \"/x/tag/addon\": \"C:/sqfdev/extern/unpacked/tag_addon\" }\n\n]\n```"
-                },
-                "sqfVmLanguageServer.ls.sqcSupport": {
-                    "type": "boolean",
-                    "default": false,
-                    "markdownDescription": "Enables (or disables) SQC support. This involves auto-compilation upon typing inside a SQC file, outputting a compiled SQF file with the same name. Note that the 'compile on change' is done due to vscode not supplying textDocument/didSave to Language Servers."
-                },
-                "sqfVmLanguageServer.ls.logLevel.verbose": {
-                    "type": "boolean",
-                    "default": false,
-                    "markdownDescription": "Enables (or disables) verbose logging."
-                },
-                "sqfVmLanguageServer.ls.logLevel.trace": {
-                    "type": "boolean",
-                    "default": false,
-                    "markdownDescription": "Enables (or disables) trace logging."
-                }
             }
         }
     },
