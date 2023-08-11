@@ -86,6 +86,8 @@ namespace sqfvm::language_server {
         language_server();
 
         void ensure_git_ignore_file_exists();
+
+        void log_sqlite_migration_report();
     };
 }
 #endif // SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP

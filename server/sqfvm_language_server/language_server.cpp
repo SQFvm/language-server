@@ -52,34 +52,7 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
         window_logMessage(::lsp::data::message_type::Log, sstream.str());
     }
 
-    {
-        std::stringstream sstream;
-        sstream << "SQLITE migration report:\n";
-        for (auto &it: m_context->sync_result()) {
-            sstream << it.first << ": ";
-            switch (it.second) {
-                case sync_schema_result::new_table_created:
-                    sstream << "new_table_created\n";
-                    break;
-                case sync_schema_result::already_in_sync:
-                    sstream << "already_in_sync\n";
-                    break;
-                case sync_schema_result::old_columns_removed:
-                    sstream << "old_columns_removed\n";
-                    break;
-                case sync_schema_result::new_columns_added:
-                    sstream << "new_columns_added\n";
-                    break;
-                case sync_schema_result::new_columns_added_and_old_columns_removed:
-                    sstream << "new_columns_added_and_old_columns_removed\n";
-                    break;
-                case sync_schema_result::dropped_and_recreated:
-                    sstream << "dropped_and_recreated\n";
-                    break;
-            }
-        }
-        window_logMessage(::lsp::data::message_type::Log, sstream.str());
-    }
+    log_sqlite_migration_report();
 
     // Mark all files as deleted, so we can remove them later if they are not in the workspace anymore
     try {
@@ -205,6 +178,35 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     }
 
     analyze_outdated_files();
+}
+
+void sqfvm::language_server::language_server::log_sqlite_migration_report() {
+    std::stringstream sstream;
+    sstream << "SQLITE migration report:\n";
+    for (auto &it: m_context->sync_result()) {
+        sstream << it.first << ": ";
+        switch (it.second) {
+            case sync_schema_result::new_table_created:
+                sstream << "new_table_created\n";
+                break;
+            case sync_schema_result::already_in_sync:
+                sstream << "already_in_sync\n";
+                break;
+            case sync_schema_result::old_columns_removed:
+                sstream << "old_columns_removed\n";
+                break;
+            case sync_schema_result::new_columns_added:
+                sstream << "new_columns_added\n";
+                break;
+            case sync_schema_result::new_columns_added_and_old_columns_removed:
+                sstream << "new_columns_added_and_old_columns_removed\n";
+                break;
+            case sync_schema_result::dropped_and_recreated:
+                sstream << "dropped_and_recreated\n";
+                break;
+        }
+    }
+    window_logMessage(lsp::data::message_type::Log, sstream.str());
 }
 
 void sqfvm::language_server::language_server::analyze_outdated_files() {
@@ -353,14 +355,15 @@ sqfvm::language_server::language_server::language_server() {
 
 void sqfvm::language_server::language_server::delete_file(sqfvm::language_server::database::tables::t_file file) {
     mark_related_files_as_outdated(file);
+    file.is_deleted = true;
+    m_context->storage().update<database::tables::t_file>(file);
     m_context->storage().remove_all<database::tables::t_diagnostic>(
             where(c(&database::tables::t_diagnostic::file_fk) == file.id_pk));
     m_context->storage().remove_all<database::tables::t_reference>(
             where(c(&database::tables::t_reference::file_fk) == file.id_pk));
     m_context->storage().remove_all<database::tables::t_variable>(
             where(c(&database::tables::t_variable::opt_file_fk) == file.id_pk));
-    file.is_deleted = true;
-    m_context->storage().update<database::tables::t_file>(file);
+    publish_diagnostics(file);
 }
 
 void sqfvm::language_server::language_server::mark_related_files_as_outdated(
@@ -479,6 +482,11 @@ void sqfvm::language_server::language_server::file_system_item_added(
     if (!file_opt.has_value()) {
         return;
     }
+    auto file = file_opt.value();
+    if (!file.is_outdated) {
+        file.is_outdated = true;
+        m_context->storage().update(file);
+    }
     analyze_outdated_files();
 }
 
@@ -492,8 +500,10 @@ void sqfvm::language_server::language_server::file_system_item_modified(
         return;
     }
     auto file = file_opt.value();
-    file.is_outdated = true;
-    m_context->storage().update(file);
+    if (!file.is_outdated) {
+        file.is_outdated = true;
+        m_context->storage().update(file);
+    }
     mark_related_files_as_outdated(file);
     analyze_outdated_files();
 }

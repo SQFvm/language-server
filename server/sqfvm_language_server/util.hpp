@@ -122,6 +122,11 @@ inline static std::optional<::sqfvm::language_server::database::tables::t_file> 
         file.id_pk = result;
     } else {
         file = files.front();
+        if (file.is_deleted && exists(path))
+        {
+            file.is_deleted = false;
+            context.storage().update(file);
+        }
     }
     return {file};
 }
