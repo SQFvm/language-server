@@ -325,6 +325,17 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             }
             break;
         }
+        case ::sqf::parser::sqf::bison::astkind::EXPN: {
+            if (m_assignment_candidate.has_value()
+                && iequal(node.token.contents, "nil")
+                && is_right_side_of_assignment(parent_nodes, node)) {
+                m_assignment_candidate->types = t_reference::type_flags::nil;
+                m_assignment_candidate->id_pk = m_references.size() + 1;
+                m_references.push_back(*m_assignment_candidate);
+                m_assignment_candidate = {};
+            }
+            break;
+        }
         case ::sqf::parser::sqf::bison::astkind::BOOLEAN_FALSE:
         case ::sqf::parser::sqf::bison::astkind::BOOLEAN_TRUE: {
             if (m_assignment_candidate.has_value() && is_right_side_of_assignment(parent_nodes, node)) {
