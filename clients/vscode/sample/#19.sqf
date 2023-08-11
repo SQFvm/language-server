@@ -8,7 +8,6 @@ private ["_ctrlImport", "_import"];
 private ["_baseRadios", "_channels", "_volumes", "_spatials", "_radios"];
 acre_api_fnc_getBaseRadio = nil;
 acre_api_fnc_getRadioChannel = nil;
-acre_api_fnc_getRadioChannel = nil;
 acre_api_fnc_getRadioVolume = nil;
 acre_api_fnc_getRadioSpatial = nil;
 {
