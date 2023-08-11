@@ -5,8 +5,6 @@ name: CMake on multiple platforms
 on:
   push:
     branches: [ "dap/cd" ]
-  pull_request:
-    branches: [ "dap/cd" ]
 
 jobs:
   build:
@@ -59,7 +57,7 @@ jobs:
         manifest-dir: ${{ github.workspace }}/server
         triplet: ${{ matrix.vcpkg_triplet }}
         cache-key: ${{ matrix.config.os }}
-        revision: master
+        revision: 8b04a7bd93bef991818fc372bb83ce00ec1c1c16 #master
         token: ${{ github.token }}
 
     - name: Set reusable strings
