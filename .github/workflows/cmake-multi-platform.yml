@@ -60,7 +60,7 @@ jobs:
         triplet: ${{ matrix.vcpkg_triplet }}
         cache-key: ${{ matrix.config.os }}
         revision: master
-#        token: ${{ github.token }}
+        token: ${{ github.token }}
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
