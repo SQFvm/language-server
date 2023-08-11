@@ -1,5 +1,7 @@
-#include "include.h"
-a * b;
+private ["_tst1"];
+_tst1 = 123;
+diag_log _tst1;
 
-systemChat "test";
-private ["true"]; 
+private ["_tst2"];
+_tst2 = 123;
+diag_log _tst2;

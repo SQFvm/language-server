@@ -3,7 +3,7 @@
     "displayName": "SQF-VM Language Server",
     "description": "",
 	"icon": "assets/icon.png",
-    "version": "0.2.0",
+    "version": "0.2.5",
     "publisher": "SQF-VM",
     "repository": {
         "type": "git",

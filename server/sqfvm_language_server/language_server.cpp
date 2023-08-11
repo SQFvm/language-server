@@ -21,6 +21,8 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     m_db_path = m_lsp_folder / "sqlite3.db";
     // ToDo: Start file system watcher to detect changes in the workspace not triggered by the language server
 
+    ensure_git_ignore_file_exists();
+
     m_context = std::make_shared<database::context>(m_db_path);
     m_sqfvm_factory.add_mapping(uri.string(), "");
     m_directory_watcher = std::make_shared<Poco::DirectoryWatcher>(
@@ -239,7 +241,8 @@ std::optional<std::vector<lsp::data::location>> sqfvm::language_server::language
     auto file = files.front();
     auto references = m_context->storage().get_all<database::tables::t_reference>(
             where(c(&database::tables::t_reference::file_fk) == file.id_pk
-                  && c(&database::tables::t_reference::line) == params.position.line + 1));
+                  && c(&database::tables::t_reference::line) == params.position.line + 1
+                  && c(&database::tables::t_reference::is_magic_variable) == false));
     if (references.empty())
         return std::nullopt;
     std::optional<uint64_t> variable_id_opt;
@@ -271,7 +274,7 @@ std::optional<std::vector<lsp::data::location>> sqfvm::language_server::language
                                 .line = reference.line - 1,
                                 .character = reference.column + reference.length
                         }
-                }
+                },
         });
     }
     return {locations};
@@ -493,4 +496,13 @@ void sqfvm::language_server::language_server::file_system_item_modified(
     m_context->storage().update(file);
     mark_related_files_as_outdated(file);
     analyze_outdated_files();
+}
+
+void sqfvm::language_server::language_server::ensure_git_ignore_file_exists() {
+    std::filesystem::path git_ignore_path = m_lsp_folder / ".gitignore";
+    if (!std::filesystem::exists(git_ignore_path)) {
+        std::ofstream file(git_ignore_path);
+        file << "../" << m_lsp_folder.filename() << std::endl;
+        file.close();
+    }
 }

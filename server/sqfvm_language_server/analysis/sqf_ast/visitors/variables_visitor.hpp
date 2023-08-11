@@ -39,13 +39,21 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
                 const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes,
                 const ::sqf::parser::sqf::bison::astnode &node) const;
 
-        [[nodiscard]] database::tables::t_reference
-        make_reference(const ::sqf::parser::sqf::bison::astnode &node) const;
+        [[nodiscard]] database::tables::t_reference make_reference(
+                const ::sqf::parser::sqf::bison::astnode &node) const;
+
+        [[nodiscard]] database::tables::t_reference make_reference(
+                sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
+                const sqf::parser::sqf::bison::astnode &node,
+                const database::tables::t_variable &variable,
+                const database::tables::t_reference::access_flags &access);
 
         [[nodiscard]] database::tables::t_variable get_or_create_variable(std::string_view name);
 
-        std::string push_scope(const ::sqf::parser::sqf::bison::astnode &node,
-                               const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes);
+        std::string push_scope(
+                sqf_ast_analyzer &a,
+                const ::sqf::parser::sqf::bison::astnode &node,
+                const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes);
 
         void pop_scope();
 
@@ -95,13 +103,16 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
         void expression_handling_of_setvariable(sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
                                                 const sqf::parser::sqf::bison::astnode &node);
 
-        static bool node_is_expression(const sqf::parser::sqf::bison::astnode &parent) ;
+        static bool node_is_expression(const sqf::parser::sqf::bison::astnode &parent);
 
-        bool is_detached_scope(const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) const;
+        [[nodiscard]] bool
+        is_detached_scope(const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) const;
 
         void expression_handling_of_isnil(sqf_ast_analyzer &a, const sqf::parser::sqf::bison::astnode &node);
 
         void add_magic_variables_to_current_scope(
+                sqf_ast_analyzer &a,
+                const ::sqf::parser::sqf::bison::astnode &node,
                 const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes);
     };
 }

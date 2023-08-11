@@ -85,6 +85,7 @@ namespace sqfvm::language_server {
     public:
         language_server();
 
+        void ensure_git_ignore_file_exists();
     };
 }
 #endif // SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP

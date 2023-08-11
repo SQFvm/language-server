@@ -25,7 +25,7 @@ private ["_return"];
 
 _state = _state getVariable ["##state", "init"];
 _args = _state getVariable ["##args", []];
-_code = _state getVariable [_state, { "init" }];
+_code = _state getVariable [_state, { "init" }]; 
 _return = _args call _code;
 private _someRandomVar = 1; //noprivate
 private _anotherVar = 2;
