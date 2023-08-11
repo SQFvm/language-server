@@ -56,7 +56,7 @@ jobs:
       uses: johnwason/vcpkg-action@v5
       id: vcpkg
       with:
-        pkgs: boost-date-time
+        manifest-dir: ${{ github.workspace }}/server
         triplet: ${{ matrix.vcpkg_triplet }}
         cache-key: ${{ matrix.config.os }}
         revision: master
