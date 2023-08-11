@@ -363,15 +363,14 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             }
             break;
         }
-        case ::sqf::parser::sqf::bison::astkind::IDENT:{
+        case ::sqf::parser::sqf::bison::astkind::IDENT: {
             if (m_assignment_candidate.has_value()) {
                 m_assignment_candidate->id_pk = m_references.size() + 1;
                 m_references.push_back(*m_assignment_candidate);
                 m_assignment_candidate = {};
             }
-
         } // fallthrough
-        case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL:{
+        case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL: {
             auto reference = make_reference(node);
             reference.file_fk = file_of(a).id_pk;
             auto variable = get_or_create_variable(node.token.contents);
@@ -394,18 +393,19 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
     }
 }
 
-sqfvm::language_server::database::tables::t_reference sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::make_reference(
+sqfvm::language_server::database::tables::t_reference
+sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::make_reference(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
         const sqf::parser::sqf::bison::astnode &node,
         const t_variable &variable,
-        const t_reference::access_flags &access)
-{
+        const t_reference::access_flags &access) {
     auto reference = make_reference(node);
     reference.file_fk = file_of(a).id_pk;
     reference.variable_fk = variable.id_pk;
     reference.access = access;
     return reference;
 }
+
 void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::expression_handling_of_isnil(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
         const sqf::parser::sqf::bison::astnode &node) {// Call only has a right side argument
@@ -658,27 +658,40 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::end
 
 bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_left_side_of_assignment(
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes,
-        const ::sqf::parser::sqf::bison::astnode &node) {
-    return node.kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL
-           || !parent_nodes.empty()
-              && (
-                      (*parent_nodes.rbegin())->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT
-                      || (*parent_nodes.rbegin())->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL
-              )
-              && (*parent_nodes.rbegin())->children.size() >= 1
-              && &(*parent_nodes.rbegin())->children[0] == &node;
+        const ::sqf::parser::sqf::bison::astnode &node) const {
+    // !WARNING! while this method looks similar to is_right_side_of_assignment, it is not the same!
+    // The return values are not straight inverted, as we are checking explicitly whether this is the
+    // left side of an assignment, not just the opposite of the right side.
+    using namespace ::sqf::parser::sqf::bison;
+    if (node.kind == astkind::ASSIGNMENT_LOCAL)
+        return true;
+    if (parent_nodes.empty())
+        return false;
+    auto &parent = *parent_nodes.back();
+    if (parent.kind == astkind::ASSIGNMENT_LOCAL)
+        return false;
+    return parent.kind == astkind::ASSIGNMENT
+           && !parent.children.empty()
+           && &parent.children.front() == &node;
 }
 
 bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_right_side_of_assignment(
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes,
         const ::sqf::parser::sqf::bison::astnode &node) const {
-    return !parent_nodes.empty()
-           && (
-                   (*parent_nodes.rbegin())->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT
-                   || (*parent_nodes.rbegin())->kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL
-           )
-           && (*parent_nodes.rbegin())->children.size() >= 2
-           && &(*parent_nodes.rbegin())->children[1] == &node;
+    // !WARNING! while this method looks similar to is_left_side_of_assignment, it is not the same!
+    // The return values are not straight inverted, as we are checking explicitly whether this is the
+    // right side of an assignment, not just the opposite of the left side.
+    using namespace ::sqf::parser::sqf::bison;
+    if (node.kind == astkind::ASSIGNMENT_LOCAL)
+        return false;
+    if (parent_nodes.empty())
+        return false;
+    auto &parent = *parent_nodes.back();
+    if (parent.kind == astkind::ASSIGNMENT_LOCAL)
+        return true;
+    return parent.kind == astkind::ASSIGNMENT
+           && !parent.children.empty()
+           && &parent.children.front() != &node;
 }
 
 t_reference sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::make_reference(

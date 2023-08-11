@@ -33,7 +33,7 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
 
         [[nodiscard]] bool is_left_side_of_assignment(
                 const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes,
-                const ::sqf::parser::sqf::bison::astnode &node);
+                const ::sqf::parser::sqf::bison::astnode &node) const;
 
         [[nodiscard]] bool is_right_side_of_assignment(
                 const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes,

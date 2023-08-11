@@ -1,3 +1,7 @@
+private _declaration = nil;
+_declaration = 1;
+diag_log _declaration;
+
 private _item = 1;
 private _notAssigned = _item;
 diag_log _notAssigned;
