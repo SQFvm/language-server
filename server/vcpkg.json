@@ -2,7 +2,7 @@
   "name" : "sqfvm-language-server",
   "version-string" : "1.0.0",
   "builtin-baseline" : "8b04a7bd93bef991818fc372bb83ce00ec1c1c16",
-  "supports" : "windows & (x64 | x86)",
+  "supports" : "windows & (x64 | x86) ",
   "dependencies" : [ {
     "name" : "nlohmann-json",
     "version>=" : "3.11.2"

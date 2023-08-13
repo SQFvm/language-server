@@ -830,6 +830,10 @@ bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_
                 || iequal(parent->token.contents, "apply")
                 || iequal(parent->token.contents, "select")
                 || iequal(parent->token.contents, "findIf")
+                || iequal(parent->token.contents, "&&")
+                || iequal(parent->token.contents, "and")
+                || iequal(parent->token.contents, "||")
+                || iequal(parent->token.contents, "or")
         )) {
             is_detached = true;
         }
