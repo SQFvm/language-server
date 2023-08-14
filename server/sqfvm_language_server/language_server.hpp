@@ -7,6 +7,7 @@
 #include "analysis/analyzer.hpp"
 #include "runtime/runtime.h"
 #include "database/context.hpp"
+#include "file_system_watcher.hpp"
 
 #include <Poco/DirectoryWatcher.h>
 #include <filesystem>
@@ -22,7 +23,9 @@ namespace sqfvm::language_server {
         std::shared_ptr<database::context> m_context;
         std::unordered_map<std::string, std::string> m_file_contents;
         sqfvm_factory m_sqfvm_factory;
-        std::shared_ptr<Poco::DirectoryWatcher> m_directory_watcher;
+        file_system_watcher m_file_system_watcher;
+
+        bool delete_file(std::filesystem::path file);
 
         void delete_file(database::tables::t_file file);
 
@@ -39,10 +42,17 @@ namespace sqfvm::language_server {
                 std::string contents,
                 bool is_external = false);
 
-        void file_system_item_added(const Poco::DirectoryWatcher::DirectoryEvent &event);
-        void file_system_item_removed(const Poco::DirectoryWatcher::DirectoryEvent &event);
-        void file_system_item_modified(const Poco::DirectoryWatcher::DirectoryEvent &event);
-        std::optional<database::tables::t_file> get_file_from_path(std::filesystem::path path, bool create_if_not_exists = false);
+        void file_system_item_added(const std::filesystem::path &path,
+                                    bool is_directory);
+
+        void file_system_item_removed(const std::filesystem::path &path,
+                                      bool is_directory);
+
+        void file_system_item_modified(const std::filesystem::path &path,
+                                       bool is_directory);
+
+        std::optional<database::tables::t_file>
+        get_file_from_path(std::filesystem::path path, bool create_if_not_exists = false);
 
     protected:
         ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params &params) override {
@@ -60,8 +70,8 @@ namespace sqfvm::language_server {
             // res.capabilities.foldingRangeProvider = ::lsp::data::initialize_result::server_capabilities::folding_range_registration_options{};
             // res.capabilities.foldingRangeProvider->documentSelector = ::lsp::data::document_filter{};
             // res.capabilities.foldingRangeProvider->documentSelector->language = "sqf";
-            res.capabilities.completionProvider = lsp::data::initialize_result::server_capabilities::completion_options{ .resolveProvider = true };
-            res.capabilities.referencesProvider = lsp::data::initialize_result::server_capabilities::reference_options{ .workDoneProgress = false };
+            res.capabilities.completionProvider = lsp::data::initialize_result::server_capabilities::completion_options{.resolveProvider = true};
+            res.capabilities.referencesProvider = lsp::data::initialize_result::server_capabilities::reference_options{.workDoneProgress = false};
 
             return res;
         }
@@ -73,7 +83,9 @@ namespace sqfvm::language_server {
         void on_workspace_didChangeConfiguration(const ::lsp::data::did_change_configuration_params &params) override;
 
         void on_textDocument_didChange(const ::lsp::data::did_change_text_document_params &params) override;
-        std::optional<std::vector<lsp::data::location>> on_textDocument_references(const lsp::data::references_params &params) override;
+
+        std::optional<std::vector<lsp::data::location>>
+        on_textDocument_references(const lsp::data::references_params &params) override;
 
 
         std::optional<std::vector<::lsp::data::folding_range>>
@@ -88,6 +100,8 @@ namespace sqfvm::language_server {
         void ensure_git_ignore_file_exists();
 
         void log_sqlite_migration_report();
+
+        void mark_file_as_outdated(const std::filesystem::path &path);
     };
 }
 #endif // SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP

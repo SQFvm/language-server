@@ -19,25 +19,13 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     uri = std::filesystem::absolute(uri).lexically_normal();
     m_lsp_folder = uri / ".vscode"sv / "sqfvm-lsp";
     m_db_path = m_lsp_folder / "sqlite3.db";
-    // ToDo: Start file system watcher to detect changes in the workspace not triggered by the language server
-
     ensure_git_ignore_file_exists();
-
     m_context = std::make_shared<database::context>(m_db_path);
     m_sqfvm_factory.add_mapping(uri.string(), "");
-    m_directory_watcher = std::make_shared<Poco::DirectoryWatcher>(
-            uri.string(),
-            Poco::DirectoryWatcher::DW_FILTER_ENABLE_ALL,
-            2048);
-    m_directory_watcher->itemAdded += Poco::delegate(
-            this,
-            &sqfvm::language_server::language_server::file_system_item_added);
-    m_directory_watcher->itemRemoved += Poco::delegate(
-            this,
-            &sqfvm::language_server::language_server::file_system_item_removed);
-    m_directory_watcher->itemModified += Poco::delegate(
-            this,
-            &sqfvm::language_server::language_server::file_system_item_modified);
+    m_file_system_watcher.watch(uri);
+    m_file_system_watcher.callback_add([&](auto &path, bool is_directory) { file_system_item_added(path, is_directory); });
+    m_file_system_watcher.callback_remove([&](auto &path, bool is_directory) { file_system_item_removed(path, is_directory); });
+    m_file_system_watcher.callback_modify([&](auto &path, bool is_directory) { file_system_item_modified(path, is_directory); });
 
     // Handle SQLite3 database
     if (!m_context->good()) {
@@ -353,6 +341,15 @@ sqfvm::language_server::language_server::language_server() {
             });
 }
 
+bool sqfvm::language_server::language_server::delete_file(std::filesystem::path file) {
+    auto file_opt = get_file_from_path(file.string(), false);
+    if (!file_opt.has_value()) {
+        return false;
+    }
+    delete_file(file_opt.value());
+    return true;
+}
+
 void sqfvm::language_server::language_server::delete_file(sqfvm::language_server::database::tables::t_file file) {
     mark_related_files_as_outdated(file);
     file.is_deleted = true;
@@ -394,6 +391,9 @@ void sqfvm::language_server::language_server::analyse_file(
         const sqfvm::language_server::database::tables::t_file &file) {
     auto runtime = m_sqfvm_factory.create([](auto &_) {}, *m_context);
 
+    uint64_t timestamp = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
+            last_write_time(std::filesystem::path(file.path)).time_since_epoch())
+            .count();
     // Create analyzer
     auto extension = std::filesystem::path(file.path).extension().string();
     auto contents = m_context->storage().get_all<sqfvm::language_server::database::tables::t_file_history>(
@@ -401,7 +401,7 @@ void sqfvm::language_server::language_server::analyse_file(
             order_by(&database::tables::t_file_history::time_stamp_created).desc(),
             limit(1));
     std::string content;
-    if (contents.empty()) {
+    if (contents.empty() || contents[0].time_stamp_created < timestamp) {
         auto file_contents = sqf::fileio::passthrough::read_file_from_disk(file.path);
         if (file_contents.has_value())
             push_file_history(file, *file_contents, true);
@@ -460,39 +460,61 @@ void sqfvm::language_server::language_server::publish_diagnostics(
     textDocument_publishDiagnostics(params);
 }
 
-void sqfvm::language_server::language_server::file_system_item_removed(
-        const Poco::DirectoryWatcher::DirectoryEvent &event) {
-    std::filesystem::path path = event.item.path();
-    if (is_subpath(path, m_lsp_folder.parent_path()))
-        return;
-    auto file_opt = get_file_from_path(path.string(), true);
-    if (!file_opt.has_value()) {
-        return;
-    }
-    delete_file(file_opt.value());
-    analyze_outdated_files();
-}
-
-void sqfvm::language_server::language_server::file_system_item_added(
-        const Poco::DirectoryWatcher::DirectoryEvent &event) {
-    std::filesystem::path path = event.item.path();
-    if (is_subpath(path, m_lsp_folder.parent_path()))
-        return;
+void sqfvm::language_server::language_server::mark_file_as_outdated(const std::filesystem::path &path) {
     auto file_opt = get_file_from_path(path.string(), true);
     if (!file_opt.has_value()) {
         return;
     }
     auto file = file_opt.value();
+    bool changed = false;
     if (!file.is_outdated) {
         file.is_outdated = true;
+        changed = true;
+    }
+    if (changed)
         m_context->storage().update(file);
+}
+
+void sqfvm::language_server::language_server::file_system_item_removed(
+        const std::filesystem::path &path,
+        bool is_directory) {
+    if (is_subpath(path, m_lsp_folder.parent_path()))
+        return;
+    if (is_directory) {
+        auto files = m_context->storage().get_all<database::tables::t_file>(
+                where(like(&database::tables::t_file::path, path.string() + "%")));
+        for (const auto &file: files) {
+            delete_file(file);
+        }
+    } else {
+        if (!delete_file(path))
+            return;
+    }
+    analyze_outdated_files();
+}
+
+void sqfvm::language_server::language_server::file_system_item_added(
+        const std::filesystem::path &path,
+        bool is_directory) {
+    if (is_subpath(path, m_lsp_folder.parent_path()))
+        return;
+    if (is_directory) {
+        for (auto &p: std::filesystem::recursive_directory_iterator(path)) {
+            if (std::filesystem::is_directory(p))
+                continue;
+            mark_file_as_outdated(p);
+        }
+    } else {
+        mark_file_as_outdated(path);
     }
     analyze_outdated_files();
 }
 
 void sqfvm::language_server::language_server::file_system_item_modified(
-        const Poco::DirectoryWatcher::DirectoryEvent &event) {
-    std::filesystem::path path = event.item.path();
+        const std::filesystem::path &path,
+        bool is_directory) {
+    if (is_directory)
+        return;
     if (is_subpath(path, m_lsp_folder.parent_path()))
         return;
     auto file_opt = get_file_from_path(path.string(), true);

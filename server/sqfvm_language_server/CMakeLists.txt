@@ -31,6 +31,9 @@ add_executable(sqfvm_language_server
         sqfvm_factory.cpp
         sqfvm_factory.hpp
         runtime_logger.hpp
+        file_system_watcher.cpp
+        file_system_watcher.hpp
+        file_system_watcher.hpp
 )
 
 # Set C++ Version

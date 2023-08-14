@@ -13,7 +13,7 @@ private _cargo = _item;
 // Count the variable index
 private _count = count (_cargo select 0);
 
-private _config = nil;
+private _config = "";
 
 // Adapt the cargo into KPCF variable
 for "_i" from 0 to (_count-1) do {
