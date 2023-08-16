@@ -31,14 +31,17 @@ jobs:
             c_compiler: cl
             cpp_compiler: cl
             vcpkg_triplet: x64-windows-release
+            platform: windows
           #- os: macos-latest
           #  c_compiler: clang
           #  cpp_compiler: clang++
           #  vcpkg_triplet: x64-osx-release
+          #  platform: macos
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
             vcpkg_triplet: x64-linux-release
+            platform: linux
         exclude:
           - os: windows-latest
             c_compiler: gcc
@@ -79,6 +82,7 @@ jobs:
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -A x64
         ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
         -S ${{ github.workspace }}/server
 
@@ -96,7 +100,7 @@ jobs:
       uses: actions/upload-artifact@v3
       if: ${{ matrix.os == 'windows-latest' }}
       with:
-        name: ${{ matrix.os }}-${{ matrix.pkg }}
+        name: ${{ matrix.platform }}
         if-no-files-found: error
         path: |
           .\build\sqfvm_language_server\Release\*.dll
@@ -106,7 +110,7 @@ jobs:
       uses: actions/upload-artifact@v3
       if: ${{ matrix.os == 'ubuntu-latest' }}
       with:
-        name: ${{ matrix.os }}-${{ matrix.pkg }}
+        name: ${{ matrix.platform }}
         if-no-files-found: error
         path: |
           ./build/sqfvm_language_server/sqfvm_language_server
@@ -115,6 +119,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 16
+      - run: npm ci
       - name: Download binaries
         uses: actions/download-artifact@v3
         
