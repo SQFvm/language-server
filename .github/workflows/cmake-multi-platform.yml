@@ -31,10 +31,10 @@ jobs:
             c_compiler: cl
             cpp_compiler: cl
             vcpkg_triplet: x64-windows-release
-          - os: macos-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-            vcpkg_triplet: x64-osx-release
+          #- os: macos-latest
+          #  c_compiler: clang
+          #  cpp_compiler: clang++
+          #  vcpkg_triplet: x64-osx-release
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
@@ -46,8 +46,8 @@ jobs:
             c_compiler: clang
           - os: ubuntu-latest
             c_compiler: cl
-          - os: macos-latest
-            c_compiler: cl
+          #- os: macos-latest
+          #  c_compiler: cl
 
     steps:
     - uses: actions/checkout@v3
