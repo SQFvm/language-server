@@ -90,15 +90,16 @@ jobs:
 #      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
 #      run: ctest --build-config ${{ matrix.build_type }}
 
-    - name: Print results
-      if: ${{ matrix.os }} == 'ubuntu-latest'
+    - name: Print ubuntu results
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
-        echo "Results:"
+        echo "Ubuntu results:"
         find ./
-    - name: Print results
-      if: ${{ matrix.os }} == 'windows-latest'
+    
+    - name: Print windows results
+      if: ${{ matrix.os == 'windows-latest' }}
       run: |
-        echo "Results:"
+        echo "Windows results:"
         tree /f /a
       
     - name: Upload binary
@@ -106,22 +107,26 @@ jobs:
       with:
         name: ${{ matrix.os }}-${{ matrix.pkg }}
         path: path/to/binary
+        
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Download binaries
         uses: actions/download-artifact@v3
-      - name: Print results
-        if: ${{ matrix.os }} == 'ubuntu-latest'
+        
+      - name: Print ubuntu results
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          echo "Results:"
+          echo "Ubuntu results:"
           find ./
-      - name: Print results
-        if: ${{ matrix.os }} == 'windows-latest'
+      
+      - name: Print windows results
+        if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          echo "Results:"
+          echo "Windows results:"
           tree /f /a
+          
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@v2
