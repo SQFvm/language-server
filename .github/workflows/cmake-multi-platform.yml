@@ -30,8 +30,15 @@ jobs:
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
+            cmakeargs: -A x64
             vcpkg_triplet: x64-windows-release
-            platform: windows
+            platform: windows/x64
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+            cmakeargs: -A Win32
+            vcpkg_triplet: x86-windows-release
+            platform: windows/x86
           #- os: macos-latest
           #  c_compiler: clang
           #  cpp_compiler: clang++
@@ -82,7 +89,7 @@ jobs:
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -A x64
+        ${{ matrix.cmakeargs }}
         ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
         -S ${{ github.workspace }}/server
 
@@ -124,6 +131,7 @@ jobs:
         with:
           node-version: 16
       - run: npm ci
+      - run: npm install -g @vscode/vsce
       - name: Download binaries
         uses: actions/download-artifact@v3
         
