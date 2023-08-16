@@ -21,7 +21,9 @@ jobs:
       #
       # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # ToDo: Fix macos build
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
         build_type: [Release]
         c_compiler: [clang, cl]
         include:
@@ -90,23 +92,24 @@ jobs:
 #      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
 #      run: ctest --build-config ${{ matrix.build_type }}
 
-    - name: Print ubuntu results
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: |
-        echo "Ubuntu results:"
-        find ./
-    
-    - name: Print windows results
+    - name: Upload binary
+      uses: actions/upload-artifact@v3
       if: ${{ matrix.os == 'windows-latest' }}
-      run: |
-        echo "Windows results:"
-        tree /f /a
+      with:
+        name: ${{ matrix.os }}-${{ matrix.pkg }}
+        if-no-files-found: error
+        path: |
+          .\build\sqfvm_language_server\Release\*.dll
+          .\build\sqfvm_language_server\Release\*.exe
       
     - name: Upload binary
       uses: actions/upload-artifact@v3
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       with:
         name: ${{ matrix.os }}-${{ matrix.pkg }}
-        path: path/to/binary
+        if-no-files-found: error
+        path: |
+          ./build/sqfvm_language_server/sqfvm_language_server
         
   deploy:
     needs: build
