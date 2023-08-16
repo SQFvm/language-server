@@ -37,7 +37,7 @@ jobs:
             c_compiler: cl
             cpp_compiler: cl
             cmakeargs: -A Win32
-            vcpkg_triplet: x86-windows-release
+            vcpkg_triplet: x86-windows
             platform: windows/x86
           #- os: macos-latest
           #  c_compiler: clang
