@@ -137,7 +137,7 @@ jobs:
       uses: actions/upload-artifact@v3
       if: ${{ matrix.os == 'windows-latest' }}
       with:
-        name: ${{ matrix.platform }}/${{ matrix.arch }}
+        name: ${{ matrix.platform }}-${{ matrix.arch }}
         if-no-files-found: error
         path: |
           .\build\sqfvm_language_server\Release\*.dll
