@@ -40,6 +40,9 @@ namespace sqfvm::language_server::database::tables {
         // Foreign key referring to the t_file this belongs to.
         uint64_t file_fk;
 
+        // Foreign key referring to the t_file this was discovered in.
+        uint64_t source_file_fk;
+
         // Foreign key referring to the t_variable this refers to.
         uint64_t variable_fk;
 

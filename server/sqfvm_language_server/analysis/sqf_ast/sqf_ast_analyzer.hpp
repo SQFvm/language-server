@@ -1,6 +1,7 @@
 #ifndef SQFVM_LANGUAGE_SERVER_ANALYSIS_SQF_AST_SQF_AST_ANALYZER_HPP
 #define SQFVM_LANGUAGE_SERVER_ANALYSIS_SQF_AST_SQF_AST_ANALYZER_HPP
 
+#include "../slspp_context.hpp"
 #include "../analyzer.hpp"
 #include "../../sqfvm_factory.hpp"
 #include <string_view>
@@ -18,6 +19,7 @@ namespace sqfvm::language_server::analysis::sqf_ast {
         std::vector<ast_visitor*> m_visitors;
         std::vector<const ::sqf::parser::sqf::bison::astnode *> m_descend_ast_nodes;
         std::shared_ptr<sqf::runtime::runtime> m_runtime;
+        std::shared_ptr<slspp_context> m_slspp_context;
         database::context m_context;
 
         void recurse(const sqf::parser::sqf::bison::astnode &parent);
@@ -37,7 +39,7 @@ namespace sqfvm::language_server::analysis::sqf_ast {
 
     public:
         sqf_ast_analyzer(
-                std::filesystem::path db_path,
+                const std::filesystem::path& db_path,
                 sqfvm_factory &factory,
                 database::tables::t_file file,
                 std::string &text);

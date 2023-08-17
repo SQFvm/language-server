@@ -23,6 +23,9 @@ namespace sqfvm::language_server::database::tables {
         // Foreign key referring to the t_file this belongs to.
         uint64_t file_fk;
 
+        // Foreign key referring to the t_file this was discovered in.
+        uint64_t source_file_fk;
+
         // The line of this diagnostic in the t_file referred to via file_fk.
         uint64_t line;
 
@@ -46,6 +49,10 @@ namespace sqfvm::language_server::database::tables {
 
         // The code of the diagnostic message, if applicable
         std::string code;
+
+        // Whether this diagnostic is held back from being reported to the client.
+        // A diagnostic should only be suppressed by the user code analysed, never by the language server!
+        bool is_suppressed;
     };
 }
 

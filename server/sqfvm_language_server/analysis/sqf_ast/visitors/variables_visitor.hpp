@@ -40,7 +40,8 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
                 const ::sqf::parser::sqf::bison::astnode &node) const;
 
         [[nodiscard]] database::tables::t_reference make_reference(
-                const ::sqf::parser::sqf::bison::astnode &node) const;
+                sqf_ast_analyzer &a,
+                const ::sqf::parser::sqf::bison::astnode &node);
 
         [[nodiscard]] database::tables::t_reference make_reference(
                 sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
@@ -93,15 +94,26 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
                 sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &sqf_ast_analyzer,
                 const database::context &context) override;
 
-        void expression_handling_of_private(sqf_ast_analyzer &a, const sqf::parser::sqf::bison::astnode &node);
+        void expression_handle_needless_parentheses(
+                sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
+                const sqf::parser::sqf::bison::astnode &node,
+                const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes);
 
-        void expression_handling_of_params(sqf_ast_analyzer &a, const sqf::parser::sqf::bison::astnode &node);
+        void expression_handling_of_private(
+                sqf_ast_analyzer &a,
+                const sqf::parser::sqf::bison::astnode &node);
 
-        void expression_handling_of_getvariable(sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
-                                                const sqf::parser::sqf::bison::astnode &node);
+        void expression_handling_of_params(
+                sqf_ast_analyzer &a,
+                const sqf::parser::sqf::bison::astnode &node);
 
-        void expression_handling_of_setvariable(sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
-                                                const sqf::parser::sqf::bison::astnode &node);
+        void expression_handling_of_getvariable(
+                sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
+                const sqf::parser::sqf::bison::astnode &node);
+
+        void expression_handling_of_setvariable(
+                sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
+                const sqf::parser::sqf::bison::astnode &node);
 
         static bool node_is_expression(const sqf::parser::sqf::bison::astnode &parent);
 
@@ -114,6 +126,10 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
                 sqf_ast_analyzer &a,
                 const ::sqf::parser::sqf::bison::astnode &node,
                 const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes);
+
+        uint64_t file_id_of(
+                sqf_ast_analyzer &a,
+                const sqf::parser::sqf::bison::astnode &node);
     };
 }
 #endif // SQFVM_LANGUAGE_SERVER_ANALYSIS_SQF_AST_VISITORS_VARIABLES_VISITOR_HPP

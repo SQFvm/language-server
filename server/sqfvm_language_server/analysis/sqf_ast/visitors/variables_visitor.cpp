@@ -11,11 +11,13 @@ using namespace std::string_view_literals;
 namespace {
 
     t_diagnostic diag_private_variable_value_is_never_used_001(
+            uint64_t self_file_id,
             const t_variable &variable,
             const t_reference &reference) {
         return {
                 .id_pk = {},
                 .file_fk = reference.file_fk,
+                .source_file_fk = self_file_id,
                 .line = reference.line + LINE_OFFSET,
                 .column = reference.column,
                 .offset = reference.offset,
@@ -28,11 +30,13 @@ namespace {
     }
 
     t_diagnostic diag_global_variable_value_is_never_used_in_file_002(
+            uint64_t self_file_id,
             const t_variable &variable,
             const t_reference &reference) {
         return {
                 .id_pk = {},
                 .file_fk = reference.file_fk,
+                .source_file_fk = self_file_id,
                 .line = reference.line + LINE_OFFSET,
                 .column = reference.column,
                 .offset = reference.offset,
@@ -45,11 +49,13 @@ namespace {
     }
 
     t_diagnostic diag_private_variable_is_never_assigned_003(
+            uint64_t self_file_id,
             const t_variable &variable,
             const t_reference &reference) {
         return {
                 .id_pk = {},
                 .file_fk = reference.file_fk,
+                .source_file_fk = self_file_id,
                 .line = reference.line + LINE_OFFSET,
                 .column = reference.column,
                 .offset = reference.offset,
@@ -63,11 +69,13 @@ namespace {
 
 
     t_diagnostic diag_global_variable_never_assigned_in_file_in_file_004(
+            uint64_t self_file_id,
             const t_variable &variable,
             const t_reference &reference) {
         return {
                 .id_pk = {},
                 .file_fk = reference.file_fk,
+                .source_file_fk = self_file_id,
                 .line = reference.line + LINE_OFFSET,
                 .column = reference.column,
                 .offset = reference.offset,
@@ -80,6 +88,7 @@ namespace {
     }
 
     t_diagnostic diag_variable_name_not_similar_005(
+            uint64_t self_file_id,
             const t_variable &variable,
             const t_reference &reference,
             std::string_view reference_content) {
@@ -97,6 +106,7 @@ namespace {
         return {
                 .id_pk = {},
                 .file_fk = reference.file_fk,
+                .source_file_fk = self_file_id,
                 .line = reference.line + LINE_OFFSET,
                 .column = reference.column,
                 .offset = reference.offset,
@@ -109,6 +119,7 @@ namespace {
     }
 
     t_diagnostic diag_type_missmatch_006(
+            uint64_t self_file_id,
             const uint64_t file_fk,
             const sqf::parser::sqf::bison::astnode &node,
             sqf::parser::sqf::bison::astkind expected_type) {
@@ -128,6 +139,7 @@ namespace {
         return {
                 .id_pk = {},
                 .file_fk = file_fk,
+                .source_file_fk = self_file_id,
                 .line = node.token.line + LINE_OFFSET,
                 .column = node.token.column,
                 .offset = node.token.offset,
@@ -140,6 +152,7 @@ namespace {
     }
 
     t_diagnostic diag_type_missmatch_006(
+            uint64_t self_file_id,
             const uint64_t file_fk,
             const sqf::parser::sqf::bison::astnode &node,
             sqf::parser::sqf::bison::astkind expected_type_1,
@@ -165,6 +178,7 @@ namespace {
         return {
                 .id_pk = {},
                 .file_fk = file_fk,
+                .source_file_fk = self_file_id,
                 .line = node.token.line + LINE_OFFSET,
                 .column = node.token.column,
                 .offset = node.token.offset,
@@ -177,6 +191,7 @@ namespace {
     }
 
     t_diagnostic diag_cannot_determine_variable_from_expression_007(
+            uint64_t self_file_id,
             const uint64_t file_fk,
             const sqf::parser::sqf::bison::astnode &node,
             sqf::parser::sqf::bison::astkind expected_type) {
@@ -196,6 +211,7 @@ namespace {
         return {
                 .id_pk = {},
                 .file_fk = file_fk,
+                .source_file_fk = self_file_id,
                 .line = node.token.line + LINE_OFFSET,
                 .column = node.token.column,
                 .offset = node.token.offset,
@@ -208,6 +224,7 @@ namespace {
     }
 
     t_diagnostic diag_cannot_determine_variable_from_expression_007(
+            uint64_t self_file_id,
             const uint64_t file_fk,
             const sqf::parser::sqf::bison::astnode &node,
             sqf::parser::sqf::bison::astkind expected_type_1,
@@ -233,6 +250,7 @@ namespace {
         return {
                 .id_pk = {},
                 .file_fk = file_fk,
+                .source_file_fk = self_file_id,
                 .line = node.token.line + LINE_OFFSET,
                 .column = node.token.column,
                 .offset = node.token.offset,
@@ -240,7 +258,27 @@ namespace {
                 .severity = t_diagnostic::verbose,
                 .message = "The provided type cannot be used to determine the variable name for referral",
                 .content = content,
-                .code = "VV-006",
+                .code = "VV-007",
+        };
+    }
+
+    t_diagnostic diag_needless_brackets_008(
+            uint64_t self_file_id,
+            uint64_t file_fk,
+            const sqf::parser::sqf::bison::astnode &left_parentheses,
+            const sqf::parser::sqf::bison::astnode &right_parentheses) {
+        return {
+                .id_pk = {},
+                .file_fk = file_fk,
+                .source_file_fk = self_file_id,
+                .line = left_parentheses.token.line + LINE_OFFSET,
+                .column = left_parentheses.token.column,
+                .offset = left_parentheses.token.offset,
+                .length = right_parentheses.token.offset - left_parentheses.token.offset,
+                .severity = t_diagnostic::info,
+                .message = "The round brackets can safely be removed",
+                .content = "The round brackets can safely be removed",
+                .code = "VV-008",
         };
     }
 }
@@ -273,6 +311,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
 ) {
     switch (node.kind) {
         case ::sqf::parser::sqf::bison::astkind::CODE: {
+            expression_handle_needless_parentheses(a, node, parent_nodes);
             if (is_right_side_of_assignment(parent_nodes, node)) {
                 m_assignment_candidate->types = t_reference::type_flags::code;
                 m_assignment_candidate->id_pk = m_references.size() + 1;
@@ -296,6 +335,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
         case ::sqf::parser::sqf::bison::astkind::EXP8:
         case ::sqf::parser::sqf::bison::astkind::EXP9:
         case ::sqf::parser::sqf::bison::astkind::EXPU: {
+            expression_handle_needless_parentheses(a, node, parent_nodes);
             auto contents = node.token.contents;
             if (iequal(contents, "private")) {
                 expression_handling_of_private(a, node);
@@ -308,11 +348,12 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             } else if (iequal(contents, "isNil")) {
                 expression_handling_of_isnil(a, node);
             } else if (iequal(contents, "for")) {
-                // for being an unary operator, only the first child is relevant and always present.
+                // for being a unary operator, only the first child is relevant and always present.
                 // First child also always must be a string, otherwise pushing diagnostic 006 is required.
                 auto first_child = node.children.front();
                 if (first_child.kind != ::sqf::parser::sqf::bison::astkind::STRING) {
                     m_diagnostics.push_back(diag_type_missmatch_006(
+                            file_id_of(a, node),
                             file_of(a).id_pk,
                             node,
                             ::sqf::parser::sqf::bison::astkind::STRING));
@@ -326,6 +367,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             break;
         }
         case ::sqf::parser::sqf::bison::astkind::EXPN: {
+            expression_handle_needless_parentheses(a, node, parent_nodes);
             if (m_assignment_candidate.has_value()
                 && iequal(node.token.contents, "nil")
                 && is_right_side_of_assignment(parent_nodes, node)) {
@@ -338,6 +380,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
         }
         case ::sqf::parser::sqf::bison::astkind::BOOLEAN_FALSE:
         case ::sqf::parser::sqf::bison::astkind::BOOLEAN_TRUE: {
+            expression_handle_needless_parentheses(a, node, parent_nodes);
             if (m_assignment_candidate.has_value() && is_right_side_of_assignment(parent_nodes, node)) {
                 m_assignment_candidate->types = t_reference::type_flags::boolean;
                 m_assignment_candidate->id_pk = m_references.size() + 1;
@@ -347,6 +390,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             break;
         }
         case ::sqf::parser::sqf::bison::astkind::ARRAY: {
+            expression_handle_needless_parentheses(a, node, parent_nodes);
             if (m_assignment_candidate.has_value() && is_right_side_of_assignment(parent_nodes, node)) {
                 m_assignment_candidate->types = t_reference::type_flags::array;
                 m_assignment_candidate->id_pk = m_references.size() + 1;
@@ -357,6 +401,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
         }
         case ::sqf::parser::sqf::bison::astkind::HEXNUMBER:
         case ::sqf::parser::sqf::bison::astkind::NUMBER: {
+            expression_handle_needless_parentheses(a, node, parent_nodes);
             if (m_assignment_candidate.has_value() && is_right_side_of_assignment(parent_nodes, node)) {
                 m_assignment_candidate->types = t_reference::type_flags::scalar;
                 m_assignment_candidate->id_pk = m_references.size() + 1;
@@ -366,6 +411,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             break;
         }
         case ::sqf::parser::sqf::bison::astkind::STRING: {
+            expression_handle_needless_parentheses(a, node, parent_nodes);
             if (m_assignment_candidate.has_value() && is_right_side_of_assignment(parent_nodes, node)) {
                 m_assignment_candidate->types = t_reference::type_flags::string;
                 m_assignment_candidate->id_pk = m_references.size() + 1;
@@ -375,6 +421,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             break;
         }
         case ::sqf::parser::sqf::bison::astkind::IDENT: {
+            expression_handle_needless_parentheses(a, node, parent_nodes);
             if (m_assignment_candidate.has_value()) {
                 m_assignment_candidate->id_pk = m_references.size() + 1;
                 m_references.push_back(*m_assignment_candidate);
@@ -382,8 +429,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
             }
         } // fallthrough
         case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL: {
-            auto reference = make_reference(node);
-            reference.file_fk = file_of(a).id_pk;
+            auto reference = make_reference(a, node);
             auto variable = get_or_create_variable(node.token.contents);
             reference.variable_fk = variable.id_pk;
 
@@ -392,7 +438,8 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
                 // Yes - We set this IDENT so put it into temp for later evaluation in parent or the code following
                 reference.access = t_reference::access_flags::set;
                 m_assignment_candidate = reference;
-            } else { // No - We get this IDENT
+            } else {
+                // No - We get this IDENT
                 reference.access = t_reference::access_flags::get;
                 reference.id_pk = m_references.size() + 1;
                 m_references.push_back(reference);
@@ -410,8 +457,7 @@ sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::make_ref
         const sqf::parser::sqf::bison::astnode &node,
         const t_variable &variable,
         const t_reference::access_flags &access) {
-    auto reference = make_reference(node);
-    reference.file_fk = file_of(a).id_pk;
+    auto reference = make_reference(a, node);
     reference.variable_fk = variable.id_pk;
     reference.access = access;
     return reference;
@@ -419,12 +465,12 @@ sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::make_ref
 
 void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::expression_handling_of_isnil(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
-        const sqf::parser::sqf::bison::astnode &node) {// Call only has a right side argument
+        const sqf::parser::sqf::bison::astnode &node) {
+    // Call only has a right side argument
     auto right_side = node.children.back();
     // Right side always must be a string
     if (right_side.kind == sqf::parser::sqf::bison::astkind::STRING) {
-        auto reference = make_reference(right_side);
-        reference.file_fk = file_of(a).id_pk;
+        auto reference = make_reference(a, right_side);
         auto variable = get_or_create_variable(sqf_destringify(right_side.token.contents));
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::get;
@@ -433,12 +479,14 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
         // Handled by normal code block handling, left in for completeness
     } else if (right_side.kind == sqf::parser::sqf::bison::astkind::IDENT) {
         m_diagnostics.push_back(diag_cannot_determine_variable_from_expression_007(
+                file_id_of(a, node),
                 file_of(a).id_pk,
                 right_side,
                 ::sqf::parser::sqf::bison::astkind::STRING,
                 ::sqf::parser::sqf::bison::astkind::CODE));
     } else {
         m_diagnostics.push_back(diag_type_missmatch_006(
+                file_id_of(a, node),
                 file_of(a).id_pk,
                 right_side,
                 ::sqf::parser::sqf::bison::astkind::STRING,
@@ -463,31 +511,34 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
             variable_node = {get_variable_right_side_array};
         } else if (get_variable_right_side_array.kind == sqf::parser::sqf::bison::astkind::IDENT) {
             m_diagnostics.push_back(diag_cannot_determine_variable_from_expression_007(
+                    file_id_of(a, node),
                     file_of(a).id_pk,
                     get_variable_right_side_array,
                     ::sqf::parser::sqf::bison::astkind::STRING));
         } else {
             m_diagnostics.push_back(diag_type_missmatch_006(
+                    file_id_of(a, node),
                     file_of(a).id_pk,
                     get_variable_right_side_array,
                     ::sqf::parser::sqf::bison::astkind::STRING));
         }
     } else if (right_side.kind == sqf::parser::sqf::bison::astkind::IDENT) {
         m_diagnostics.push_back(diag_cannot_determine_variable_from_expression_007(
+                file_id_of(a, node),
                 file_of(a).id_pk,
                 right_side,
                 ::sqf::parser::sqf::bison::astkind::STRING,
                 ::sqf::parser::sqf::bison::astkind::ARRAY));
     } else {
         m_diagnostics.push_back(diag_type_missmatch_006(
+                file_id_of(a, node),
                 file_of(a).id_pk,
                 right_side,
                 ::sqf::parser::sqf::bison::astkind::STRING,
                 ::sqf::parser::sqf::bison::astkind::ARRAY));
     }
     if (variable_node.has_value()) {
-        auto reference = make_reference(variable_node.value());
-        reference.file_fk = file_of(a).id_pk;
+        auto reference = make_reference(a, variable_node.value());
         auto variable = get_or_create_variable(sqf_destringify(variable_node->token.contents));
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::get;
@@ -510,30 +561,33 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
             variable_node = {set_variable_right_side_array};
         } else if (set_variable_right_side_array.kind == sqf::parser::sqf::bison::astkind::IDENT) {
             m_diagnostics.push_back(diag_cannot_determine_variable_from_expression_007(
+                    file_id_of(a, node),
                     file_of(a).id_pk,
                     set_variable_right_side_array,
                     ::sqf::parser::sqf::bison::astkind::STRING));
         } else {
             m_diagnostics.push_back(diag_type_missmatch_006(
+                    file_id_of(a, node),
                     file_of(a).id_pk,
                     set_variable_right_side_array,
                     ::sqf::parser::sqf::bison::astkind::STRING));
         }
     } else if (right_side.kind == sqf::parser::sqf::bison::astkind::IDENT) {
         m_diagnostics.push_back(diag_cannot_determine_variable_from_expression_007(
+                file_id_of(a, node),
                 file_of(a).id_pk,
                 right_side,
                 ::sqf::parser::sqf::bison::astkind::STRING,
                 ::sqf::parser::sqf::bison::astkind::ARRAY));
     } else {
         m_diagnostics.push_back(diag_type_missmatch_006(
+                file_id_of(a, node),
                 file_of(a).id_pk,
                 right_side,
                 ::sqf::parser::sqf::bison::astkind::STRING));
     }
     if (variable_node.has_value()) {
-        auto reference = make_reference(variable_node.value());
-        reference.file_fk = file_of(a).id_pk;
+        auto reference = make_reference(a, variable_node.value());
         auto variable = get_or_create_variable(sqf_destringify(variable_node->token.contents));
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
@@ -541,9 +595,125 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
     }
 }
 
+void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::expression_handle_needless_parentheses(
+        sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
+        const sqf::parser::sqf::bison::astnode &node,
+        const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) {
+    if (parent_nodes.size() < 2 ||
+        parent_nodes[parent_nodes.size() - 1]->kind != sqf::parser::sqf::bison::astkind::EXP_GROUP)
+        return;
+    auto &group_parent = parent_nodes[parent_nodes.size() - 1];
+    auto &actual_parent = parent_nodes[parent_nodes.size() - 2];
+    if (group_parent->kind == sqf::parser::sqf::bison::astkind::EXP_GROUP) {
+        auto &left_bracket = group_parent;
+        auto &right_bracket = group_parent->children.back();
+        m_diagnostics.push_back(diag_needless_brackets_008(
+                file_id_of(a, node),
+                file_of(a).id_pk,
+                *left_bracket,
+                right_bracket));
+        return;
+    }
+    uint8_t current_precedence = 0;
+    switch (node.kind) {
+        case sqf::parser::sqf::bison::astkind::EXP0:
+            current_precedence = 0;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP1:
+            current_precedence = 1;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP2:
+            current_precedence = 2;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP3:
+            current_precedence = 3;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP4:
+            current_precedence = 4;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP5:
+            current_precedence = 5;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP6:
+            current_precedence = 6;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP7:
+            current_precedence = 7;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP8:
+            current_precedence = 8;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP9:
+            current_precedence = 9;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXPU:
+            current_precedence = 10;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXPN:
+            current_precedence = 11;
+            break;
+        default:
+            current_precedence = 12;
+            break;
+    }
+    uint8_t actual_parent_precedence = 0;
+    switch (actual_parent->kind) {
+        case sqf::parser::sqf::bison::astkind::EXP0:
+            actual_parent_precedence = 0;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP1:
+            actual_parent_precedence = 1;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP2:
+            actual_parent_precedence = 2;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP3:
+            actual_parent_precedence = 3;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP4:
+            actual_parent_precedence = 4;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP5:
+            actual_parent_precedence = 5;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP6:
+            actual_parent_precedence = 6;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP7:
+            actual_parent_precedence = 7;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP8:
+            actual_parent_precedence = 8;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXP9:
+            actual_parent_precedence = 9;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXPU:
+            actual_parent_precedence = 10;
+            break;
+        case sqf::parser::sqf::bison::astkind::EXPN:
+            actual_parent_precedence = 11;
+            break;
+        default:
+            actual_parent_precedence = 12;
+            break;
+    }
+    if (current_precedence > actual_parent_precedence) {
+        auto &left_bracket = group_parent;
+        auto &right_bracket = group_parent->children.back();
+        m_diagnostics.push_back(diag_needless_brackets_008(
+                file_id_of(a, node),
+                file_of(a).id_pk,
+                *left_bracket,
+                right_bracket));
+        return;
+    }
+}
+
 void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::expression_handling_of_params(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
-        const sqf::parser::sqf::bison::astnode &node) {// params may have a left value and always has a right value
+        const sqf::parser::sqf::bison::astnode &node) {
+    // params may have a left value and always has a right value
     auto right_value = node.children.back();
     // Params right value is always an array but the array can contain a mix of strings and arrays, with
     // the nested arrays containing the string we are looking for at the start of the array.
@@ -557,23 +727,27 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
                     variable_nodes.push_back(child.children.front());
                 } else if (child.children.front().kind == sqf::parser::sqf::bison::astkind::IDENT) {
                     m_diagnostics.push_back(diag_cannot_determine_variable_from_expression_007(
+                            file_id_of(a, node),
                             file_of(a).id_pk,
                             child.children.front(),
                             ::sqf::parser::sqf::bison::astkind::STRING));
                 } else {
                     m_diagnostics.push_back(diag_type_missmatch_006(
+                            file_id_of(a, node),
                             file_of(a).id_pk,
                             child.children.front(),
                             ::sqf::parser::sqf::bison::astkind::STRING));
                 }
             } else if (child.kind == sqf::parser::sqf::bison::astkind::IDENT) {
                 m_diagnostics.push_back(diag_cannot_determine_variable_from_expression_007(
+                        file_id_of(a, node),
                         file_of(a).id_pk,
                         child,
                         ::sqf::parser::sqf::bison::astkind::STRING,
                         ::sqf::parser::sqf::bison::astkind::ARRAY));
             } else {
                 m_diagnostics.push_back(diag_type_missmatch_006(
+                        file_id_of(a, node),
                         file_of(a).id_pk,
                         child,
                         ::sqf::parser::sqf::bison::astkind::STRING,
@@ -582,8 +756,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
         }
     }
     for (auto &variable_node: variable_nodes) {
-        auto reference = make_reference(variable_node);
-        reference.file_fk = file_of(a).id_pk;
+        auto reference = make_reference(a, variable_node);
         auto variable = get_or_create_variable(sqf_destringify(variable_node.token.contents));
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
@@ -604,11 +777,13 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
                 variable_nodes.push_back(child);
             } else if (child.kind == sqf::parser::sqf::bison::astkind::IDENT) {
                 m_diagnostics.push_back(diag_cannot_determine_variable_from_expression_007(
+                        file_id_of(a, node),
                         file_of(a).id_pk,
                         child,
                         ::sqf::parser::sqf::bison::astkind::STRING));
             } else {
                 m_diagnostics.push_back(diag_type_missmatch_006(
+                        file_id_of(a, node),
                         file_of(a).id_pk,
                         child,
                         ::sqf::parser::sqf::bison::astkind::STRING));
@@ -616,20 +791,21 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
         }
     } else if (right_value.kind == sqf::parser::sqf::bison::astkind::IDENT) {
         m_diagnostics.push_back(diag_cannot_determine_variable_from_expression_007(
+                file_id_of(a, node),
                 file_of(a).id_pk,
                 right_value,
                 ::sqf::parser::sqf::bison::astkind::STRING,
                 ::sqf::parser::sqf::bison::astkind::ARRAY));
     } else {
         m_diagnostics.push_back(diag_type_missmatch_006(
+                file_id_of(a, node),
                 file_of(a).id_pk,
                 right_value,
                 ::sqf::parser::sqf::bison::astkind::STRING,
                 ::sqf::parser::sqf::bison::astkind::ARRAY));
     }
     for (auto &variable_node: variable_nodes) {
-        auto reference = make_reference(variable_node);
-        reference.file_fk = file_of(a).id_pk;
+        auto reference = make_reference(a, variable_node);
         auto variable = get_or_create_variable(sqf_destringify(variable_node.token.contents));
         reference.variable_fk = variable.id_pk;
         reference.types = database::tables::t_reference::type_flags::nil;
@@ -706,14 +882,31 @@ bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_
 }
 
 t_reference sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::make_reference(
-        const ::sqf::parser::sqf::bison::astnode &node) const {
+        sqf_ast_analyzer &a,
+        const ::sqf::parser::sqf::bison::astnode &node) {
+
     t_reference reference{};
+    reference.source_file_fk = file_of(a).id_pk;
+    reference.file_fk = file_id_of(a, node);
     reference.line = node.token.line;
     reference.column = node.token.column;
     reference.offset = node.token.offset;
     reference.length = node.token.contents.length();
 
     return reference;
+}
+
+uint64_t sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::file_id_of(
+        sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
+        const sqf::parser::sqf::bison::astnode &node) {
+    auto node_path = std::filesystem::path(*node.token.path).lexically_normal();
+    auto &file = file_of(a);
+    if (!node.token.path->empty() && file.path != node_path.string()) {
+        auto node_file = context_of(a).db_get_file_from_path(node_path, true);
+        if (node_file.has_value())
+            return node_file->id_pk;
+    }
+    return file.id_pk;
 }
 
 std::string sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::push_scope(
@@ -759,8 +952,7 @@ std::string sqfvm::language_server::analysis::sqf_ast::visitors::variables_visit
     m_scope_stack.push_back(s);
     if (is_detached) {
         // ToDo: implement properly (not every {} scope has _this)
-        auto reference = make_reference(node);
-        reference.file_fk = file_of(a).id_pk;
+        auto reference = make_reference(a, node);
         auto variable = get_or_create_variable("_this");
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
@@ -794,8 +986,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::add
                 magic_variables.emplace_back("_forEachIndex");
             }
             for (auto &magic_variable: magic_variables) {
-                auto reference = make_reference(node);
-                reference.file_fk = file_of(a).id_pk;
+                auto reference = make_reference(a, node);
                 auto variable = get_or_create_variable(magic_variable);
                 reference.variable_fk = variable.id_pk;
                 reference.access = t_reference::access_flags::set;
@@ -830,6 +1021,10 @@ bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_
                 || iequal(parent->token.contents, "apply")
                 || iequal(parent->token.contents, "select")
                 || iequal(parent->token.contents, "findIf")
+                || iequal(parent->token.contents, "&&")
+                || iequal(parent->token.contents, "and")
+                || iequal(parent->token.contents, "||")
+                || iequal(parent->token.contents, "or")
         )) {
             is_detached = true;
         }
@@ -904,6 +1099,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ana
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &sqf_ast_analyzer,
         const sqfvm::language_server::database::context &context) {
     using namespace sqlite_orm;
+    auto file_id = file_of(sqf_ast_analyzer).id_pk;
 
     // Find all variables which are only set once and never read
     for (auto &variable: m_variables) {
@@ -924,10 +1120,12 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ana
             if (next_reference == m_references.end() || next_reference->access != t_reference::access_flags::get) {
                 if (is_private_variable(variable)) {
                     m_diagnostics.push_back(diag_private_variable_value_is_never_used_001(
+                            file_id,
                             variable,
                             *initial_reference));
                 } else {
                     m_diagnostics.push_back(diag_global_variable_value_is_never_used_in_file_002(
+                            file_id,
                             variable,
                             *initial_reference));
                 }
@@ -953,10 +1151,12 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ana
             if (previous_set == initial_reference) {
                 if (is_private_variable(variable)) {
                     m_diagnostics.push_back(diag_private_variable_is_never_assigned_003(
+                            file_id,
                             variable,
                             *initial_reference));
                 } else {
                     m_diagnostics.push_back(diag_global_variable_never_assigned_in_file_in_file_004(
+                            file_id,
                             variable,
                             *initial_reference));
                 }
@@ -982,6 +1182,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ana
             auto destringified = sqf_destringify(reference_content);
             if (find_res->variable_name != destringified) {
                 m_diagnostics.push_back(diag_variable_name_not_similar_005(
+                        file_id,
                         *find_res,
                         reference,
                         destringified));
@@ -990,6 +1191,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ana
             // Compare variable name with variable name in reference
             if (find_res->variable_name != reference_content) {
                 m_diagnostics.push_back(diag_variable_name_not_similar_005(
+                        file_id,
                         *find_res,
                         reference,
                         reference_content));

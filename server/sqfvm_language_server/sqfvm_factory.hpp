@@ -2,6 +2,7 @@
 #define SQFVM_LANGUAGE_SERVER_SQFVM_FACTORY_HPP
 
 #include "runtime_logger.hpp"
+#include "analysis/slspp_context.hpp"
 #include "database/context.hpp"
 #include <runtime/runtime.h>
 #include <runtime/fileio.h>
@@ -18,8 +19,9 @@ namespace sqfvm::language_server {
         }
 
         [[nodiscard]] std::shared_ptr<sqf::runtime::runtime> create(
-                std::function<void(const sqfvm::language_server::database::tables::t_diagnostic &)> func,
-                database::context &context
+                const std::function<void(const sqfvm::language_server::database::tables::t_diagnostic &)>& log,
+                database::context &context,
+                const std::shared_ptr<analysis::slspp_context>& slspp
         ) const;
     };
 }

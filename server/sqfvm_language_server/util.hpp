@@ -100,35 +100,9 @@ inline static bool iequal(std::string_view left, std::string_view right) {
     });
 }
 
-inline static std::optional<::sqfvm::language_server::database::tables::t_file> db_get_file_from_path(
-        ::sqfvm::language_server::database::context &context,
-        std::filesystem::path path,
-        bool create_if_not_exists = false) {
-    using namespace sqlite_orm;
-    using namespace ::sqfvm::language_server::database::tables;
-    path = path.lexically_normal();
-    auto files = context.storage().get_all<t_file>(
-            where(c(&t_file::path) == path.string()));
-    t_file file;
-    if (files.empty()) {
-        file = t_file{
-                .is_outdated = true,
-                .is_deleted = false,
-                .last_changed = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::system_clock::now().time_since_epoch()).count(),
-                .path = path.string(),
-        };
-        auto result = context.storage().insert(file);
-        file.id_pk = result;
-    } else {
-        file = files.front();
-        if (file.is_deleted && exists(path))
-        {
-            file.is_deleted = false;
-            context.storage().update(file);
-        }
-    }
-    return {file};
+inline static uint64_t unix_timestamp() {
+    return (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 inline static bool is_subpath(const std::filesystem::path &path, const std::filesystem::path &base) {

@@ -33,7 +33,7 @@ namespace sqfvm::language_server {
             auto path_str = sanitize_to_string(uri);
             auto path = std::filesystem::path(path_str).lexically_normal();
 
-            auto file = db_get_file_from_path(m_context, path, true);
+            auto file = m_context.db_get_file_from_path(path, true);
             if (!file.has_value()) {
                 m_func({
                        .severity = sqfvm::language_server::database::tables::t_diagnostic::severity_level::error,
@@ -44,6 +44,7 @@ namespace sqfvm::language_server {
 
             sqfvm::language_server::database::tables::t_diagnostic msg;
             msg.file_fk = file->id_pk;
+            msg.source_file_fk = file->id_pk;
             msg.line = location.line - 1;
             msg.column = location.col;
             msg.offset = location.offset;

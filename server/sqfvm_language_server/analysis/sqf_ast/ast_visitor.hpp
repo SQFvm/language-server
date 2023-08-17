@@ -23,6 +23,14 @@ namespace sqfvm::language_server::analysis::sqf_ast {
             return a.m_file;
         }
 
+        const database::context &context_of(sqf_ast_analyzer &a) const {
+            return a.m_context;
+        }
+
+        database::context &context_of(sqf_ast_analyzer &a) {
+            return a.m_context;
+        }
+
         const std::string_view text_of(sqf_ast_analyzer &a) const {
             return a.m_preprocessed_text;
         }

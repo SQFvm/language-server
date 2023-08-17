@@ -11,10 +11,15 @@ import * as OpenSelected from "./commands/open_selected";
 import * as OpenRpt from "./commands/open_rpt";
 import * as AlignEquals from "./commands/align_equals";
 
+
 // Defines the search path of your language server DLL. (.NET Core)
 const languageServerPaths = [
     "../../server/cmake-build-debug/sqfvm_language_server/sqfvm_language_server.exe",
-    "./bin/windows/sqfvm_language_server.exe"
+    process.platform === 'win32'
+    ? process.arch === 'x64'
+        ?  "./bin/windows-x64/sqfvm_language_server.exe"
+        :  "./bin/windows-x86/sqfvm_language_server.exe"
+    : "./bin/linux/sqfvm_language_server"
 ]
 
 let client: languageClient.LanguageClient | undefined;
