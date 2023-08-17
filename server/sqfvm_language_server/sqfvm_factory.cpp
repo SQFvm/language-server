@@ -8,15 +8,55 @@
 #include "operators/ops.h"
 
 std::shared_ptr<sqf::runtime::runtime> sqfvm::language_server::sqfvm_factory::create(
-        std::function<void(const sqfvm::language_server::database::tables::t_diagnostic &)> func,
-        sqfvm::language_server::database::context &context) const {
-    auto logger = std::make_shared<runtime_logger>(context, func);
+        const std::function<void(const sqfvm::language_server::database::tables::t_diagnostic &)> &log,
+        sqfvm::language_server::database::context &context,
+        const std::shared_ptr<analysis::slspp_context>& slspp) const {
+    using namespace std::string_literals;
+    auto logger = std::make_shared<runtime_logger>(context, log);
     auto runtime = std::make_shared<::sqf::runtime::runtime>(*logger, ::sqf::runtime::runtime::runtime_conf{});
     runtime->add_finalizer([logger]() { /* holds reference to logger */ });
     runtime->fileio(std::make_unique<::sqf::fileio::impl_default>(*logger));
     runtime->parser_config(std::make_unique<::sqf::parser::config::parser>(*logger));
     runtime->parser_sqf(std::make_unique<::sqf::parser::sqf::parser>(*logger));
-    runtime->parser_preprocessor(std::make_unique<::sqf::parser::preprocessor::impl_default>(*logger));
+    auto preprocessor = std::make_unique<::sqf::parser::preprocessor::impl_default>(*logger);
+
+    preprocessor->push_back(::sqf::runtime::parser::pragma{"sls"s, [slspp](
+            const ::sqf::runtime::parser::pragma &self,
+            ::sqf::runtime::runtime &runtime,
+            ::sqf::runtime::parser::preprocessor::context &file_context,
+            const std::string &data) -> std::optional<std::string> {
+        // The offset required to convert from the human-readable line index (1-based) to the 0-based line index
+        // including the end-of-line offset to correct for pragma read position
+        const size_t line_offset = -2;
+        // split data by spaces
+        std::vector<std::string> args{};
+        std::string_view data_view{data};
+        while (!data_view.empty()) {
+            auto space = data_view.find(' ');
+            if (space == std::string_view::npos) {
+                args.emplace_back(data_view);
+                break;
+            }
+            args.emplace_back(data_view.substr(0, space));
+            data_view.remove_prefix(space + 1);
+        }
+        if (args.size() < 2) {
+            return std::nullopt;
+        }
+        auto command = args.front();
+        auto error_code = args.back();
+        if (command == "enable") {
+            slspp->push_enable(file_context.path.physical, file_context.line + line_offset, error_code);
+        } else if (command == "disable") {
+            if (args.size() < 3) {
+                slspp->push_disable(file_context.path.physical, file_context.line + line_offset, error_code);
+            } else if (args[1] == "line") {
+                slspp->push_disable_line(file_context.path.physical, file_context.line + line_offset, error_code);
+            }
+        }
+        return std::nullopt;
+    }});
+    runtime->parser_preprocessor(std::move(preprocessor));
     sqf::operators::ops(*runtime);
     for (const auto &mapping: m_mappings) {
         runtime->fileio().add_mapping(mapping.physical, mapping.virtual_);

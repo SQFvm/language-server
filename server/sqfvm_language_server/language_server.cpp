@@ -6,6 +6,7 @@
 #include <Poco/Delegate.h>
 #include <string_view>
 #include <fstream>
+#include <utility>
 #include <vector>
 #include <set>
 #include <sstream>
@@ -23,9 +24,12 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     m_context = std::make_shared<database::context>(m_db_path);
     m_sqfvm_factory.add_mapping(uri.string(), "");
     m_file_system_watcher.watch(uri);
-    m_file_system_watcher.callback_add([&](auto &path, bool is_directory) { file_system_item_added(path, is_directory); });
-    m_file_system_watcher.callback_remove([&](auto &path, bool is_directory) { file_system_item_removed(path, is_directory); });
-    m_file_system_watcher.callback_modify([&](auto &path, bool is_directory) { file_system_item_modified(path, is_directory); });
+    m_file_system_watcher.callback_add(
+            [&](auto &path, bool is_directory) { file_system_item_added(path, is_directory); });
+    m_file_system_watcher.callback_remove(
+            [&](auto &path, bool is_directory) { file_system_item_removed(path, is_directory); });
+    m_file_system_watcher.callback_modify(
+            [&](auto &path, bool is_directory) { file_system_item_modified(path, is_directory); });
 
     // Handle SQLite3 database
     if (!m_context->good()) {
@@ -54,7 +58,7 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
         return;
     }
 
-    auto runtime = m_sqfvm_factory.create([](auto &_) {}, *m_context);
+    auto runtime = m_sqfvm_factory.create([](auto &_) {}, *m_context, std::make_shared<analysis::slspp_context>());
 
     // Mark all files according to their state (deleted, outdated)
     for (auto &workspace_folder: params.workspace_folders.value()) {
@@ -69,7 +73,7 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
             if (m_analyzer_factory.has(file_path.extension().string())) {
                 auto last_write_time = iter->last_write_time();
                 uint64_t timestamp = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
-                        last_write_time.time_since_epoch())
+                        std::chrono::clock_cast<std::chrono::system_clock>(last_write_time).time_since_epoch())
                         .count();
                 std::optional<database::tables::t_file> file;
                 try {
@@ -272,10 +276,10 @@ std::optional<std::vector<lsp::data::location>> sqfvm::language_server::language
 
 std::optional<::sqfvm::language_server::database::tables::t_file>
 sqfvm::language_server::language_server::get_file_from_path(
-        std::filesystem::path path,
+        const std::filesystem::path &path,
         bool create_if_not_exists) {
     try {
-        return db_get_file_from_path(*m_context, path, create_if_not_exists);
+        return m_context->db_get_file_from_path(path, create_if_not_exists);
     }
     catch (std::exception &e) {
         std::stringstream sstream;
@@ -305,15 +309,17 @@ void sqfvm::language_server::language_server::on_textDocument_didChange(
 }
 
 void sqfvm::language_server::language_server::push_file_history(
-        ::sqfvm::language_server::database::tables::t_file file,
+        const ::sqfvm::language_server::database::tables::t_file &file,
         std::string contents,
         bool is_external) {
+    auto time_stamp = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+            .count();
     m_context->storage().insert(database::tables::t_file_history{
             .file_fk = file.id_pk,
-            .content = contents,
-            .time_stamp_created = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch()).count(),
-            .is_external = false,
+            .content = std::move(contents),
+            .time_stamp_created = time_stamp,
+            .is_external = is_external,
     });
 }
 
@@ -341,7 +347,7 @@ sqfvm::language_server::language_server::language_server() {
             });
 }
 
-bool sqfvm::language_server::language_server::delete_file(std::filesystem::path file) {
+bool sqfvm::language_server::language_server::delete_file(const std::filesystem::path &file) {
     auto file_opt = get_file_from_path(file.string(), false);
     if (!file_opt.has_value()) {
         return false;
@@ -389,10 +395,9 @@ void sqfvm::language_server::language_server::mark_related_files_as_outdated(
 
 void sqfvm::language_server::language_server::analyse_file(
         const sqfvm::language_server::database::tables::t_file &file) {
-    auto runtime = m_sqfvm_factory.create([](auto &_) {}, *m_context);
-
     uint64_t timestamp = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
-            last_write_time(std::filesystem::path(file.path)).time_since_epoch())
+            std::chrono::clock_cast<std::chrono::system_clock>(last_write_time(std::filesystem::path(file.path)))
+                    .time_since_epoch())
             .count();
     // Create analyzer
     auto extension = std::filesystem::path(file.path).extension().string();
@@ -423,22 +428,45 @@ void sqfvm::language_server::language_server::analyse_file(
     try {
         analyzer_opt.value()->analyze();
         analyzer_opt.value()->commit();
-        publish_diagnostics(file);
     }
     catch (std::exception &e) {
         std::stringstream sstream;
         sstream << "Failed to analyze '" << file.path << "': " << e.what();
         window_logMessage(::lsp::data::message_type::Error, sstream.str());
+        m_context->storage().remove_all<database::tables::t_reference>(
+                where(c(&database::tables::t_reference::file_fk) == file.id_pk));
+        m_context->storage().insert(database::tables::t_diagnostic{
+                .file_fk = file.id_pk,
+                .severity = database::tables::t_diagnostic::error,
+                .message = sstream.str(),
+                .code = "VV-ERR",
+        });
+    }
+    try {
+        publish_diagnostics(file);
+    }
+    catch (std::exception &e) {
+        std::stringstream sstream;
+        sstream << "Failed to publish diagnostics for '" << file.path << "': " << e.what();
+        window_logMessage(::lsp::data::message_type::Error, sstream.str());
     }
 }
 
 void sqfvm::language_server::language_server::publish_diagnostics(
-        const sqfvm::language_server::database::tables::t_file &file) {
+        const sqfvm::language_server::database::tables::t_file &file,
+        bool publish_sub_files) {
     auto file_diagnostics = m_context->storage().get_all<database::tables::t_diagnostic>(
-            where(c(&database::tables::t_diagnostic::file_fk) == file.id_pk));
+            where((c(&database::tables::t_diagnostic::source_file_fk) == file.id_pk
+                   or c(&database::tables::t_diagnostic::file_fk) == file.id_pk)
+                  and c(&database::tables::t_diagnostic::is_suppressed) == false));
     lsp::data::publish_diagnostics_params params = {};
     params.uri = sanitize_to_uri(file.path);
+    std::set<uint64_t> additional_files{};
     for (const auto &diagnostic: file_diagnostics) {
+        if (diagnostic.file_fk != file.id_pk) {
+            additional_files.insert(diagnostic.file_fk);
+            continue;
+        }
         lsp::data::diagnostics diag = {};
         diag.code = diagnostic.code;
         diag.message = diagnostic.message;
@@ -458,6 +486,14 @@ void sqfvm::language_server::language_server::publish_diagnostics(
         params.diagnostics.push_back(diag);
     }
     textDocument_publishDiagnostics(params);
+    if (!publish_sub_files)
+        return;
+    for (auto& additional_file_id: additional_files) {
+        auto additional_file = m_context->storage().get_optional<database::tables::t_file>(additional_file_id);
+        if (!additional_file.has_value())
+            continue;
+        publish_diagnostics(additional_file.value(), false);
+    }
 }
 
 void sqfvm::language_server::language_server::mark_file_as_outdated(const std::filesystem::path &path) {

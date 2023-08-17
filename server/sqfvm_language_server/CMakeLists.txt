@@ -34,6 +34,12 @@ add_executable(sqfvm_language_server
         file_system_watcher.cpp
         file_system_watcher.hpp
         file_system_watcher.hpp
+        analysis/slspp_context.cpp
+        analysis/slspp_context.hpp
+        analysis/config_ast/cfg_ast_analyzer.cpp
+        analysis/config_ast/cfg_ast_analyzer.hpp
+        database/context.cpp
+        database/context.cpp
 )
 
 # Set C++ Version

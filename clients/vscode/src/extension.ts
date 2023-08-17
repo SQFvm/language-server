@@ -17,8 +17,8 @@ const languageServerPaths = [
     "../../server/cmake-build-debug/sqfvm_language_server/sqfvm_language_server.exe",
     process.platform === 'win32'
     ? process.arch === 'x64'
-        ?  "./bin/windows/x64/sqfvm_language_server.exe"
-        :  "./bin/windows/x86/sqfvm_language_server.exe"
+        ?  "./bin/windows-x64/sqfvm_language_server.exe"
+        :  "./bin/windows-x86/sqfvm_language_server.exe"
     : "./bin/linux/sqfvm_language_server"
 ]
 

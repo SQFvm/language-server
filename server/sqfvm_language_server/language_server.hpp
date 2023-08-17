@@ -25,7 +25,7 @@ namespace sqfvm::language_server {
         sqfvm_factory m_sqfvm_factory;
         file_system_watcher m_file_system_watcher;
 
-        bool delete_file(std::filesystem::path file);
+        bool delete_file(const std::filesystem::path& file);
 
         void delete_file(database::tables::t_file file);
 
@@ -33,12 +33,12 @@ namespace sqfvm::language_server {
 
         void analyse_file(const database::tables::t_file &file);
 
-        void publish_diagnostics(const database::tables::t_file &file);
+        void publish_diagnostics(const database::tables::t_file &file, bool publish_sub_files = true);
 
         void analyze_outdated_files();
 
         void push_file_history(
-                ::sqfvm::language_server::database::tables::t_file file,
+                const ::sqfvm::language_server::database::tables::t_file& file,
                 std::string contents,
                 bool is_external = false);
 
@@ -52,7 +52,7 @@ namespace sqfvm::language_server {
                                        bool is_directory);
 
         std::optional<database::tables::t_file>
-        get_file_from_path(std::filesystem::path path, bool create_if_not_exists = false);
+        get_file_from_path(const std::filesystem::path& path, bool create_if_not_exists = false);
 
     protected:
         ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params &params) override {

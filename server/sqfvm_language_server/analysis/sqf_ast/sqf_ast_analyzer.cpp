@@ -156,7 +156,7 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
 #pragma region References
         // Remove all references related to this file
         storage.remove_all<database::tables::t_reference>(
-                where(c(&database::tables::t_reference::file_fk) == m_file.id_pk));
+                where(c(&database::tables::t_reference::source_file_fk) == m_file.id_pk));
 
         // Add all references
         for (auto visitor_it = m_visitors.begin(); visitor_it != m_visitors.end(); ++visitor_it) {
@@ -178,18 +178,24 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
 #pragma region Diagnostics
         // Remove old diagnostics
         storage.remove_all<database::tables::t_diagnostic>(
-                where(c(&database::tables::t_diagnostic::file_fk) == m_file.id_pk));
+                where(c(&database::tables::t_diagnostic::source_file_fk) == m_file.id_pk));
 
         // Add new diagnostics
         for (auto &it: m_diagnostics) {
             if (it.file_fk == 0)
                 it.file_fk = m_file.id_pk;
+            if (it.source_file_fk == 0)
+                it.source_file_fk = m_file.id_pk;
+            it.is_suppressed = !m_slspp_context->can_report(it.code, it.line);
         }
         storage.insert_range(m_diagnostics.begin(), m_diagnostics.end());
         for (auto &visitor: m_visitors) {
             for (auto &it: visitor->m_diagnostics) {
                 if (it.file_fk == 0)
                     it.file_fk = m_file.id_pk;
+                if (it.source_file_fk == 0)
+                    it.source_file_fk = m_file.id_pk;
+                it.is_suppressed = !m_slspp_context->can_report(it.code, it.line);
             }
             storage.insert_range(visitor->m_diagnostics.begin(), visitor->m_diagnostics.end());
         }
@@ -258,8 +264,7 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze_ast(
     for (auto &visitor: m_visitors) {
         visitor->start(*this);
     }
-    auto preprocessor = sqf::parser::preprocessor::impl_default(runtime.get_logger());
-    auto preprocessed_opt = preprocessor.preprocess(runtime, m_text, {m_file.path, {}, {}});
+    auto preprocessed_opt = runtime.parser_preprocessor().preprocess(runtime, m_text, {m_file.path, {}, {}});
     if (!preprocessed_opt.has_value()) {
         return;
     }
@@ -278,7 +283,7 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze_ast(
 }
 
 sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::sqf_ast_analyzer(
-        std::filesystem::path db_path,
+        const std::filesystem::path &db_path,
         sqfvm_factory &factory,
         sqfvm::language_server::database::tables::t_file file,
         std::string &text)
@@ -286,8 +291,13 @@ sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::sqf_ast_analyzer(
           m_text(text),
           m_preprocessed_text(text),
           m_runtime(),
-          m_context(db_path) {
-    m_runtime = factory.create([&](auto &msg) { m_diagnostics.push_back(msg); }, m_context);
+          m_context(db_path),
+          m_slspp_context(std::make_shared<slspp_context>()) {
+    m_runtime = factory.create([&](auto &msg) {
+        auto copy = msg;
+        copy.source_file_fk = m_file.id_pk;
+        m_diagnostics.push_back(copy);
+    }, m_context, m_slspp_context);
     m_visitors.push_back(new visitors::variables_visitor());
 }
 
