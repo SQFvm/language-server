@@ -44,11 +44,11 @@ jobs:
           #  cpp_compiler: clang++
           #  vcpkg_triplet: x64-osx-release
           #  platform: macos
-          - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-            vcpkg_triplet: x64-linux-release
-            platform: linux
+          #- os: ubuntu-latest
+          #  c_compiler: clang
+          #  cpp_compiler: clang++
+          #  vcpkg_triplet: x64-linux-release
+          #  platform: linux
         exclude:
           # windows-latest
           - os: windows-latest
@@ -56,16 +56,17 @@ jobs:
           - os: windows-latest
             c_compiler: clang
           
-          # ubuntu-latest
-          - os: ubuntu-latest
-            c_compiler: clang
-            arch: x86
-          - os: ubuntu-latest
-            c_compiler: cl
-            arch: x86
-          - os: ubuntu-latest
-            c_compiler: cl
-            arch: x64
+          ## ubuntu-latest
+          #- os: ubuntu-latest
+          #  c_compiler: clang
+          #  arch: x86
+          #- os: ubuntu-latest
+          #  c_compiler: cl
+          #  arch: x86
+          #- os: ubuntu-latest
+          #  c_compiler: cl
+          #  arch: x64
+          
           ## macos-latest
           #- os: macos-latest
           #  c_compiler: clang
