@@ -17,6 +17,7 @@
         "Programming Languages",
         "Linters"
     ],
+    "activationEvents-docs": "https://code.visualstudio.com/api/references/activation-events#onFileSystem",
     "activationEvents": [
         "onLanguage:sqf",
         "onLanguage:sqc",
