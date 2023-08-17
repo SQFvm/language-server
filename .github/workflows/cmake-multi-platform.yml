@@ -32,12 +32,12 @@ jobs:
             c_compiler: cl
             cpp_compiler: cl
             vcpkg_triplet: x86-windows
-            platform: windows/x86
+            platform: windows-x86
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
             vcpkg_triplet: x64-windows
-            platform: windows/x64
+            platform: windows-x64
           #- os: macos-latest
           #  c_compiler: clang
           #  cpp_compiler: clang++
@@ -133,16 +133,6 @@ jobs:
 #      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
 #      run: ctest --build-config ${{ matrix.build_type }}
 
-    - name: Upload binary
-      uses: actions/upload-artifact@v3
-      if: ${{ matrix.os == 'windows-latest' }}
-      with:
-        name: ${{ matrix.platform }}-${{ matrix.arch }}
-        if-no-files-found: error
-        path: |
-          .\build\sqfvm_language_server\Release\*.dll
-          .\build\sqfvm_language_server\Release\*.exe
-      
     - name: Upload binary
       uses: actions/upload-artifact@v3
       if: ${{ matrix.os == 'ubuntu-latest' }}
