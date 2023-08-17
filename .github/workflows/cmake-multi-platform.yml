@@ -149,18 +149,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Download binaries
+        uses: actions/download-artifact@v3
+      - name: Print ubuntu results
+        run: |
+          echo "Results:"
+          find ./
       - uses: actions/setup-node@v1
         with:
           node-version: 16
-      - run: npm ci
-      - run: npm install -g @vscode/vsce
-      - name: Download binaries
-        uses: actions/download-artifact@v3
-        
-      - name: Print ubuntu results
-        run: |
-          echo "Ubuntu results:"
-          find ./
+      - name: Install YARN
+        run: npm install -g yarn
+      - name: Install VCSE
+        run: npm install -g @vscode/vsce
+      - name: Run YARN
+        working-directory: ./client/vscode
+        run: yarn
+      # - name: Package Extension
+      #   working-directory: ./client/vscode
+      #   run: vsce package --yarn
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@v2
