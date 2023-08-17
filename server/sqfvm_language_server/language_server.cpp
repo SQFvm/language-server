@@ -22,6 +22,7 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     m_db_path = m_lsp_folder / "sqlite3.db";
     ensure_git_ignore_file_exists();
     m_context = std::make_shared<database::context>(m_db_path);
+    m_context->migrate();
     m_sqfvm_factory.add_mapping(uri.string(), "");
     m_file_system_watcher.watch(uri);
     m_file_system_watcher.callback_add(
@@ -437,6 +438,7 @@ void sqfvm::language_server::language_server::analyse_file(
                 where(c(&database::tables::t_reference::file_fk) == file.id_pk));
         m_context->storage().insert(database::tables::t_diagnostic{
                 .file_fk = file.id_pk,
+                .source_file_fk = file.id_pk,
                 .severity = database::tables::t_diagnostic::error,
                 .message = sstream.str(),
                 .code = "VV-ERR",
