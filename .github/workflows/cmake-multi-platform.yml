@@ -44,11 +44,11 @@ jobs:
           #  cpp_compiler: clang++
           #  vcpkg_triplet: x64-osx-release
           #  platform: macos
-          - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
-            vcpkg_triplet: x64-linux-release
-            platform: linux
+          #- os: ubuntu-latest
+          #  c_compiler: clang
+          #  cpp_compiler: clang++
+          #  vcpkg_triplet: x64-linux-release
+          #  platform: linux
         exclude:
           # windows-latest
           - os: windows-latest
@@ -56,16 +56,17 @@ jobs:
           - os: windows-latest
             c_compiler: clang
           
-          # ubuntu-latest
-          - os: ubuntu-latest
-            c_compiler: clang
-            arch: x86
-          - os: ubuntu-latest
-            c_compiler: cl
-            arch: x86
-          - os: ubuntu-latest
-            c_compiler: cl
-            arch: x64
+          ## ubuntu-latest
+          #- os: ubuntu-latest
+          #  c_compiler: clang
+          #  arch: x86
+          #- os: ubuntu-latest
+          #  c_compiler: cl
+          #  arch: x86
+          #- os: ubuntu-latest
+          #  c_compiler: cl
+          #  arch: x64
+          
           ## macos-latest
           #- os: macos-latest
           #  c_compiler: clang
@@ -148,18 +149,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Download binaries
+        uses: actions/download-artifact@v3
+      - name: Print ubuntu results
+        run: |
+          echo "Results:"
+          find ./
       - uses: actions/setup-node@v1
         with:
           node-version: 16
-      - run: npm ci
-      - run: npm install -g @vscode/vsce
-      - name: Download binaries
-        uses: actions/download-artifact@v3
-        
-      - name: Print ubuntu results
-        run: |
-          echo "Ubuntu results:"
-          find ./
+      - name: Install YARN
+        run: npm install -g yarn
+      - name: Install VCSE
+        run: npm install -g @vscode/vsce
+      - name: Run YARN
+        working-directory: ./client/vscode
+        run: yarn
+      # - name: Package Extension
+      #   working-directory: ./client/vscode
+      #   run: vsce package --yarn
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@v2
