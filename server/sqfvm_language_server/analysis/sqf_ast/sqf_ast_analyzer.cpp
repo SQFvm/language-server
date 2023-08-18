@@ -2,6 +2,7 @@
 #include "ast_visitor.hpp"
 #include "../../util.hpp"
 #include "visitors/variables_visitor.hpp"
+#include "visitors/scripted_visitor.hpp"
 #include "../../runtime_logger.hpp"
 #include <functional>
 #include <utility>
@@ -283,6 +284,7 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze_ast(
 }
 
 sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::sqf_ast_analyzer(
+        std::filesystem::path ls_path,
         const std::filesystem::path &db_path,
         sqfvm_factory &factory,
         sqfvm::language_server::database::tables::t_file file,
@@ -292,6 +294,7 @@ sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::sqf_ast_analyzer(
           m_preprocessed_text(text),
           m_runtime(),
           m_context(db_path),
+          m_ls_path(std::move(ls_path)),
           m_slspp_context(std::make_shared<slspp_context>()) {
     m_runtime = factory.create([&](auto &msg) {
         auto copy = msg;
@@ -299,6 +302,7 @@ sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::sqf_ast_analyzer(
         m_diagnostics.push_back(copy);
     }, m_context, m_slspp_context);
     m_visitors.push_back(new visitors::variables_visitor());
+    m_visitors.push_back(new visitors::scripted_visitor());
 }
 
 sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::~sqf_ast_analyzer() {

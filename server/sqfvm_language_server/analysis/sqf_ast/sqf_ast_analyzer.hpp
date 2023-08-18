@@ -21,6 +21,7 @@ namespace sqfvm::language_server::analysis::sqf_ast {
         std::shared_ptr<sqf::runtime::runtime> m_runtime;
         std::shared_ptr<slspp_context> m_slspp_context;
         database::context m_context;
+        std::filesystem::path m_ls_path;
 
         void recurse(const sqf::parser::sqf::bison::astnode &parent);
         void analyze_ast(sqf::runtime::runtime &runtime);
@@ -39,6 +40,7 @@ namespace sqfvm::language_server::analysis::sqf_ast {
 
     public:
         sqf_ast_analyzer(
+                std::filesystem::path ls_path,
                 const std::filesystem::path& db_path,
                 sqfvm_factory &factory,
                 database::tables::t_file file,

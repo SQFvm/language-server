@@ -40,6 +40,8 @@ add_executable(sqfvm_language_server
         analysis/config_ast/cfg_ast_analyzer.hpp
         database/context.cpp
         database/context.cpp
+        analysis/sqf_ast/visitors/scripted_visitor.cpp
+        analysis/sqf_ast/visitors/scripted_visitor.hpp
 )
 
 # Set C++ Version

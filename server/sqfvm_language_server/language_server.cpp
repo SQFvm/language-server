@@ -340,11 +340,12 @@ sqfvm::language_server::language_server::language_server() {
     // Setup analyzers
     m_analyzer_factory.set(
             ".sqf", [](
+                    auto ls_path,
                     auto db_path,
                     auto &factory,
                     auto file,
                     auto &text) -> std::unique_ptr<analysis::analyzer> {
-                return std::make_unique<analysis::sqf_ast::sqf_ast_analyzer>(db_path, factory, file, text);
+                return std::make_unique<analysis::sqf_ast::sqf_ast_analyzer>(ls_path, db_path, factory, file, text);
             });
 }
 
@@ -417,7 +418,13 @@ void sqfvm::language_server::language_server::analyse_file(
     } else {
         content = contents[0].content;
     }
-    auto analyzer_opt = m_analyzer_factory.get(extension, m_context->db_path(), m_sqfvm_factory, file, content);
+    auto analyzer_opt = m_analyzer_factory.get(
+            extension,
+            m_lsp_folder,
+            m_context->db_path(),
+            m_sqfvm_factory,
+            file,
+            content);
     if (!analyzer_opt.has_value()) {
         return;
     }
@@ -490,7 +497,7 @@ void sqfvm::language_server::language_server::publish_diagnostics(
     textDocument_publishDiagnostics(params);
     if (!publish_sub_files)
         return;
-    for (auto& additional_file_id: additional_files) {
+    for (auto &additional_file_id: additional_files) {
         auto additional_file = m_context->storage().get_optional<database::tables::t_file>(additional_file_id);
         if (!additional_file.has_value())
             continue;

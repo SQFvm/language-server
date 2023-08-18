@@ -4,6 +4,7 @@
 #include "../sqfvm_factory.hpp"
 
 #include <runtime/runtime.h>
+#include <utility>
 #include <vector>
 #include <string>
 #include <string_view>
@@ -30,6 +31,7 @@ namespace sqfvm::language_server::analysis {
     class analyzer_factory {
     public:
         using generator_func = std::unique_ptr<analyzer>(*)(
+                std::filesystem::path ls_path,
                 std::filesystem::path db_path,
                 sqfvm_factory &,
                 database::tables::t_file,
@@ -44,6 +46,7 @@ namespace sqfvm::language_server::analysis {
 
         [[nodiscard]] std::optional<std::unique_ptr<analyzer>> get(
                 const std::string &ext,
+                std::filesystem::path ls_path,
                 std::filesystem::path db_path,
                 sqfvm_factory &factory,
                 const database::tables::t_file &file,
@@ -52,7 +55,8 @@ namespace sqfvm::language_server::analysis {
             return res == m_generators.end()
                    ? std::optional<std::unique_ptr<analyzer>>{}
                    : res->second(
-                            db_path,
+                            std::move(ls_path),
+                            std::move(db_path),
                             factory,
                             file,
                             text);
