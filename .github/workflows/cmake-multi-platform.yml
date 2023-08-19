@@ -137,6 +137,16 @@ jobs:
 
     - name: Upload binary
       uses: actions/upload-artifact@v3
+      if: ${{ matrix.os == 'windows-latest' }}
+      with:
+        name: ${{ matrix.platform }}-${{ matrix.arch }}
+        if-no-files-found: error
+        path: |
+          .\build\sqfvm_language_server\Release\*.dll
+          .\build\sqfvm_language_server\Release\*.exe
+          
+    - name: Upload binary
+      uses: actions/upload-artifact@v3
       if: ${{ matrix.os == 'ubuntu-latest' }}
       with:
         name: ${{ matrix.platform }}
@@ -163,7 +173,7 @@ jobs:
       - name: Install VCSE
         run: npm install -g @vscode/vsce
       - name: Run YARN
-        working-directory: ./client/vscode
+        working-directory: ./clients/vscode
         run: yarn
       # - name: Package Extension
       #   working-directory: ./client/vscode
