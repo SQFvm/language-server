@@ -163,9 +163,8 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           path: ./clients/vscode/bin/
-      - name: Move Binaries
+      - name: ECHO DIR
         run: |
-          echo "Results:"
           find ./
       - uses: actions/setup-node@v1
         with:
@@ -177,12 +176,17 @@ jobs:
       - name: Run YARN
         working-directory: ./clients/vscode
         run: yarn
+      - name: ECHO DIR
+        run: |
+          find ./
       - name: Package Extension
         working-directory: ./clients/vscode
         run: vsce package --yarn
+      - name: ECHO DIR
+        run: |
+          find ./
       - name: Upload extension
         uses: actions/upload-artifact@v3
-        if: ${{ matrix.os == 'windows-latest' }}
         with:
           name: VSCode extension
           if-no-files-found: error
