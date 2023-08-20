@@ -587,3 +587,35 @@ void sqfvm::language_server::language_server::ensure_git_ignore_file_exists() {
         file.close();
     }
 }
+
+::lsp::data::initialize_result sqfvm::language_server::language_server::on_initialize(
+        const lsp::data::initialize_params &params) {
+    m_client_params = params;
+    ::lsp::data::initialize_result res;
+    res.serverInfo = ::lsp::data::initialize_result::server_info{};
+    res.serverInfo->name = "SQF-VM Language Server";
+    res.serverInfo->version = std::string(g_GIT_SHA1);
+    res.capabilities.textDocumentSync = ::lsp::data::initialize_result::server_capabilities::text_document_sync_options{};
+    res.capabilities.textDocumentSync->change = ::lsp::data::text_document_sync_kind::Full;
+    res.capabilities.textDocumentSync->openClose = true;
+    res.capabilities.textDocumentSync->save = ::lsp::data::initialize_result::server_capabilities::text_document_sync_options::SaveOptions{};
+    res.capabilities.textDocumentSync->save->includeText = true;
+    res.capabilities.textDocumentSync->willSave = false;
+    // res.capabilities.foldingRangeProvider = ::lsp::data::initialize_result::server_capabilities::folding_range_registration_options{};
+    // res.capabilities.foldingRangeProvider->documentSelector = ::lsp::data::document_filter{};
+    // res.capabilities.foldingRangeProvider->documentSelector->language = "sqf";
+    res.capabilities.completionProvider = lsp::data::initialize_result::server_capabilities::completion_options{.resolveProvider = true};
+    res.capabilities.referencesProvider = lsp::data::initialize_result::server_capabilities::reference_options{.workDoneProgress = false};
+    res.capabilities.codeActionProvider = lsp::data::initialize_result::server_capabilities::code_action_options{
+        .codeActionKinds = {std::vector<lsp::data::code_action_kind>{
+            lsp::data::code_action_kind::QuickFix,
+            lsp::data::code_action_kind::Refactor,
+            lsp::data::code_action_kind::RefactorExtract,
+            lsp::data::code_action_kind::RefactorInline,
+            lsp::data::code_action_kind::Source,
+            lsp::data::code_action_kind::RefactorRewrite,
+        }}
+    };
+
+    return res;
+}

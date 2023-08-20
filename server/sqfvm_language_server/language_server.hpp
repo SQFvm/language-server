@@ -55,26 +55,7 @@ namespace sqfvm::language_server {
         get_file_from_path(const std::filesystem::path& path, bool create_if_not_exists = false);
 
     protected:
-        ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params &params) override {
-            m_client_params = params;
-            ::lsp::data::initialize_result res;
-            res.serverInfo = ::lsp::data::initialize_result::server_info{};
-            res.serverInfo->name = "SQF-VM Language Server";
-            res.serverInfo->version = std::string(g_GIT_SHA1);
-            res.capabilities.textDocumentSync = ::lsp::data::initialize_result::server_capabilities::text_document_sync_options{};
-            res.capabilities.textDocumentSync->change = ::lsp::data::text_document_sync_kind::Full;
-            res.capabilities.textDocumentSync->openClose = true;
-            res.capabilities.textDocumentSync->save = ::lsp::data::initialize_result::server_capabilities::text_document_sync_options::SaveOptions{};
-            res.capabilities.textDocumentSync->save->includeText = true;
-            res.capabilities.textDocumentSync->willSave = false;
-            // res.capabilities.foldingRangeProvider = ::lsp::data::initialize_result::server_capabilities::folding_range_registration_options{};
-            // res.capabilities.foldingRangeProvider->documentSelector = ::lsp::data::document_filter{};
-            // res.capabilities.foldingRangeProvider->documentSelector->language = "sqf";
-            res.capabilities.completionProvider = lsp::data::initialize_result::server_capabilities::completion_options{.resolveProvider = true};
-            res.capabilities.referencesProvider = lsp::data::initialize_result::server_capabilities::reference_options{.workDoneProgress = false};
-
-            return res;
-        }
+        ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params &params) override;
 
         void on_shutdown() override {}
 
