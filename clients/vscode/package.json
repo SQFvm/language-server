@@ -3,7 +3,7 @@
     "displayName": "SQF-VM Language Server",
     "description": "",
 	"icon": "assets/icon.png",
-    "version": "0.2.6",
+    "version": "0.2.11",
     "publisher": "SQF-VM",
     "repository": {
         "type": "git",
@@ -17,6 +17,7 @@
         "Programming Languages",
         "Linters"
     ],
+    "activationEvents-docs": "https://code.visualstudio.com/api/references/activation-events#onFileSystem",
     "activationEvents": [
         "onLanguage:sqf",
         "onLanguage:sqc",

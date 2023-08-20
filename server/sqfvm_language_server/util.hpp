@@ -71,8 +71,10 @@ inline static std::string_view to_string_view(sqf::parser::sqf::bison::astkind k
             return "EXP9"sv;
         case sqf::parser::sqf::bison::astkind::EXPU:
             return "EXPU"sv;
+        case sqf::parser::sqf::bison::astkind::EXP_GROUP:
+            return "EXP_GROUP"sv;
         default:
-            "UNKNOWN"sv;
+            return "UNKNOWN"sv;
     }
 }
 

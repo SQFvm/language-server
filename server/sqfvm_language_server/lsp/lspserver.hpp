@@ -1,6 +1,7 @@
 #ifndef SQFVM_LANGUAGE_SERVER_LSP_LSPSERVER_HPP
 #define SQFVM_LANGUAGE_SERVER_LSP_LSPSERVER_HPP
 
+#include "data/enums.hpp"
 #include "jsonrpc.hpp"
 #include "../uri.hpp"
 
@@ -12,9 +13,33 @@
 
 namespace lsp {
     namespace data {
+
+#pragma region Usings
+        /**
+         * An identifier referring to a change annotation managed by a workspace
+         * edit.
+         *
+         * @since 3.16.0.
+         */
+        using change_annotation_identifier = std::string;
+        /**
+         * An identifier referring to a change annotation managed by a workspace
+         * edit.
+         *
+         * @since 3.16.0.
+         */
+        using integer = int32_t;
+#pragma endregion
+#pragma region from_json
+        // IMPORTANT: Always have primitives first, then unordered_map, then vector, then optional!
         template<typename T>
         inline void from_json(const nlohmann::json &node, T &t) {
             t = T::from_json(node);
+        }
+
+        template<>
+        inline void from_json<nlohmann::json>(const nlohmann::json &node, nlohmann::json &t) {
+            t = node;
         }
 
         template<>
@@ -47,69 +72,6 @@ namespace lsp {
             t = node;
         }
 
-        template<typename T>
-        inline nlohmann::json to_json(const T &t) {
-            return t.to_json();
-        }
-
-        template<>
-        inline nlohmann::json to_json<bool>(const bool &t) {
-            return t;
-        }
-
-        template<>
-        inline nlohmann::json to_json<int>(const int &t) {
-            return t;
-        }
-
-        template<>
-        inline nlohmann::json to_json<unsigned int>(const unsigned int &t) {
-            return t;
-        }
-
-        template<>
-        inline nlohmann::json to_json<float>(const float &t) {
-            return t;
-        }
-
-        template<>
-        inline nlohmann::json to_json<uint64_t>(const uint64_t &t) {
-            return t;
-        }
-
-        template<>
-        inline nlohmann::json to_json<std::string>(const std::string &t) {
-            return t;
-        }
-
-
-        enum class resource_operations {
-            Empty = 0b000, /*
-               Supports creating new files and folders.
-            */
-            Create = 0b001, /*
-               Supports renaming existing files and folders.
-            */
-            Rename = 0b010, /*
-               Supports deleting existing files and folders.
-            */
-            Delete = 0b100
-        };
-
-        inline resource_operations operator|(resource_operations lhs, resource_operations rhs) {
-            return static_cast<resource_operations> (
-                    static_cast<std::underlying_type<resource_operations>::type>(lhs)
-                    | static_cast<std::underlying_type<resource_operations>::type>(rhs)
-            );
-        }
-
-        inline resource_operations operator&(resource_operations lhs, resource_operations rhs) {
-            return static_cast<resource_operations> (
-                    static_cast<std::underlying_type<resource_operations>::type>(lhs)
-                    & static_cast<std::underlying_type<resource_operations>::type>(rhs)
-            );
-        }
-
         template<>
         inline void from_json<resource_operations>(const nlohmann::json &node, resource_operations &t) {
             t = resource_operations::Empty;
@@ -125,41 +87,6 @@ namespace lsp {
             }
         }
 
-        template<>
-        inline nlohmann::json to_json<resource_operations>(const resource_operations &t) {
-            nlohmann::json arr;
-            if ((t & resource_operations::Create) == resource_operations::Create) {
-                arr.push_back("create");
-            }
-            if ((t & resource_operations::Delete) == resource_operations::Delete) {
-                arr.push_back("delete");
-            }
-            if ((t & resource_operations::Rename) == resource_operations::Rename) {
-                arr.push_back("rename");
-            }
-            return arr;
-        }
-
-        enum class failure_handling {
-            empty, /*
-               Applying the workspace change is simply aborted if one of the changes provided
-               fails. All operations executed before the failing operation stay executed.
-            */
-            abort, /*
-               All operations are executed transactional. That means they either all
-               succeed or no changes at all are applied to the workspace.
-            */
-            transactional, /*
-               If the workspace edit contains only textual file changes they are executed transactional.
-               If resource changes (create, rename or delete file) are part of the change the failure
-               handling strategy is abort.
-            */
-            textOnlyTransactional, /*
-               The client tries to undo the operations already executed. But there is no
-               guarantee that this is succeeding.
-            */
-            undo
-        };
 
         template<>
         inline void from_json<failure_handling>(const nlohmann::json &node, failure_handling &t) {
@@ -184,37 +111,6 @@ namespace lsp {
             }
         }
 
-        template<>
-        inline nlohmann::json to_json<failure_handling>(const failure_handling &t) {
-            switch (t) {
-                case failure_handling::abort:
-                    return "abort";
-                case failure_handling::transactional:
-                    return "transactional";
-                case failure_handling::textOnlyTransactional:
-                    return "textOnlyTransactional";
-                case failure_handling::undo:
-                    return "undo";
-                default:
-                    return {};
-            }
-        }
-
-        enum class folding_range_kind {
-            /**
-             * Folding range for a comment
-             * 'comment'
-             */
-            Comment, /**
-             * Folding range for a imports or includes
-             * 'imports'
-             */
-            Imports, /**
-              * Folding range for a region (e.g. `#region`)
-              * 'region'
-              */
-            Region
-        };
 
         template<>
         inline void from_json<folding_range_kind>(const nlohmann::json &node, folding_range_kind &t) {
@@ -235,73 +131,9 @@ namespace lsp {
         }
 
         template<>
-        inline nlohmann::json to_json<folding_range_kind>(const folding_range_kind &t) {
-            switch (t) {
-                case folding_range_kind::Comment:
-                    return "comment";
-                case folding_range_kind::Imports:
-                    return "imports";
-                case folding_range_kind::Region:
-                    return "region";
-                default:
-                    return {};
-            }
-        }
-
-        enum class symbol_kind {
-            File = 1,
-            Module = 2,
-            Namespace = 3,
-            Package = 4,
-            Class = 5,
-            Method = 6,
-            Property = 7,
-            Field = 8,
-            Constructor = 9,
-            Enum = 10,
-            Interface = 11,
-            Function = 12,
-            Variable = 13,
-            Constant = 14,
-            String = 15,
-            Number = 16,
-            Boolean = 17,
-            Array = 18,
-            Object = 19,
-            Key = 20,
-            Null = 21,
-            EnumMember = 22,
-            Struct = 23,
-            Event = 24,
-            Operator = 25,
-            TypeParameter = 26
-        };
-
-        template<>
         inline void from_json<symbol_kind>(const nlohmann::json &node, symbol_kind &t) {
             t = static_cast<symbol_kind>(node.get<int>());
         }
-
-        template<>
-        inline nlohmann::json to_json<symbol_kind>(const symbol_kind &t) {
-            return static_cast<int>(t);
-        }
-
-        enum class message_type {
-            /**
-             * An error message.
-             */
-            Error = 1, /**
-             * A warning message.
-             */
-            Warning = 2, /**
-              * An information message.
-              */
-            Info = 3, /**
-               * A log message.
-               */
-            Log = 4
-        };
 
         template<>
         inline void from_json<message_type>(const nlohmann::json &node, message_type &t) {
@@ -309,234 +141,34 @@ namespace lsp {
         }
 
         template<>
-        inline nlohmann::json to_json<message_type>(const message_type &t) {
-            return static_cast<int>(t);
-        }
-
-        enum class trace_mode {
-            off, message, verbose
-        };
-
-        template<>
-        inline void from_json<trace_mode>(const nlohmann::json &node, trace_mode &t) {
-
-            t = trace_mode::off;
-            std::string actual = node;
-            if (actual == "message") {
-                t = trace_mode::message;
-                return;
-            }
-            if (actual == "verbose") {
-                t = trace_mode::verbose;
-                return;
-            }
+        inline void from_json<text_document_save_reason>(const nlohmann::json &node, text_document_save_reason &t) {
+            t = static_cast<text_document_save_reason>(node.get<int>());
         }
 
         template<>
-        inline nlohmann::json to_json<trace_mode>(const trace_mode &t) {
-            switch (t) {
-                case trace_mode::off:
-                    return "off";
-                case trace_mode::message:
-                    return "message";
-                case trace_mode::verbose:
-                    return "verbose";
-                default:
-                    return {};
-            }
-        }
-
-        enum class completion_item_tag {
-            Deprecated = 1
-        };
-
-        template<>
-        inline void from_json<completion_item_tag>(const nlohmann::json &node, completion_item_tag &t) {
-            t = static_cast<completion_item_tag>(node.get<int>());
+        inline void from_json<completion_trigger_kind>(const nlohmann::json &node, completion_trigger_kind &t) {
+            t = static_cast<completion_trigger_kind>(node.get<int>());
         }
 
         template<>
-        inline nlohmann::json to_json<completion_item_tag>(const completion_item_tag &t) {
-            return static_cast<int>(t);
-        }
-
-        /**
-         * Describes the content type that a client supports in various
-         * result literals like `Hover`, `ParameterInfo` or `CompletionItem`.
-         *
-         * Please note that `MarkupKinds` must not start with a `$`. This kinds
-         * are reserved for internal usage.
-         */
-        enum class markup_kind {
-            /**
-             * Plain text is supported as a content format
-             * Value String: "plaintext"
-             */
-            PlainText, /**
-             * Markdown is supported as a content format
-             * Value String: "markdown
-             */
-            Markdown
-        };
-
-        template<>
-        inline void from_json<markup_kind>(const nlohmann::json &node, markup_kind &t) {
-
-            t = markup_kind::PlainText;
-            std::string actual = node;
-            if (actual == "plaintext") {
-                t = markup_kind::PlainText;
-                return;
-            }
-            if (actual == "markdown") {
-                t = markup_kind::Markdown;
-                return;
-            }
+        inline void from_json<insert_text_format>(const nlohmann::json &node, insert_text_format &t) {
+            t = static_cast<insert_text_format>(node.get<int>());
         }
 
         template<>
-        inline nlohmann::json to_json<markup_kind>(const markup_kind &t) {
-            switch (t) {
-                case markup_kind::PlainText:
-                    return "plaintext";
-                case markup_kind::Markdown:
-                    return "markdown";
-                default:
-                    return {};
-            }
-        }
-
-        enum class completion_item_kind {
-            Text = 1,
-            Method = 2,
-            Function = 3,
-            Constructor = 4,
-            Field = 5,
-            Variable = 6,
-            Class = 7,
-            Interface = 8,
-            Module = 9,
-            Property = 10,
-            Unit = 11,
-            Value = 12,
-            Enum = 13,
-            Keyword = 14,
-            Snippet = 15,
-            Color = 16,
-            File = 17,
-            Reference = 18,
-            Folder = 19,
-            EnumMember = 20,
-            Constant = 21,
-            Struct = 22,
-            Event = 23,
-            Operator = 24,
-            TypeParameter = 25
-        };
-
-        template<>
-        inline void from_json<completion_item_kind>(const nlohmann::json &node, completion_item_kind &t) {
-            t = static_cast<completion_item_kind>(node.get<int>());
+        inline void from_json<diagnostic_severity>(const nlohmann::json &node, diagnostic_severity &t) {
+            t = static_cast<diagnostic_severity>(node.get<int>());
         }
 
         template<>
-        inline nlohmann::json to_json<completion_item_kind>(const completion_item_kind &t) {
-            return static_cast<int>(t);
+        inline void from_json<code_action_trigger_kind>(const nlohmann::json &node, code_action_trigger_kind &t) {
+            t = static_cast<code_action_trigger_kind>(node.get<int>());
         }
-
-        enum class diagnostic_tag {
-            /**
-             * Unused or unnecessary code.
-             *
-             * Clients are allowed to render diagnostics with this tag faded out instead of having
-             * an error squiggle.
-             */
-            Unnecessary = 1, /**
-             * Deprecated or obsolete code.
-             *
-             * Clients are allowed to rendered diagnostics with this tag strike through.
-             */
-            Deprecated = 2
-        };
 
         template<>
         inline void from_json<diagnostic_tag>(const nlohmann::json &node, diagnostic_tag &t) {
             t = static_cast<diagnostic_tag>(node.get<int>());
         }
-
-        template<>
-        inline nlohmann::json to_json<diagnostic_tag>(const diagnostic_tag &t) {
-            return static_cast<int>(t);
-        }
-
-        enum class code_action_kind {
-            /**
-             * Empty kind.
-             */
-            Empty,
-
-            /**
-             * Base kind for quickfix actions: 'quickfix'.
-             */
-            QuickFix,
-
-            /**
-             * Base kind for refactoring actions: 'refactor'.
-             */
-            Refactor,
-
-            /**
-             * Base kind for refactoring extraction actions: 'refactor.extract'.
-             *
-             * Example extract actions:
-             *
-             * - Extract method
-             * - Extract function
-             * - Extract variable
-             * - Extract interface from class
-             * - ...
-             */
-            RefactorExtract,
-
-            /**
-             * Base kind for refactoring inline actions: 'refactor.inline'.
-             *
-             * Example inline actions:
-             *
-             * - Inline function
-             * - Inline variable
-             * - Inline constant
-             * - ...
-             */
-            RefactorInline,
-
-            /**
-             * Base kind for refactoring rewrite actions: 'refactor.rewrite'.
-             *
-             * Example rewrite actions:
-             *
-             * - Convert JavaScript function to class
-             * - Add or remove parameter
-             * - Encapsulate field
-             * - Make method static
-             * - Move method to base class
-             * - ...
-             */
-            RefactorRewrite,
-
-            /**
-             * Base kind for source actions: `source`.
-             *
-             * Source code actions apply to the entire file.
-             */
-            Source,
-
-            /**
-             * Base kind for an organize imports source action: `source.organizeImports`.
-             */
-            SourceOrganizeImports
-        };
-
         template<>
         inline void from_json<code_action_kind>(const nlohmann::json &node, code_action_kind &t) {
 
@@ -573,6 +205,245 @@ namespace lsp {
         }
 
         template<>
+        inline void from_json<text_document_sync_kind>(const nlohmann::json &node, text_document_sync_kind &t) {
+            t = static_cast<text_document_sync_kind>(node.get<int>());
+        }
+
+        template<>
+        inline void from_json<completion_item_kind>(const nlohmann::json &node, completion_item_kind &t) {
+            t = static_cast<completion_item_kind>(node.get<int>());
+        }
+        template<>
+        inline void from_json<completion_item_tag>(const nlohmann::json &node, completion_item_tag &t) {
+            t = static_cast<completion_item_tag>(node.get<int>());
+        }
+
+        template<>
+        inline void from_json<markup_kind>(const nlohmann::json &node, markup_kind &t) {
+
+            t = markup_kind::PlainText;
+            std::string actual = node;
+            if (actual == "plaintext") {
+                t = markup_kind::PlainText;
+                return;
+            }
+            if (actual == "markdown") {
+                t = markup_kind::Markdown;
+                return;
+            }
+        }
+
+        template<>
+        inline void from_json<trace_mode>(const nlohmann::json &node, trace_mode &t) {
+
+            t = trace_mode::off;
+            std::string actual = node;
+            if (actual == "message") {
+                t = trace_mode::message;
+                return;
+            }
+            if (actual == "verbose") {
+                t = trace_mode::verbose;
+                return;
+            }
+        }
+
+
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+
+
+        template<typename TKey, typename TValue>
+        inline void from_json(const nlohmann::json &node, std::unordered_map<TKey, TValue> &ts) {
+            ts = std::unordered_map<TKey, TValue>();
+            for (auto it = node.begin(); it != node.end(); ++it) {
+                TKey key;
+                TValue value;
+                from_json(it.key(), key);
+                from_json(it.value(), value);
+                ts[key] = value;
+            }
+        }
+
+        template<typename T>
+        inline void from_json(const nlohmann::json &node, std::vector<T> &ts) {
+            ts = std::vector<T>();
+            for (const auto &subnode: node) {
+                T t;
+                from_json(subnode, t);
+                ts.push_back(t);
+            }
+        }
+
+        template<typename T>
+        inline void from_json(const nlohmann::json &node, std::optional<T> &opt) {
+            if (!node.empty() && !node.is_null()) {
+                T t{};
+                from_json(node, t);
+                opt = t;
+            } else {
+                opt = {};
+            }
+        }
+#pragma endregion
+#pragma region to_json
+        // IMPORTANT: Always have primitives first, then unordered_map, then vector, then optional!
+
+        template<typename T>
+        inline nlohmann::json to_json(const T &t) {
+            return t.to_json();
+        }
+
+        template<>
+        inline nlohmann::json to_json<nlohmann::json>(const nlohmann::json &t) {
+            return t;
+        }
+
+        template<>
+        inline nlohmann::json to_json<bool>(const bool &t) {
+            return t;
+        }
+
+        template<>
+        inline nlohmann::json to_json<int>(const int &t) {
+            return t;
+        }
+
+        template<>
+        inline nlohmann::json to_json<unsigned int>(const unsigned int &t) {
+            return t;
+        }
+
+        template<>
+        inline nlohmann::json to_json<float>(const float &t) {
+            return t;
+        }
+
+        template<>
+        inline nlohmann::json to_json<uint64_t>(const uint64_t &t) {
+            return t;
+        }
+
+        template<>
+        inline nlohmann::json to_json<std::string>(const std::string &t) {
+            return t;
+        }
+
+        template<>
+        inline nlohmann::json to_json<resource_operations>(const resource_operations &t) {
+            nlohmann::json arr;
+            if ((t & resource_operations::Create) == resource_operations::Create) {
+                arr.push_back("create");
+            }
+            if ((t & resource_operations::Delete) == resource_operations::Delete) {
+                arr.push_back("delete");
+            }
+            if ((t & resource_operations::Rename) == resource_operations::Rename) {
+                arr.push_back("rename");
+            }
+            return arr;
+        }
+
+        template<>
+        inline nlohmann::json to_json<failure_handling>(const failure_handling &t) {
+            switch (t) {
+                case failure_handling::abort:
+                    return "abort";
+                case failure_handling::transactional:
+                    return "transactional";
+                case failure_handling::textOnlyTransactional:
+                    return "textOnlyTransactional";
+                case failure_handling::undo:
+                    return "undo";
+                default:
+                    return {};
+            }
+        }
+
+        template<>
+        inline nlohmann::json to_json<folding_range_kind>(const folding_range_kind &t) {
+            switch (t) {
+                case folding_range_kind::Comment:
+                    return "comment";
+                case folding_range_kind::Imports:
+                    return "imports";
+                case folding_range_kind::Region:
+                    return "region";
+                default:
+                    return {};
+            }
+        }
+
+        template<>
+        inline nlohmann::json to_json<symbol_kind>(const symbol_kind &t) {
+            return static_cast<int>(t);
+        }
+
+        template<>
+        inline nlohmann::json to_json<message_type>(const message_type &t) {
+            return static_cast<int>(t);
+        }
+
+        template<>
+        inline nlohmann::json to_json<trace_mode>(const trace_mode &t) {
+            switch (t) {
+                case trace_mode::off:
+                    return "off";
+                case trace_mode::message:
+                    return "message";
+                case trace_mode::verbose:
+                    return "verbose";
+                default:
+                    return {};
+            }
+        }
+
+        template<>
+        inline nlohmann::json to_json<completion_item_tag>(const completion_item_tag &t) {
+            return static_cast<int>(t);
+        }
+
+        template<>
+        inline nlohmann::json to_json<markup_kind>(const markup_kind &t) {
+            switch (t) {
+                case markup_kind::PlainText:
+                    return "plaintext";
+                case markup_kind::Markdown:
+                    return "markdown";
+                default:
+                    return {};
+            }
+        }
+
+        template<>
+        inline nlohmann::json to_json<completion_item_kind>(const completion_item_kind &t) {
+            return static_cast<int>(t);
+        }
+        template<>
+        inline nlohmann::json to_json<code_action_trigger_kind>(const code_action_trigger_kind &t) {
+            return static_cast<int>(t);
+        }
+
+        template<>
+        inline nlohmann::json to_json<diagnostic_tag>(const diagnostic_tag &t) {
+            return static_cast<int>(t);
+        }
+
+
+        template<>
         inline nlohmann::json to_json<code_action_kind>(const code_action_kind &t) {
             switch (t) {
                 case code_action_kind::QuickFix:
@@ -594,53 +465,9 @@ namespace lsp {
             }
         }
 
-        enum class text_document_sync_kind {
-            /**
-            * Documents should not be synced at all.
-            */
-            None = 0,
-
-            /**
-            * Documents are synced by always sending the full content
-            * of the document.
-            */
-            Full = 1,
-
-            /**
-            * Documents are synced by sending the full content on open.
-            * After that only incremental updates to the document are
-            * send.
-            */
-            Incremental = 2
-        };
-
-        template<>
-        inline void from_json<text_document_sync_kind>(const nlohmann::json &node, text_document_sync_kind &t) {
-            t = static_cast<text_document_sync_kind>(node.get<int>());
-        }
-
         template<>
         inline nlohmann::json to_json<text_document_sync_kind>(const text_document_sync_kind &t) {
             return static_cast<int>(t);
-        }
-
-        enum class text_document_save_reason {
-            /**
-             * Manually triggered, e.g. by the user pressing save, by starting debugging,
-             * or by an API call.
-             */
-            Manual = 1, /**
-             * Automatic after a delay.
-             */
-            AfterDelay = 2, /**
-              * When the editor lost focus.
-              */
-            FocusOut = 3,
-        };
-
-        template<>
-        inline void from_json<text_document_save_reason>(const nlohmann::json &node, text_document_save_reason &t) {
-            t = static_cast<text_document_save_reason>(node.get<int>());
         }
 
         template<>
@@ -648,119 +475,49 @@ namespace lsp {
             return static_cast<int>(t);
         }
 
-        /**
-         * How a completion was triggered
-         */
-        enum class completion_trigger_kind {
-            /**
-             * Completion was triggered by typing an identifier (24x7 code
-             * complete), manual invocation (e.g Ctrl+Space) or via API.
-             */
-            Invoked = 1,
-
-            /**
-             * Completion was triggered by a trigger character specified by
-             * the `triggerCharacters` properties of the `CompletionRegistrationOptions`.
-             */
-            TriggerCharacter = 2,
-
-            /**
-             * Completion was re-triggered as the current completion list is incomplete.
-             */
-            TriggerForIncompleteCompletions = 3
-        };
-
-        template<>
-        inline void from_json<completion_trigger_kind>(const nlohmann::json &node, completion_trigger_kind &t) {
-            t = static_cast<completion_trigger_kind>(node.get<int>());
-        }
-
         template<>
         inline nlohmann::json to_json<completion_trigger_kind>(const completion_trigger_kind &t) {
             return static_cast<int>(t);
-        }
-
-        /**
-         * Defines whether the insert text in a completion item should be interpreted as
-         * plain text or a snippet.
-         */
-        enum class insert_text_format {
-            /**
-             * The primary text to be inserted is treated as a plain string.
-             */
-            PlainText = 1,
-
-            /**
-             * The primary text to be inserted is treated as a snippet.
-             *
-             * A snippet can define tab stops and placeholders with `$1`, `$2`
-             * and `${3:foo}`. `$0` defines the final tab stop, it defaults to
-             * the end of the snippet. Placeholders with equal identifiers are linked,
-             * that is typing in one will update others too.
-             */
-            Snippet = 2
-        };
-
-        template<>
-        inline void from_json<insert_text_format>(const nlohmann::json &node, insert_text_format &t) {
-            t = static_cast<insert_text_format>(node.get<int>());
         }
 
         template<>
         inline nlohmann::json to_json<insert_text_format>(const insert_text_format &t) {
             return static_cast<int>(t);
         }
-
-        enum class diagnostic_severity {
-            /**
-             * Reports an error.
-             */
-            Error = 1, /**
-             * Reports a warning.
-             */
-            Warning = 2, /**
-              * Reports an information.
-              */
-            Information = 3, /**
-               * Reports a hint.
-               */
-            Hint = 4
-        };
-
-        template<>
-        inline void from_json<diagnostic_severity>(const nlohmann::json &node, diagnostic_severity &t) {
-            t = static_cast<diagnostic_severity>(node.get<int>());
-        }
-
         template<>
         inline nlohmann::json to_json<diagnostic_severity>(const diagnostic_severity &t) {
             return static_cast<int>(t);
         }
 
-        template<typename T>
-        inline void from_json(const nlohmann::json &node, std::vector<T> &ts) {
-            ts = std::vector<T>();
-            for (const auto &subnode: node) {
-                T t;
-                from_json(subnode, t);
-                ts.push_back(t);
-            }
-        }
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
+        // LEAVE THE FOLLOWING HERE! ADD NEW ABOVE!
 
-        template<typename T>
-        inline void from_json(const nlohmann::json &node, const char *key, T &t) {
-            from_json(node[key], t);
+        template<typename... TArgs>
+        inline nlohmann::json to_json(const std::variant<TArgs...> &t) {
+            return std::visit([](auto &&arg) {
+                return to_json(arg);
+            }, t);
         }
-
-        template<typename T>
-        inline void from_json(const nlohmann::json &node, const char *key, std::optional<T> &opt) {
-            if (node.contains(key) && !node[key].is_null()) {
-                T t{};
-                from_json(node, key, t);
-                opt = t;
-            } else {
-                opt = {};
+        template<typename TKey, typename TValue>
+        inline nlohmann::json to_json(const std::unordered_map<TKey, TValue> &ts) {
+            nlohmann::json json = nlohmann::json::object();
+            for (const auto &t: ts) {
+                json[t.first] = to_json(t.second);
             }
+            return json;
         }
 
         template<typename T>
@@ -780,7 +537,26 @@ namespace lsp {
                 return nullptr;
             }
         }
+#pragma endregion
 
+
+
+
+        // ALWAYS LEAVE THIS AT TOP!
+        template<typename T>
+        inline void from_json(const nlohmann::json &node, const char *key, T &t) {
+            from_json(node[key], t);
+        }
+        template<typename T>
+        inline void from_json(const nlohmann::json &node, const char *key, std::optional<T> &opt) {
+            if (node.contains(key) && !node[key].is_null()) {
+                T t{};
+                from_json(node, key, t);
+                opt = t;
+            } else {
+                opt = {};
+            }
+        }
         template<typename T>
         inline void set_json(nlohmann::json &json, const char *key, const std::optional<T> &t) {
             if (t.has_value()) {
@@ -793,10 +569,8 @@ namespace lsp {
             json[key] = to_json(t);
         }
 
-        struct uri :
-                public ::x39::uri {
-            uri() : ::x39::uri() {
-            }
+        struct uri : public ::x39::uri {
+            uri() : ::x39::uri() {}
 
             explicit uri(const std::string &input) : ::x39::uri(input) {
             }
@@ -817,6 +591,15 @@ namespace lsp {
                 return encoded();
             }
         };
+
+        template<typename TValue>
+        inline nlohmann::json to_json(const std::unordered_map<data::uri, TValue> &ts) {
+            nlohmann::json json = nlohmann::json::object();
+            for (const auto &t: ts) {
+                json[t.first.encoded()] = to_json(t.second);
+            }
+            return json;
+        }
 
         /*
         * A document filter denotes a document through properties like language, scheme or pattern.
@@ -921,6 +704,36 @@ namespace lsp {
             }
         };
 
+        /**
+         * A special text edit with an additional change annotation.
+         *
+         * @since 3.16.0.
+         */
+        struct annotated_text_edit {
+            /**
+             * The actual annotation identifier.
+             */
+            change_annotation_identifier annotationId;
+            range range{};
+            std::string new_text;
+
+            static annotated_text_edit from_json(const nlohmann::json &node) {
+                annotated_text_edit res;
+                data::from_json(node, "annotationId", res.annotationId);
+                data::from_json(node, "range", res.range);
+                data::from_json(node, "newText", res.new_text);
+                return res;
+            }
+
+            [[nodiscard]] nlohmann::json to_json() const {
+                nlohmann::json json;
+                data::set_json(json, "annotationId", annotationId);
+                data::set_json(json, "range", range);
+                data::set_json(json, "newText", new_text);
+                return json;
+            }
+        };
+
         struct text_document_identifier {
             uri uri;
 
@@ -950,7 +763,7 @@ namespace lsp {
              * The version number of this document (it will increase after each
              * change, including undo/redo).
              */
-            size_t version{};
+            integer version{};
             /**
              * The content of the opened text document.
              */
@@ -987,7 +800,7 @@ namespace lsp {
              * The version number of a document will increase after each change, including
              * undo/redo. The number doesn't need to be consecutive.
              */
-            std::optional<size_t> version;
+            std::optional<integer> version;
 
             static versioned_text_document_identifier from_json(const nlohmann::json &node) {
                 versioned_text_document_identifier res;
@@ -1053,6 +866,457 @@ namespace lsp {
                 return json;
             }
         };
+
+        /**
+         * Represents a reference to a command.
+         * Provides a title which will be used to represent a command in the UI.
+         * Commands are identified by a string identifier.
+         * The recommended way to handle commands is to implement their execution on the server side
+         * if the client and server provides the corresponding capabilities.
+         * Alternatively the tool extension code could handle the command.
+         * The protocol currently does not specify a set of well-known commands.
+         */
+
+        struct command {
+            /**
+             * Title of the command, like `save`.
+             */
+            std::string title;
+            /**
+             * The identifier of the actual command handler.
+             */
+            std::string command_identifier;
+            /**
+             * Arguments that the command handler should be
+             * invoked with.
+             */
+            std::optional<std::vector<nlohmann::json>> arguments;
+
+            static command from_json(const nlohmann::json &node) {
+                command res;
+                data::from_json(node, "title", res.title);
+                data::from_json(node, "command", res.command_identifier);
+                auto arguments_find_res = node.find("arguments");
+                if (arguments_find_res != node.end()) {
+                    res.arguments = std::vector<nlohmann::json>{};
+                    for (const auto& it: (*arguments_find_res)) {
+                        res.arguments->push_back(it);
+                    }
+                }
+                return res;
+            }
+
+            [[nodiscard]] nlohmann::json to_json() const {
+                nlohmann::json json;
+                data::set_json(json, "title", title);
+                data::set_json(json, "command", command_identifier);
+                if (arguments.has_value()) {
+                    json["arguments"] = arguments.value();
+                }
+                return json;
+            }
+        };
+
+        /**
+         * An identifier which optionally denotes a specific version of a text document.
+         * This information usually flows from the server to the client.
+         */
+        struct optional_versioned_text_document_identifier {
+            /**
+             * The version number of this document. If an optional versioned text document
+             * identifier is sent from the server to the client and the file is not
+             * open in the editor (the server has not received an open notification
+             * before) the server can send `null` to indicate that the version is
+             * known and the content on disk is the master (as specified with document
+             * content ownership).
+             *
+             * The version number of a document will increase after each change,
+             * including undo/redo. The number doesn't need to be consecutive.
+             */
+            std::optional<integer> version;
+
+            uri uri;
+
+            static optional_versioned_text_document_identifier from_json(const nlohmann::json &node) {
+                optional_versioned_text_document_identifier res;
+                data::from_json(node, "version", res.version);
+                data::from_json(node, "uri", res.uri);
+                return res;
+            }
+
+            [[nodiscard]] nlohmann::json to_json() const {
+                nlohmann::json json;
+                data::set_json(json, "version", version);
+                data::set_json(json, "uri", uri);
+                return json;
+            }
+        };
+
+        /**
+         * New in version 3.16:
+         * support for AnnotatedTextEdit.
+         * The support is guarded by the client capability workspace.workspaceEdit.changeAnnotationSupport.
+         * If a client doesn’t signal the capability,
+         * servers shouldn’t send AnnotatedTextEdit literals back to the client.
+         *
+         * Describes textual changes on a single text document.
+         * The text document is referred to as a OptionalVersionedTextDocumentIdentifier
+         * to allow clients to check the text document version before an edit is applied.
+         * A TextDocumentEdit describes all changes on a version Si and after they are applied move the document
+         * to version Si+1.
+         * So the creator of a TextDocumentEdit doesn’t need to sort the array of edits or do any kind of ordering.
+         * However the edits must be non overlapping.
+         */
+        struct text_document_edit {
+            /**
+             * The text document to change.
+             */
+            optional_versioned_text_document_identifier textDocument;
+
+            /**
+             * The edits to be applied.
+             *
+             * @since 3.16.0 - support for AnnotatedTextEdit. This is guarded by the
+             * client capability `workspace.workspaceEdit.changeAnnotationSupport`
+             */
+            std::vector<std::variant<text_edit, annotated_text_edit>> edits;
+
+            // implementing generic std::variant support is hard and implementing type-specific from_json is not worth
+            // it here as it is server-only anyway.
+            // static text_document_edit from_json(const nlohmann::json &node) {
+            //     text_document_edit res;
+            //     data::from_json(node, "textDocument", res.textDocument);
+            //     data::from_json(node, "edits", res.edits);
+            //     return res;
+            // }
+
+            [[nodiscard]] nlohmann::json to_json() const {
+                nlohmann::json json;
+                data::set_json(json, "textDocument", textDocument);
+                data::set_json(json, "edits", edits);
+                return json;
+            }
+        };
+
+        /**
+         * Create file operation
+         */
+        struct create_file {
+            /**
+             * Options to create a file.
+             */
+            struct create_file_options {
+                /**
+                 * Overwrite existing file. Overwrite wins over `ignoreIfExists`
+                 */
+                std::optional<bool> overwrite;
+
+                /**
+                 * Ignore if exists.
+                 */
+                std::optional<bool> ignoreIfExists;
+
+                static create_file_options from_json(const nlohmann::json &node) {
+                    create_file_options res;
+                    data::from_json(node, "overwrite", res.overwrite);
+                    data::from_json(node, "ignoreIfExists", res.ignoreIfExists);
+                    return res;
+                }
+
+                [[nodiscard]] nlohmann::json to_json() const {
+                    nlohmann::json json;
+                    data::set_json(json, "overwrite", overwrite);
+                    data::set_json(json, "ignoreIfExists", ignoreIfExists);
+                    return json;
+                }
+            };
+
+            /**
+             * The resource to create.
+             */
+            data::uri uri;
+
+            /**
+             * Additional options
+             */
+            std::optional<create_file_options> options;
+
+            /**
+             * An optional annotation identifier describing the operation.
+             *
+             * @since 3.16.0
+             */
+            std::optional<change_annotation_identifier> annotationId;
+
+            static create_file from_json(const nlohmann::json &node) {
+                create_file res;
+                data::from_json(node, "uri", res.uri);
+                data::from_json(node, "options", res.options);
+                data::from_json(node, "annotationId", res.annotationId);
+                return res;
+            }
+
+            [[nodiscard]] nlohmann::json to_json() const {
+                nlohmann::json json;
+                json["kind"] = data::to_json(std::string("create"));
+                data::set_json(json, "uri", uri);
+                data::set_json(json, "options", options);
+                data::set_json(json, "annotationId", annotationId);
+                return json;
+            }
+        };
+
+        /**
+         * Rename file operation
+         */
+        struct rename_file {
+            /**
+             * Rename file options
+             */
+            struct rename_file_options {
+                /**
+                 * Overwrite target if existing. Overwrite wins over `ignoreIfExists`
+                 */
+                std::optional<bool> overwrite;
+
+                /**
+                 * Ignores if target exists.
+                 */
+                std::optional<bool> ignoreIfExists;
+
+                static rename_file_options from_json(const nlohmann::json &node) {
+                    rename_file_options res;
+                    data::from_json(node, "overwrite", res.overwrite);
+                    data::from_json(node, "ignoreIfExists", res.ignoreIfExists);
+                    return res;
+                }
+
+                [[nodiscard]] nlohmann::json to_json() const {
+                    nlohmann::json json;
+                    data::set_json(json, "overwrite", overwrite);
+                    data::set_json(json, "ignoreIfExists", ignoreIfExists);
+                    return json;
+                }
+            };
+
+            /**
+             * The old (existing) location.
+             */
+            uri oldUri;
+
+            /**
+             * The new location.
+             */
+            uri newUri;
+
+            /**
+             * Rename options.
+             */
+            std::optional<rename_file_options> options;
+
+            /**
+             * An optional annotation identifier describing the operation.
+             *
+             * @since 3.16.0
+             */
+            std::optional<change_annotation_identifier> annotationId;
+
+            static rename_file from_json(const nlohmann::json &node) {
+                rename_file res;
+                data::from_json(node, "oldUri", res.oldUri);
+                data::from_json(node, "newUri", res.newUri);
+                data::from_json(node, "options", res.options);
+                data::from_json(node, "annotationId", res.annotationId);
+                return res;
+            }
+
+            [[nodiscard]] nlohmann::json to_json() const {
+                nlohmann::json json;
+                json["rename"] = data::to_json(std::string("rename"));
+                data::set_json(json, "oldUri", oldUri);
+                data::set_json(json, "newUri", newUri);
+                data::set_json(json, "options", options);
+                data::set_json(json, "annotationId", annotationId);
+                return json;
+            }
+        };
+
+        /**
+         * Delete file operation
+         */
+        struct delete_file {
+            /**
+             * Delete file options
+             */
+            struct delete_file_options {
+                /**
+                 * Delete the content recursively if a folder is denoted.
+                 */
+                std::optional<bool> recursive;
+
+                /**
+                 * Ignore the operation if the file doesn't exist.
+                 */
+                std::optional<bool> ignoreIfNotExists;
+
+                static delete_file_options from_json(const nlohmann::json &node) {
+                    delete_file_options res;
+                    data::from_json(node, "recursive", res.recursive);
+                    data::from_json(node, "ignoreIfNotExists", res.ignoreIfNotExists);
+                    return res;
+                }
+
+                [[nodiscard]] nlohmann::json to_json() const {
+                    nlohmann::json json;
+                    data::set_json(json, "recursive", recursive);
+                    data::set_json(json, "ignoreIfNotExists", ignoreIfNotExists);
+                    return json;
+                }
+            };
+
+            /**
+             * The file to delete.
+             */
+            data::uri uri;
+
+            /**
+             * Delete options.
+             */
+            std::optional<delete_file_options> options;
+
+            /**
+             * An optional annotation identifier describing the operation.
+             *
+             * @since 3.16.0
+             */
+            std::optional<change_annotation_identifier> annotationId;
+
+            static create_file from_json(const nlohmann::json &node) {
+                create_file res;
+                data::from_json(node, "uri", res.uri);
+                data::from_json(node, "options", res.options);
+                data::from_json(node, "annotationId", res.annotationId);
+                return res;
+            }
+
+            [[nodiscard]] nlohmann::json to_json() const {
+                nlohmann::json json;
+                json["delete"] = data::to_json(std::string("delete"));
+                data::set_json(json, "uri", uri);
+                data::set_json(json, "options", options);
+                data::set_json(json, "annotationId", annotationId);
+                return json;
+            }
+        };
+
+        /**
+         * Additional information that describes document changes.
+         *
+         * @since 3.16.0
+         */
+        struct change_annotation {
+            /**
+             * A human-readable string describing the actual change. The string
+             * is rendered prominent in the user interface.
+             */
+            std::string label;
+
+            /**
+             * A flag which indicates that user confirmation is needed
+             * before applying the change.
+             */
+            std::optional<bool> needsConfirmation;
+
+            /**
+             * A human-readable string which is rendered less prominent in
+             * the user interface.
+             */
+            std::optional<std::string> description;
+
+            static change_annotation from_json(const nlohmann::json &node) {
+                change_annotation res;
+                data::from_json(node, "label", res.label);
+                data::from_json(node, "needsConfirmation", res.needsConfirmation);
+                data::from_json(node, "description", res.description);
+                return res;
+            }
+
+            [[nodiscard]] nlohmann::json to_json() const {
+                nlohmann::json json;
+                data::set_json(json, "label", label);
+                data::set_json(json, "needsConfirmation", needsConfirmation);
+                data::set_json(json, "description", description);
+                return json;
+            }
+        };
+
+        /**
+         * A workspace edit represents changes to many resources managed in the workspace.
+         * The edit should either provide changes or documentChanges.
+         * If the client can handle versioned document edits and if documentChanges are present,
+         * the latter are preferred over changes.
+         *
+         * Since version 3.13.0 a workspace edit can contain resource operations
+         * (create, delete or rename files and folders) as well.
+         * If resource operations are present clients need to execute the operations
+         * in the order in which they are provided.
+         * So a workspace edit for example can consist of the following two changes:
+         * (1) create file a.txt and
+         * (2) a text document edit which insert text into file a.txt.
+         * An invalid sequence (e.g. (1) delete file a.txt and (2) insert text into file a.txt)
+         * will cause failure of the operation.
+         * How the client recovers from the failure is described by the client capability:
+         * workspace.workspaceEdit.failureHandling
+         */
+        struct workspace_edit {
+            /**
+             * Holds changes to existing resources.
+             */
+            std::optional<std::unordered_map<uri, std::vector<text_edit>>> changes;
+            /**
+             * Depending on the client capability
+             * `workspace.workspaceEdit.resourceOperations` document changes are either
+             * an array of `TextDocumentEdit`s to express changes to n different text documents
+             * where each text document edit addresses a specific version of a text document.
+             * Or it can contain above `TextDocumentEdit`s mixed with create, rename and delete
+             * file / folder operations.
+             *
+             * Whether a client supports versioned document edits is expressed via
+             * `workspace.workspaceEdit.documentChanges` client capability.
+             *
+             * If a client neither supports `documentChanges` nor
+             * `workspace.workspaceEdit.resourceOperations` then only plain `TextEdit`s using the
+             * `changes` property are supported.
+             */
+            std::optional<std::vector<std::variant<text_document_edit, create_file, rename_file, delete_file>>> document_changes;
+            /**
+             * A map of change annotations that can be referenced in
+             * `AnnotatedTextEdit`s or create, rename and delete file / folder operations.
+             *
+             * Whether clients honor this property depends on the client capability
+             * `workspace.workspaceEdit.changeAnnotationSupport`.
+             */
+            std::optional<std::unordered_map<std::string, change_annotation>> change_annotations;
+
+            // implementing generic std::variant support is hard and implementing type-specific from_json is not worth
+            // it here as it is server-only anyway.
+            // static workspace_edit from_json(const nlohmann::json &node) {
+            //     workspace_edit res;
+            //     data::from_json(node, "changes", res.changes);
+            //     data::from_json(node, "documentChanges", res.document_changes);
+            //     data::from_json(node, "changeAnnotations", res.change_annotations);
+            //     return res;
+            // }
+
+            [[nodiscard]] nlohmann::json to_json() const {
+                nlohmann::json json;
+                data::set_json(json, "changes", changes);
+                data::set_json(json, "documentChanges", document_changes);
+                data::set_json(json, "changeAnnotations", change_annotations);
+                return json;
+            }
+        };
+
 
         struct location {
             uri uri;
@@ -1214,42 +1478,124 @@ namespace lsp {
             }
         };
 
-        struct command {
+        /**
+         * A code action represents a change that can be performed in code, e.g. to fix
+         * a problem or to refactor code.
+         *
+         * A CodeAction must set either `edit` and/or a `command`. If both are supplied,
+         * the `edit` is applied first, then the `command` is executed.
+         */
+        struct code_action {
+            struct disabled_info {
+                /**
+                 * Human readable description of why the code action is currently
+                 * disabled.
+                 *
+                 * This is displayed in the code actions UI.
+                 */
+                std::string reason;
+
+                static disabled_info from_json(const nlohmann::json &node) {
+                    disabled_info res;
+                    data::from_json(node, "reason", res.reason);
+                    return res;
+                }
+
+                [[nodiscard]] nlohmann::json to_json() const {
+                    nlohmann::json json;
+                    data::set_json(json, "reason", reason);
+                    return json;
+                }
+            };
+
             /**
-             * Title of the command, like `save`.
+             * A short, human-readable, title for this code action.
              */
             std::string title;
             /**
-             * The identifier of the actual command handler.
+             * The kind of the code action.
+             *
+             * Used to filter code actions.
              */
-            std::string command_identifier;
+            std::optional<code_action_kind> kind;
             /**
-             * Arguments that the command handler should be
-             * invoked with.
+             * The diagnostics that this code action resolves.
              */
-            std::optional<std::vector<nlohmann::json>> arguments;
+            std::optional<std::vector<data::diagnostics>> diagnostics;
+            /**
+             * Marks this as a preferred action. Preferred actions are used by the
+             * `auto fix` command and can be targeted by keybindings.
+             *
+             * A quick fix should be marked preferred if it properly addresses the
+             * underlying error. A refactoring should be marked preferred if it is the
+             * most reasonable choice of actions to take.
+             *
+             * @since 3.15.0
+             */
+            std::optional<bool> isPreferred;
+            /**
+             * Marks that the code action cannot currently be applied.
+             *
+             * Clients should follow the following guidelines regarding disabled code
+             * actions:
+             *
+             * - Disabled code actions are not shown in automatic lightbulbs code
+             *   action menus.
+             *
+             * - Disabled actions are shown as faded out in the code action menu when
+             *   the user request a more specific type of code action, such as
+             *   refactorings.
+             *
+             * - If the user has a keybinding that auto applies a code action and only
+             *   a disabled code actions are returned, the client should show the user
+             *   an error message with `reason` in the editor.
+             *
+             * @since 3.16.0
+             */
+            std::optional<disabled_info> disabled;
+            /**
+             * The workspace edit this code action performs.
+             */
+            std::optional<workspace_edit> edit;
+            /**
+             * A command this code action executes. If a code action
+             * provides an edit and a command, first the edit is
+             * executed and then the command.
+             */
+            std::optional<command> command;
+            /**
+             * A data entry field that is preserved on a code action between
+             * a `textDocument/codeAction` and a `codeAction/resolve` request.
+             *
+             * @since 3.16.0
+             */
+            std::optional<nlohmann::json> data;
 
-            static command from_json(const nlohmann::json &node) {
-                command res;
-                data::from_json(node, "title", res.title);
-                data::from_json(node, "command", res.command_identifier);
-                auto arguments_find_res = node.find("arguments");
-                if (arguments_find_res != node.end()) {
-                    res.arguments = std::vector<nlohmann::json>{};
-                    for (auto it: (*arguments_find_res)) {
-                        res.arguments->push_back(it);
-                    }
-                }
-                return res;
-            }
+            // implementing generic std::variant support is hard and implementing type-specific from_json is not worth
+            // it here as it is server-only anyway.
+            // static code_action from_json(const nlohmann::json &node) {
+            //     code_action res;
+            //     data::from_json(node, "title", res.title);
+            //     data::from_json(node, "kind", res.kind);
+            //     data::from_json(node, "diagnostics", res.diagnostics);
+            //     data::from_json(node, "isPreferred", res.isPreferred);
+            //     data::from_json(node, "disabled", res.disabled);
+            //     data::from_json(node, "edit", res.edit);
+            //     data::from_json(node, "command", res.command);
+            //     data::from_json(node, "data", res.data);
+            //     return res;
+            // }
 
             [[nodiscard]] nlohmann::json to_json() const {
                 nlohmann::json json;
                 data::set_json(json, "title", title);
-                data::set_json(json, "command", command_identifier);
-                if (arguments.has_value()) {
-                    json["arguments"] = arguments.value();
-                }
+                data::set_json(json, "kind", kind);
+                data::set_json(json, "diagnostics", diagnostics);
+                data::set_json(json, "isPreferred", isPreferred);
+                data::set_json(json, "disabled", disabled);
+                data::set_json(json, "edit", edit);
+                data::set_json(json, "command", command);
+                data::set_json(json, "data", data);
                 return json;
             }
         };
@@ -4050,6 +4396,96 @@ namespace lsp {
             }
         };
 
+        struct code_action_params {
+            struct code_action_context {
+                /**
+                 * An array of diagnostics known on the client side overlapping the range
+                 * provided to the `textDocument/codeAction` request. They are provided so
+                 * that the server knows which errors are currently presented to the user
+                 * for the given range. There is no guarantee that these accurately reflect
+                 * the error state of the resource. The primary parameter
+                 * to compute code actions is the provided range.
+                 */
+                std::vector<diagnostics> includeDeclaration;
+                /**
+                 * Requested kind of actions to return.
+                 *
+                 * Actions not of this kind are filtered out by the client before being
+                 * shown. So servers can omit computing them.
+                 */
+                std::optional<std::vector<code_action_kind>> only;
+                /**
+                 * The reason why code actions were requested.
+                 *
+                 * @since 3.17.0
+                 */
+                std::optional<code_action_trigger_kind> triggerKind;
+
+
+                static code_action_context from_json(const nlohmann::json &node) {
+                    code_action_context res;
+                    data::from_json(node, "includeDeclaration", res.includeDeclaration);
+                    data::from_json(node, "only", res.only);
+                    data::from_json(node, "triggerKind", res.triggerKind);
+                    return res;
+                }
+
+                nlohmann::json to_json() const {
+                    nlohmann::json json;
+                    data::set_json(json, "includeDeclaration", includeDeclaration);
+                    data::set_json(json, "only", only);
+                    data::set_json(json, "triggerKind", triggerKind);
+                    return json;
+                }
+            };
+
+            /**
+            * An optional token that a server can use to report partial results (e.g. streaming) to
+            * the client.
+            */
+            std::optional<std::string> partialResultToken;
+
+            /**
+            * An optional token that a server can use to report work done progress.
+            */
+            std::optional<std::string> workDoneToken;
+
+            /**
+            * The text document.
+            */
+            text_document_identifier textDocument;
+
+            /**
+             * The range for which the command was invoked.
+             */
+            range range;
+
+            /**
+             * Context carrying additional information.
+             */
+            code_action_context context;
+
+            static code_action_params from_json(const nlohmann::json &node) {
+                code_action_params res;
+                data::from_json(node, "partialResultToken", res.partialResultToken);
+                data::from_json(node, "workDoneToken", res.workDoneToken);
+                data::from_json(node, "textDocument", res.textDocument);
+                data::from_json(node, "range", res.range);
+                data::from_json(node, "context", res.context);
+                return res;
+            }
+
+            [[nodiscard]] nlohmann::json to_json() const {
+                nlohmann::json json;
+                data::set_json(json, "partialResultToken", partialResultToken);
+                data::set_json(json, "workDoneToken", workDoneToken);
+                data::set_json(json, "textDocument", textDocument);
+                data::set_json(json, "range", range);
+                data::set_json(json, "context", context);
+                return json;
+            }
+        };
+
         struct references_params {
             struct ReferenceContext {
                 /**
@@ -4124,7 +4560,7 @@ namespace lsp {
              *
              * @since 3.15.0
              */
-            std::optional<size_t> version;
+            std::optional<integer> version;
 
             /**
              * An array of diagnostic information items.
@@ -4412,271 +4848,6 @@ namespace lsp {
         };
     }
 
-
-    class server {
-
-    private:
-        bool m_die;
-    public:
-        jsonrpc rpc;
-
-        server() : rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::skip), m_die(false) {
-            rpc.register_method(
-                    "initialize", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::initialize_params::from_json(msg.params.value());
-                            auto res = on_initialize(params);
-                            rpc.send({msg.id, res.to_json()});
-                            after_initialize(params);
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'initialize' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "shutdown", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        kill();
-                        on_shutdown();
-                    });
-            rpc.register_method(
-                    "textDocument/didOpen", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::did_open_text_document_params::from_json(msg.params.value());
-                            on_textDocument_didOpen(params);
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'textDocument/didOpen' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "textDocument/didChange", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::did_change_text_document_params::from_json(msg.params.value());
-                            on_textDocument_didChange(params);
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'textDocument/didChange' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "textDocument/willSave", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::will_save_text_document_params::from_json(msg.params.value());
-                            on_textDocument_willSave(params);
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'textDocument/willSave' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "textDocument/willSaveWaitUntil", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::will_save_text_document_params::from_json(msg.params.value());
-                            auto res = on_textDocument_willSaveWaitUntil(params);
-                            rpc.send({msg.id, res.has_value() ? res->to_json() : nlohmann::json(nullptr)});
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'textDocument/willSaveWaitUntil' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "textDocument/didSave", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::did_save_text_document_params::from_json(msg.params.value());
-                            on_textDocument_didSave(params);
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'textDocument/didSave' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "textDocument/didClose", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::did_close_text_document_params::from_json(msg.params.value());
-                            on_textDocument_didClose(params);
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'textDocument/didClose' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "textDocument/completion", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::completion_params::from_json(msg.params.value());
-                            auto res = on_textDocument_completion(params);
-                            rpc.send({msg.id, res.has_value() ? res->to_json() : nlohmann::json(nullptr)});
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'textDocument/completion' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "textDocument/foldingRange", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::folding_range_params::from_json(msg.params.value());
-                            auto res = on_textDocument_foldingRange(params);
-                            rpc.send({msg.id, res.has_value() ? to_json(*res) : nlohmann::json(nullptr)});
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'textDocument/foldingRange' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "textDocument/documentColor", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::document_color_params::from_json(msg.params.value());
-                            auto res = on_textDocument_documentColor(params);
-                            rpc.send({msg.id, to_json(res)});
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'textDocument/documentColor' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "textDocument/references", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::references_params::from_json(msg.params.value());
-                            auto res = on_textDocument_references(params);
-                            rpc.send({msg.id, to_json(res)});
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'workspace/didChangeConfiguration' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "textDocument/colorPresentation", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::color_presentation_params::from_json(msg.params.value());
-                            auto res = on_textDocument_colorPresentation(params);
-                            rpc.send({msg.id, to_json(res)});
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'textDocument/colorPresentation' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-            rpc.register_method(
-                    "workspace/didChangeConfiguration", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
-                        try {
-                            auto params = data::did_change_configuration_params::from_json(msg.params.value());
-                            on_workspace_didChangeConfiguration(params);
-                        }
-                        catch (const std::exception &e) {
-                            std::stringstream sstream;
-                            sstream << "rpc call 'workspace/didChangeConfiguration' failed with: '" << e.what() << "'.";
-                            window_logMessage(::lsp::data::message_type::Log, sstream.str());
-                        }
-                    });
-        }
-
-        void listen() {
-            while (!m_die) {
-                if (!rpc.handle_single_message()) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                    continue;
-                }
-            }
-        }
-
-        void kill() {
-            m_die = true;
-        }
-
-        // Methods that must be overriden by clients
-    protected:
-        virtual lsp::data::initialize_result on_initialize(const lsp::data::initialize_params &params) = 0;
-
-        virtual void after_initialize(const lsp::data::initialize_params &params) {
-        }
-
-        virtual void on_shutdown() = 0;
-
-
-        // Methods that can be overriden by implementing clients
-    protected:
-        virtual void on_textDocument_didOpen(const lsp::data::did_open_text_document_params &params) {
-        }
-
-        virtual void on_textDocument_didChange(const lsp::data::did_change_text_document_params &params) {
-        }
-
-        virtual void on_textDocument_willSave(const lsp::data::will_save_text_document_params &params) {
-        }
-
-        virtual std::optional<lsp::data::text_edit>
-        on_textDocument_willSaveWaitUntil(const lsp::data::will_save_text_document_params &params) {
-            return {};
-        }
-
-        virtual void on_textDocument_didSave(const lsp::data::did_save_text_document_params &params) {
-        }
-
-        virtual void on_textDocument_didClose(const lsp::data::did_close_text_document_params &params) {
-        }
-
-        virtual std::optional<lsp::data::completion_list>
-        on_textDocument_completion(const lsp::data::completion_params &params) {
-            return {};
-        }
-
-        virtual std::optional<std::vector<lsp::data::folding_range>>
-        on_textDocument_foldingRange(const lsp::data::folding_range_params &params) {
-            return {};
-        }
-
-        virtual std::vector<lsp::data::color_information>
-        on_textDocument_documentColor(const lsp::data::document_color_params &params) {
-            return {};
-        }
-
-        virtual std::vector<lsp::data::color_presentation>
-        on_textDocument_colorPresentation(const lsp::data::color_presentation_params &params) {
-            return {};
-        }
-
-        virtual std::optional<std::vector<lsp::data::location>> on_textDocument_references(const lsp::data::references_params &params) {
-            return {};
-        }
-
-        virtual void on_workspace_didChangeConfiguration(const lsp::data::did_change_configuration_params &params) {
-        }
-
-    public:
-        void textDocument_publishDiagnostics(const lsp::data::publish_diagnostics_params &params) {
-            rpc.send({{}, "textDocument/publishDiagnostics", params.to_json()});
-        }
-
-        void window_logMessage(lsp::data::message_type type, std::string message) {
-            rpc.send({{}, "window/logMessage", lsp::data::log_message_params{type, message}.to_json()});
-        }
-
-        void window_logMessage(const lsp::data::log_message_params &params) {
-            rpc.send({{}, "window/logMessage", params.to_json()});
-        }
-    };
 }
 
 #endif // SQFVM_LANGUAGE_SERVER_LSP_LSPSERVER_HPP

@@ -22,6 +22,7 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     m_db_path = m_lsp_folder / "sqlite3.db";
     ensure_git_ignore_file_exists();
     m_context = std::make_shared<database::context>(m_db_path);
+    m_context->migrate();
     m_sqfvm_factory.add_mapping(uri.string(), "");
     m_file_system_watcher.watch(uri);
     m_file_system_watcher.callback_add(
@@ -339,11 +340,12 @@ sqfvm::language_server::language_server::language_server() {
     // Setup analyzers
     m_analyzer_factory.set(
             ".sqf", [](
+                    auto ls_path,
                     auto db_path,
                     auto &factory,
                     auto file,
                     auto &text) -> std::unique_ptr<analysis::analyzer> {
-                return std::make_unique<analysis::sqf_ast::sqf_ast_analyzer>(db_path, factory, file, text);
+                return std::make_unique<analysis::sqf_ast::sqf_ast_analyzer>(ls_path, db_path, factory, file, text);
             });
 }
 
@@ -416,7 +418,13 @@ void sqfvm::language_server::language_server::analyse_file(
     } else {
         content = contents[0].content;
     }
-    auto analyzer_opt = m_analyzer_factory.get(extension, m_context->db_path(), m_sqfvm_factory, file, content);
+    auto analyzer_opt = m_analyzer_factory.get(
+            extension,
+            m_lsp_folder,
+            m_context->db_path(),
+            m_sqfvm_factory,
+            file,
+            content);
     if (!analyzer_opt.has_value()) {
         return;
     }
@@ -437,6 +445,7 @@ void sqfvm::language_server::language_server::analyse_file(
                 where(c(&database::tables::t_reference::file_fk) == file.id_pk));
         m_context->storage().insert(database::tables::t_diagnostic{
                 .file_fk = file.id_pk,
+                .source_file_fk = file.id_pk,
                 .severity = database::tables::t_diagnostic::error,
                 .message = sstream.str(),
                 .code = "VV-ERR",
@@ -488,7 +497,7 @@ void sqfvm::language_server::language_server::publish_diagnostics(
     textDocument_publishDiagnostics(params);
     if (!publish_sub_files)
         return;
-    for (auto& additional_file_id: additional_files) {
+    for (auto &additional_file_id: additional_files) {
         auto additional_file = m_context->storage().get_optional<database::tables::t_file>(additional_file_id);
         if (!additional_file.has_value())
             continue;
@@ -577,4 +586,36 @@ void sqfvm::language_server::language_server::ensure_git_ignore_file_exists() {
         file << "sqlite3.db-shm" << std::endl;
         file.close();
     }
+}
+
+::lsp::data::initialize_result sqfvm::language_server::language_server::on_initialize(
+        const lsp::data::initialize_params &params) {
+    m_client_params = params;
+    ::lsp::data::initialize_result res;
+    res.serverInfo = ::lsp::data::initialize_result::server_info{};
+    res.serverInfo->name = "SQF-VM Language Server";
+    res.serverInfo->version = std::string(g_GIT_SHA1);
+    res.capabilities.textDocumentSync = ::lsp::data::initialize_result::server_capabilities::text_document_sync_options{};
+    res.capabilities.textDocumentSync->change = ::lsp::data::text_document_sync_kind::Full;
+    res.capabilities.textDocumentSync->openClose = true;
+    res.capabilities.textDocumentSync->save = ::lsp::data::initialize_result::server_capabilities::text_document_sync_options::SaveOptions{};
+    res.capabilities.textDocumentSync->save->includeText = true;
+    res.capabilities.textDocumentSync->willSave = false;
+    // res.capabilities.foldingRangeProvider = ::lsp::data::initialize_result::server_capabilities::folding_range_registration_options{};
+    // res.capabilities.foldingRangeProvider->documentSelector = ::lsp::data::document_filter{};
+    // res.capabilities.foldingRangeProvider->documentSelector->language = "sqf";
+    res.capabilities.completionProvider = lsp::data::initialize_result::server_capabilities::completion_options{.resolveProvider = true};
+    res.capabilities.referencesProvider = lsp::data::initialize_result::server_capabilities::reference_options{.workDoneProgress = false};
+    res.capabilities.codeActionProvider = lsp::data::initialize_result::server_capabilities::code_action_options{
+        .codeActionKinds = {std::vector<lsp::data::code_action_kind>{
+            lsp::data::code_action_kind::QuickFix,
+            lsp::data::code_action_kind::Refactor,
+            lsp::data::code_action_kind::RefactorExtract,
+            lsp::data::code_action_kind::RefactorInline,
+            lsp::data::code_action_kind::Source,
+            lsp::data::code_action_kind::RefactorRewrite,
+        }}
+    };
+
+    return res;
 }

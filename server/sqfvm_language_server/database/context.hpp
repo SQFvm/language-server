@@ -16,7 +16,7 @@ namespace sqfvm::language_server::database {
     namespace internal {
         struct t_db_generation {
             static constexpr const char *table_name = "tDbGeneration";
-            static const int expected_generation = 1;
+            static const int expected_generation = 3;
             int id_pk;
             int generation;
         };
@@ -91,7 +91,8 @@ namespace sqfvm::language_server::database {
         std::string m_error;
 
         void handle_generation() {
-            auto generation = m_storage.get_optional<internal::t_db_generation>(1);
+            auto generations = m_storage.get_all<internal::t_db_generation>();
+            auto generation = generations.empty() ? std::nullopt : std::make_optional(generations.front());
             if (!generation.has_value()) {
                 db_clear();
                 m_storage.insert(internal::t_db_generation{
@@ -113,8 +114,11 @@ namespace sqfvm::language_server::database {
     public:
         explicit context(const std::filesystem::path &db_path)
                 : m_db_path(absolute(db_path)),
-                  m_bad(false),
+                  m_bad(true),
                   m_storage(internal::create_storage(m_db_path.string())) {
+        }
+
+        void migrate() {
             try {
                 if (!std::filesystem::exists(m_db_path)) {
                     auto parent_path = m_db_path.parent_path();
@@ -122,6 +126,7 @@ namespace sqfvm::language_server::database {
                 }
                 m_sync_result = m_storage.sync_schema(false);
                 handle_generation();
+                m_bad = false;
             } catch (const std::exception &e) {
                 m_error = e.what();
                 m_bad = true;

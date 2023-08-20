@@ -8,6 +8,7 @@ using namespace sqlite_orm;
 using namespace ::sqfvm::language_server::database::tables;
 
 void sqfvm::language_server::database::context::db_clear() {
+    m_storage.remove_all<internal::t_db_generation>();
     m_storage.remove_all<t_diagnostic>();
     m_storage.remove_all<t_reference>();
     m_storage.remove_all<t_variable>();

@@ -266,7 +266,7 @@ namespace {
             uint64_t self_file_id,
             uint64_t file_fk,
             const sqf::parser::sqf::bison::astnode &left_parentheses,
-            const sqf::parser::sqf::bison::astnode &right_parentheses) {
+            bool is_left) {
         return {
                 .id_pk = {},
                 .file_fk = file_fk,
@@ -274,8 +274,8 @@ namespace {
                 .line = left_parentheses.token.line + LINE_OFFSET,
                 .column = left_parentheses.token.column,
                 .offset = left_parentheses.token.offset,
-                .length = right_parentheses.token.offset - left_parentheses.token.offset,
-                .severity = t_diagnostic::info,
+                .length = left_parentheses.token.contents.length(),
+                .severity = is_left ? t_diagnostic::info : t_diagnostic::verbose,
                 .message = "The round brackets can safely be removed",
                 .content = "The round brackets can safely be removed",
                 .code = "VV-008",
@@ -604,14 +604,19 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
         return;
     auto &group_parent = parent_nodes[parent_nodes.size() - 1];
     auto &actual_parent = parent_nodes[parent_nodes.size() - 2];
-    if (group_parent->kind == sqf::parser::sqf::bison::astkind::EXP_GROUP) {
+    if (actual_parent->kind == sqf::parser::sqf::bison::astkind::EXP_GROUP) {
         auto &left_bracket = group_parent;
         auto &right_bracket = group_parent->children.back();
         m_diagnostics.push_back(diag_needless_brackets_008(
                 file_id_of(a, node),
                 file_of(a).id_pk,
                 *left_bracket,
-                right_bracket));
+                true));
+        m_diagnostics.push_back(diag_needless_brackets_008(
+                file_id_of(a, node),
+                file_of(a).id_pk,
+                right_bracket,
+                false));
         return;
     }
     uint8_t current_precedence = 0;
@@ -705,7 +710,12 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
                 file_id_of(a, node),
                 file_of(a).id_pk,
                 *left_bracket,
-                right_bracket));
+                true));
+        m_diagnostics.push_back(diag_needless_brackets_008(
+                file_id_of(a, node),
+                file_of(a).id_pk,
+                right_bracket,
+                false));
         return;
     }
 }
@@ -1006,6 +1016,7 @@ bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_
             || !(
                 iequal(parent->token.contents, "then")
                 || iequal(parent->token.contents, "else")
+                || iequal(parent->token.contents, "exitWith")
                 || iequal(parent->token.contents, "call")
                 || iequal(parent->token.contents, "while")
                 || iequal(parent->token.contents, "do")

@@ -73,27 +73,6 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
             return m_namespace_stack.top();
         }
 
-    public:
-        ~variables_visitor() override = default;
-
-        void start(sqf_ast_analyzer &a) override;
-
-
-        void enter(
-                sqf_ast_analyzer &a,
-                const ::sqf::parser::sqf::bison::astnode &node,
-                const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes
-        ) override;
-
-        void exit(sqf_ast_analyzer &a, const ::sqf::parser::sqf::bison::astnode &node,
-                  const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) override;
-
-        void end(sqf_ast_analyzer &a) override;
-
-        void analyze(
-                sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &sqf_ast_analyzer,
-                const database::context &context) override;
-
         void expression_handle_needless_parentheses(
                 sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
                 const sqf::parser::sqf::bison::astnode &node,
@@ -130,6 +109,30 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
         uint64_t file_id_of(
                 sqf_ast_analyzer &a,
                 const sqf::parser::sqf::bison::astnode &node);
+
+    public:
+        ~variables_visitor() override = default;
+
+        void start(sqf_ast_analyzer &a) override;
+
+
+        void enter(
+                sqf_ast_analyzer &a,
+                const ::sqf::parser::sqf::bison::astnode &node,
+                const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes
+        ) override;
+
+        void exit(
+                sqf_ast_analyzer &a,
+                const ::sqf::parser::sqf::bison::astnode &node,
+                const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) override;
+
+        void end(
+                sqf_ast_analyzer &a) override;
+
+        void analyze(
+                sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &sqf_ast_analyzer,
+                const database::context &context) override;
     };
 }
 #endif // SQFVM_LANGUAGE_SERVER_ANALYSIS_SQF_AST_VISITORS_VARIABLES_VISITOR_HPP

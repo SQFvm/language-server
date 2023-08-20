@@ -19,6 +19,14 @@ namespace sqfvm::language_server::analysis::sqf_ast {
 
         friend class sqf_ast_analyzer;
 
+        std::filesystem::path ls_folder_of(sqf_ast_analyzer &a) const {
+            return a.m_ls_path;
+        }
+
+        std::shared_ptr<sqf::runtime::runtime> runtime_of(sqf_ast_analyzer &a) {
+            return a.m_runtime;
+        }
+
         const database::tables::t_file &file_of(sqf_ast_analyzer &a) const {
             return a.m_file;
         }
