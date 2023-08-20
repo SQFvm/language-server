@@ -163,28 +163,26 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           path: ./clients/vscode/bin/
-      - name: ECHO DIR
-        run: |
-          find ./
       - uses: actions/setup-node@v1
         with:
           node-version: 16
+          
       - name: Install YARN
         run: npm install -g yarn
       - name: Install VCSE
         run: npm install -g @vscode/vsce
-      - name: Run YARN
+        
+      - name: NPM Install
+        run: npm install
+        
+      - name: YARN Compile
         working-directory: ./clients/vscode
         run: yarn run compile
-      - name: ECHO DIR
-        run: |
-          find ./
-      - name: Package Extension
+        
+      - name: VCSE Package
         working-directory: ./clients/vscode
         run: vsce package --yarn
-      - name: ECHO DIR
-        run: |
-          find ./
+        
       - name: Upload extension
         uses: actions/upload-artifact@v3
         with:
