@@ -33,12 +33,12 @@ jobs:
             c_compiler: cl
             cpp_compiler: cl
             vcpkg_triplet: x86-windows
-            platform: windows-x86
+            platform: windows
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
             vcpkg_triplet: x64-windows
-            platform: windows-x64
+            platform: windows
           #- os: macos-latest
           #  c_compiler: clang
           #  cpp_compiler: clang++
@@ -55,7 +55,7 @@ jobs:
             c_compiler: gcc
           - os: windows-latest
             c_compiler: clang
-          
+
           ## ubuntu-latest
           #- os: ubuntu-latest
           #  c_compiler: clang
@@ -66,7 +66,7 @@ jobs:
           #- os: ubuntu-latest
           #  c_compiler: cl
           #  arch: x64
-          
+
           ## macos-latest
           #- os: macos-latest
           #  c_compiler: clang
@@ -79,71 +79,81 @@ jobs:
           #  arch: x64
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
-    
-    - name: vcpkg build
-      uses: johnwason/vcpkg-action@v5
-      id: vcpkg
-      with:
-        manifest-dir: ${{ github.workspace }}/server
-        triplet: ${{ matrix.vcpkg_triplet }}
-        cache-key: ${{ matrix.config.os }}
-        revision: 8b04a7bd93bef991818fc372bb83ce00ec1c1c16 #master
-        token: ${{ github.token }}
-        
-    - name: Set reusable strings
-      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
-      id: strings
-      shell: bash
-      run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-        
-    - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      if: ${{ matrix.os != 'windows.latest' }}
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
-        -S ${{ github.workspace }}/server
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
 
-    - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      if: ${{ matrix.os == 'windows.latest' }}
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -A ${{ matrix.arch == 'x86' && 'Win32' || matrix.arch }}
-        ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
-        -S ${{ github.workspace }}/server
+      - name: vcpkg build
+        uses: johnwason/vcpkg-action@v5
+        id: vcpkg
+        with:
+          manifest-dir: ${{ github.workspace }}/server
+          triplet: ${{ matrix.vcpkg_triplet }}
+          cache-key: ${{ matrix.config.os }}
+          revision: 8b04a7bd93bef991818fc372bb83ce00ec1c1c16 #master
+          token: ${{ github.token }}
 
-    - name: Build
-      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+      - name: Set reusable strings
+        # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+        id: strings
+        shell: bash
+        run: |
+          echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-#    - name: Test
-#      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-#      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-#      run: ctest --build-config ${{ matrix.build_type }}
+      - name: Configure CMake
+        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+        if: ${{ matrix.os != 'windows.latest' }}
+        run: >
+          cmake -B ${{ steps.strings.outputs.build-output-dir }}
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
+          -S ${{ github.workspace }}/server
 
-    - name: Upload binary
-      uses: actions/upload-artifact@v3
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      with:
-        name: ${{ matrix.platform }}
-        if-no-files-found: error
-        path: |
-          ./build/sqfvm_language_server/sqfvm_language_server
-        
+      - name: Configure CMake
+        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+        if: ${{ matrix.os == 'windows.latest' }}
+        run: >
+          cmake -B ${{ steps.strings.outputs.build-output-dir }}
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -A ${{ matrix.arch == 'x86' && 'Win32' || matrix.arch }}
+          ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
+          -S ${{ github.workspace }}/server
+
+      - name: Build
+        # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+        run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+
+      #    - name: Test
+      #      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      #      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      #      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      #      run: ctest --build-config ${{ matrix.build_type }}
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v3
+        if: ${{ matrix.os == 'windows-latest' }}
+        with:
+          name: ${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            .\build\sqfvm_language_server\Release\*.dll
+            .\build\sqfvm_language_server\Release\*.exe
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v3
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        with:
+          name: ${{ matrix.platform }}
+          if-no-files-found: error
+          path: |
+            ./build/sqfvm_language_server/sqfvm_language_server
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -151,9 +161,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: Download binaries
         uses: actions/download-artifact@v3
-      - name: Print ubuntu results
+        with:
+          path: ./clients/vscode/bin/
+      - name: ECHO DIR
         run: |
-          echo "Results:"
           find ./
       - uses: actions/setup-node@v1
         with:
@@ -163,11 +174,24 @@ jobs:
       - name: Install VCSE
         run: npm install -g @vscode/vsce
       - name: Run YARN
-        working-directory: ./client/vscode
-        run: yarn
-      # - name: Package Extension
-      #   working-directory: ./client/vscode
-      #   run: vsce package --yarn
+        working-directory: ./clients/vscode
+        run: yarn run compile
+      - name: ECHO DIR
+        run: |
+          find ./
+      - name: Package Extension
+        working-directory: ./clients/vscode
+        run: vsce package --yarn
+      - name: ECHO DIR
+        run: |
+          find ./
+      - name: Upload extension
+        uses: actions/upload-artifact@v3
+        with:
+          name: VSCode extension
+          if-no-files-found: error
+          path: |
+            .\clients\vscode\*.vsix
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@v2
