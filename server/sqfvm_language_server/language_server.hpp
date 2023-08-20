@@ -2,7 +2,7 @@
 #define SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP
 
 #include "sqfvm_factory.hpp"
-#include "lsp/lspserver.hpp"
+#include "lsp/server.hpp"
 #include "git_sha1.h"
 #include "analysis/analyzer.hpp"
 #include "runtime/runtime.h"
