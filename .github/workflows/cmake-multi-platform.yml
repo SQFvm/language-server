@@ -173,6 +173,7 @@ jobs:
         run: npm install -g @vscode/vsce
         
       - name: NPM Install
+        working-directory: ./clients/vscode
         run: npm install
         
       - name: YARN Compile
@@ -189,7 +190,7 @@ jobs:
           name: VSCode extension
           if-no-files-found: error
           path: |
-            .\clients\vscode\*.vsix
+            ./clients/vscode/*.vsix
 #    runs-on: ubuntu-latest
 #    steps:
 #      - uses: actions/checkout@v2
