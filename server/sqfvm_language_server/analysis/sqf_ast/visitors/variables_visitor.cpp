@@ -1016,6 +1016,7 @@ bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_
             || !(
                 iequal(parent->token.contents, "then")
                 || iequal(parent->token.contents, "else")
+                || iequal(parent->token.contents, "exitWith")
                 || iequal(parent->token.contents, "call")
                 || iequal(parent->token.contents, "while")
                 || iequal(parent->token.contents, "do")
