@@ -1,3 +1,24 @@
+<!-- TOC -->
+* [Welcome to scripted analyzers](#welcome-to-scripted-analyzers)
+* [What are scripted analyzers?](#what-are-scripted-analyzers)
+* [Data structures, types and enums](#data-structures-types-and-enums)
+  * [Enum: `SEVERITY`](#enum-severity)
+  * [Array: `DIAGNOSTIC`](#array-diagnostic)
+  * [Array: `file`](#array-file)
+  * [Enum: `ASTNODETYPE`](#enum-astnodetype)
+  * [Type: `ASTNODE`](#type-astnode)
+* [New operators](#new-operators)
+  * [Operator: `lineOf`](#operator-lineof)
+  * [Operator: `columnOf`](#operator-columnof)
+  * [Operator: `offsetOf`](#operator-offsetof)
+  * [Operator: `contentOf`](#operator-contentof)
+  * [Operator: `pathOf`](#operator-pathof)
+  * [Operator: `typeOf`](#operator-typeof)
+  * [Operator: `childrenOf`](#operator-childrenof)
+  * [Operator: `fileOf`](#operator-fileof)
+  * [Operator: `reportDiagnostic`](#operator-reportdiagnostic)
+<!-- TOC -->
+
 # Welcome to scripted analyzers
 
 This is a short introduction to scripted analyzers.
@@ -10,13 +31,13 @@ by writing your own analyzers in SQF. This allows you to write e.g. your own
 diagnostics. The analyzers are run on the server and the results are sent to
 the client, which will display them in the editor.
 
-# Data structures
+# Data structures, types and enums
 
-The following are the data structures that are available to the analyzers.
+The following are the data structures, types and enums that are available to the analyzers.
 They will be referred in the documentation by writing `<type>` where type is
 the name of the data structure.
 
-## severity
+## Enum: `SEVERITY`
 
 ```sqf
 // One of the following:
@@ -41,11 +62,11 @@ FATAL is the highest severity and TRACE is the lowest.
 | VERBOSE  | The second-lowest severity, should be used for when INFO is too noisy.                                                            |          | GRAY   |
 | TRACE    | The lowest severity.                                                                                                              |          | GRAY   |
 
-## diagnostic
+## Array: `DIAGNOSTIC`
 
 ```sqf
 [
-    severity,      // <severity>
+    severity,      // SEVERITY
     error_code,    // string
     content,       // string
     message,       // string
@@ -60,37 +81,36 @@ FATAL is the highest severity and TRACE is the lowest.
 A diagnostic is a problem that is found in the code. It is represented by an
 array of the above structure. The fields are as follows:
 
-| Field      | Description                             | Type                  |
-|------------|-----------------------------------------|-----------------------|
-| severity   | The severity of the diagnostic.         | [severity](#severity) |
-| error_code | A unique identifier for the diagnostic. | string                |
-| content    | The content of the diagnostic.          | string                |
-| message    | The message of the diagnostic.          | string                |
-| line       | The line of the diagnostic.             | scalar                |
-| column     | The column of the diagnostic.           | scalar                |
-| offset     | The offset of the diagnostic.           | scalar                |
-| length     | The length of the diagnostic.           | scalar                |
-| file_id    | The file id of the diagnostic.          | scalar                |
+| Field      | Description                             | Type                       |
+|------------|-----------------------------------------|----------------------------|
+| severity   | The severity of the diagnostic.         | [SEVERITY](#enum-severity) |
+| error_code | A unique identifier for the diagnostic. | string                     |
+| content    | The content of the diagnostic.          | string                     |
+| message    | The message of the diagnostic.          | string                     |
+| line       | The line of the diagnostic.             | scalar                     |
+| column     | The column of the diagnostic.           | scalar                     |
+| offset     | The offset of the diagnostic.           | scalar                     |
+| length     | The length of the diagnostic.           | scalar                     |
+| file_id    | The file id of the diagnostic.          | scalar                     |
 
-## file
+## Array: `file`
 
 ```sqf
 [
     file_id,       // scalar
-    file_name,     // string
-    file_contents, // string
+    file_name      // string
 ]
 ```
 
 A file is a file that is being analyzed. It is represented by an array of the
 above structure. The fields are as follows:
 
-| Field         | Description                    | Type   |
-|---------------|--------------------------------|--------|
-| file_id       | The file id of the file.       | scalar |
-| file_name     | The file name of the file.     | string |
+| Field     | Description                | Type   |
+|-----------|----------------------------|--------|
+| file_id   | The file id of the file.   | scalar |
+| file_name | The file name of the file. | string |
 
-## ast_node_type
+## Enum: `ASTNODETYPE`
 
 ```sqf
 // One of the following:
@@ -130,69 +150,82 @@ The type of AST node. The AST is a tree representation of the code. It is
 used to analyze the code. The type of node is represented by one of the above
 strings.
 
-## ast_node
+## Type: `ASTNODE`
 
-```sqf
-[
+A new type introduced to allow introspection of the AST for SQF.
 
-    reference,     // scalar
-    line,          // scalar
-    column,        // scalar
-    offset,        // scalar
-    path,          // string
-    type,          // <ast_node_type>
-]
-```
-
-An AST node is a node in the AST. It is represented by an array of the above
-structure.
-To get the children of an AST node, use the `SLS_getChildren` operator.
-To get the content of an AST node, use the `SLS_getContent` operator.
-
-| Field     | Description                    | Type                            |
-|-----------|--------------------------------|---------------------------------|
-| reference | The reference of the AST node. | scalar                          |
-| line      | The line of the AST node.      | scalar                          |
-| column    | The column of the AST node.    | scalar                          |
-| offset    | The offset of the AST node.    | scalar                          |
-| path      | The path of the AST node.      | string                          |
-| type      | The type of the AST node.      | [ast_node_type](#ast_node_type) |
-
-# Special operators
+# New operators
 
 The following are the operators that are available to the analyzers.
-They will be referred in the documentation by writing `SLS_<function>`
-where `<function>` is the name of the function.
 
-## SLS_fnc_getFile
+## Operator: `lineOf`
 
 ```sqf
-SLS_getFile <file_id> // -> <file>
+lineOf ASTNODE
 ```
 
-Gets the file with the given path.
+Returns the line of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
-## SLS_fnc_getChildren
+## Operator: `columnOf`
 
 ```sqf
-SLS_children <ast_node> // -> [<ast_node>]
+columnOf ASTNODE
 ```
 
-Gets the children of the given AST node.
+Returns the column of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
-## SLS_fnc_getContent
+## Operator: `offsetOf`
 
 ```sqf
-SLS_getContent <ast_node> // -> string
+offsetOf ASTNODE
 ```
 
-Gets the content of the given AST node.
+Returns the offset of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
-## SLS_fnc_reportDiagnostic
+## Operator: `contentOf`
 
 ```sqf
-SLS_reportDiagnostic <diagnostic> // -> void
+contentOf ASTNODE
 ```
 
-Reports the given diagnostic to the client.
+Returns the content of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
+## Operator: `pathOf`
+
+```sqf
+pathOf ASTNODE
+```
+
+Returns the path of the given AST node ([Type: `ASTNODE`](#type-astnode)).
+
+## Operator: `typeOf`
+
+```sqf
+typeOf ASTNODE
+```
+
+Returns the [Enum: `ASTNODETYPE`](#enum-astnodetype) of the given AST node ([Type: `ASTNODE`](#type-astnode)).
+
+## Operator: `childrenOf`
+
+```sqf
+childrenOf ASTNODE
+```
+
+Returns the children (`[ASTNODE]`) of the given AST node.
+
+## Operator: `fileOf`
+
+```sqf
+fileOf ASTNODE
+```
+
+Returns the [Array: `file`](#array-file) of the given AST node ([Type: `ASTNODE`](#type-astnode)).
+
+## Operator: `reportDiagnostic`
+
+```sqf
+reportDiagnostic DIAGNOSTIC
+```
+
+Reports the given [Array: `DIAGNOSTIC`](#array-diagnostic) to the client.
