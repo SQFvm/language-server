@@ -28,6 +28,9 @@ namespace lsp::data {
          * @since 3.16.0.
          */
     using integer = int32_t;
+
+    using change_annotation_identifier = std::string;
+    using document_uri = std::string;
 #pragma endregion
 #pragma region from_json
 
@@ -1035,19 +1038,19 @@ namespace lsp::data {
             /**
                  * Ignore if exists.
                  */
-            std::optional<bool> ignoreIfExists;
+            std::optional<bool> ignore_if_exists;
 
             static create_file_options from_json(const nlohmann::json &node) {
                 create_file_options res;
                 data::from_json(node, "overwrite", res.overwrite);
-                data::from_json(node, "ignoreIfExists", res.ignoreIfExists);
+                data::from_json(node, "ignoreIfExists", res.ignore_if_exists);
                 return res;
             }
 
             [[nodiscard]] nlohmann::json to_json() const {
                 nlohmann::json json;
                 data::set_json(json, "overwrite", overwrite);
-                data::set_json(json, "ignoreIfExists", ignoreIfExists);
+                data::set_json(json, "ignoreIfExists", ignore_if_exists);
                 return json;
             }
         };
@@ -1103,19 +1106,19 @@ namespace lsp::data {
             /**
                  * Ignores if target exists.
                  */
-            std::optional<bool> ignoreIfExists;
+            std::optional<bool> ignore_if_exists;
 
             static rename_file_options from_json(const nlohmann::json &node) {
                 rename_file_options res;
                 data::from_json(node, "overwrite", res.overwrite);
-                data::from_json(node, "ignoreIfExists", res.ignoreIfExists);
+                data::from_json(node, "ignoreIfExists", res.ignore_if_exists);
                 return res;
             }
 
             [[nodiscard]] nlohmann::json to_json() const {
                 nlohmann::json json;
                 data::set_json(json, "overwrite", overwrite);
-                data::set_json(json, "ignoreIfExists", ignoreIfExists);
+                data::set_json(json, "ignoreIfExists", ignore_if_exists);
                 return json;
             }
         };
@@ -1178,19 +1181,19 @@ namespace lsp::data {
             /**
                  * Ignore the operation if the file doesn't exist.
                  */
-            std::optional<bool> ignoreIfNotExists;
+            std::optional<bool> ignore_if_not_exists;
 
             static delete_file_options from_json(const nlohmann::json &node) {
                 delete_file_options res;
                 data::from_json(node, "recursive", res.recursive);
-                data::from_json(node, "ignoreIfNotExists", res.ignoreIfNotExists);
+                data::from_json(node, "ignoreIfNotExists", res.ignore_if_not_exists);
                 return res;
             }
 
             [[nodiscard]] nlohmann::json to_json() const {
                 nlohmann::json json;
                 data::set_json(json, "recursive", recursive);
-                data::set_json(json, "ignoreIfNotExists", ignoreIfNotExists);
+                data::set_json(json, "ignoreIfNotExists", ignore_if_not_exists);
                 return json;
             }
         };
@@ -1291,33 +1294,33 @@ namespace lsp::data {
          */
     struct workspace_edit {
         /**
-             * Holds changes to existing resources.
-             */
-        std::optional<std::unordered_map<uri, std::vector<text_edit>>> changes;
+         * Holds changes to existing resources.
+         */
+        std::optional<std::unordered_map<document_uri, std::vector<text_edit>>> changes;
         /**
-             * Depending on the client capability
-             * `workspace.workspaceEdit.resourceOperations` document changes are either
-             * an array of `TextDocumentEdit`s to express changes to n different text documents
-             * where each text document edit addresses a specific version of a text document.
-             * Or it can contain above `TextDocumentEdit`s mixed with create, rename and delete
-             * file / folder operations.
-             *
-             * Whether a client supports versioned document edits is expressed via
-             * `workspace.workspaceEdit.documentChanges` client capability.
-             *
-             * If a client neither supports `documentChanges` nor
-             * `workspace.workspaceEdit.resourceOperations` then only plain `TextEdit`s using the
-             * `changes` property are supported.
-             */
+         * Depending on the client capability
+         * `workspace.workspaceEdit.resourceOperations` document changes are either
+         * an array of `TextDocumentEdit`s to express changes to n different text documents
+         * where each text document edit addresses a specific version of a text document.
+         * Or it can contain above `TextDocumentEdit`s mixed with create, rename and delete
+         * file / folder operations.
+         *
+         * Whether a client supports versioned document edits is expressed via
+         * `workspace.workspaceEdit.documentChanges` client capability.
+         *
+         * If a client neither supports `documentChanges` nor
+         * `workspace.workspaceEdit.resourceOperations` then only plain `TextEdit`s using the
+         * `changes` property are supported.
+         */
         std::optional<std::vector<std::variant<text_document_edit, create_file, rename_file, delete_file>>> document_changes;
         /**
-             * A map of change annotations that can be referenced in
-             * `AnnotatedTextEdit`s or create, rename and delete file / folder operations.
-             *
-             * Whether clients honor this property depends on the client capability
-             * `workspace.workspaceEdit.changeAnnotationSupport`.
-             */
-        std::optional<std::unordered_map<std::string, change_annotation>> change_annotations;
+         * A map of change annotations that can be referenced in
+         * `AnnotatedTextEdit`s or create, rename and delete file / folder operations.
+         *
+         * Whether clients honor this property depends on the client capability
+         * `workspace.workspaceEdit.changeAnnotationSupport`.
+         */
+        std::optional<std::unordered_map<change_annotation_identifier, change_annotation>> change_annotations;
 
         // implementing generic std::variant support is hard and implementing type-specific from_json is not worth
         // it here as it is server-only anyway.
@@ -4427,7 +4430,7 @@ namespace lsp::data {
                  * the error state of the resource. The primary parameter
                  * to compute code actions is the provided range.
                  */
-            std::vector<diagnostics> includeDeclaration;
+            std::vector<diagnostics> diagnostics;
             /**
                  * Requested kind of actions to return.
                  *
@@ -4445,7 +4448,7 @@ namespace lsp::data {
 
             static code_action_context from_json(const nlohmann::json &node) {
                 code_action_context res;
-                data::from_json(node, "includeDeclaration", res.includeDeclaration);
+                data::from_json(node, "diagnostics", res.diagnostics);
                 data::from_json(node, "only", res.only);
                 data::from_json(node, "triggerKind", res.triggerKind);
                 return res;
@@ -4453,7 +4456,7 @@ namespace lsp::data {
 
             nlohmann::json to_json() const {
                 nlohmann::json json;
-                data::set_json(json, "includeDeclaration", includeDeclaration);
+                data::set_json(json, "diagnostics", diagnostics);
                 data::set_json(json, "only", only);
                 data::set_json(json, "triggerKind", triggerKind);
                 return json;

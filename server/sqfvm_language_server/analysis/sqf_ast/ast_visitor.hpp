@@ -28,6 +28,13 @@ namespace sqfvm::language_server::analysis::sqf_ast {
             return a.m_ls_path;
         }
 
+        auto is_offset_in_macro(sqf_ast_analyzer &a, size_t offset) const {
+            return a.is_offset_in_macro(offset);
+        }
+        auto decode_preprocessed_offset(sqf_ast_analyzer &a, size_t offset) const {
+            return a.decode_preprocessed_offset(offset);
+        }
+
         std::shared_ptr<sqf::runtime::runtime> runtime_of(sqf_ast_analyzer &a) {
             return a.m_runtime;
         }

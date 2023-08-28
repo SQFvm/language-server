@@ -69,6 +69,9 @@ namespace sqfvm::language_server::database::tables {
 
         // Identifier to group actions by.
         std::string identifier;
+
+        // Text to present the user describing the action.
+        std::string text;
     };
 }
 

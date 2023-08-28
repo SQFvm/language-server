@@ -50,6 +50,7 @@ namespace sqfvm::language_server::database {
                                make_column("id_pk", &t_code_action::id_pk, primary_key().autoincrement()),
                                make_column("file_fk", &t_code_action::file_fk),
                                make_column("kind", &t_code_action::kind),
+                               make_column("text", &t_code_action::text),
                                make_column("identifier", &t_code_action::identifier),
                                foreign_key(&t_code_action::file_fk).references(&t_file::id_pk)),
                     make_table(t_code_action_change::table_name,

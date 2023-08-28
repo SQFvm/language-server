@@ -16,7 +16,7 @@ add_executable(sqfvm_language_server
         analysis/sqf_ast/ast_visitor.hpp
         analysis/sqf_ast/sqf_ast_analyzer.cpp
         analysis/sqf_ast/sqf_ast_analyzer.hpp
-        analysis/sqf_ast/visitors/variables_visitor.hpp
+        analysis/sqf_ast/visitors/general_visitor.hpp
         analysis/analyzer.hpp
         database/tables/t_diagnostic.h
         database/tables/t_file.h
@@ -27,7 +27,7 @@ add_executable(sqfvm_language_server
         database/orm_mappings.hpp
         database/orm_mappings.hpp
         util.hpp
-        analysis/sqf_ast/visitors/variables_visitor.cpp
+        analysis/sqf_ast/visitors/general_visitor.cpp
         sqfvm_factory.cpp
         sqfvm_factory.hpp
         runtime_logger.hpp
@@ -45,6 +45,10 @@ add_executable(sqfvm_language_server
         lsp/server.cpp
         lsp/server.hpp
         lsp/data/enums.hpp
+        analysis/sqfvm_analyzer.hpp
+        analysis/sqfvm_analyzer.cpp
+        analysis/file_analyzer.hpp
+        analysis/db_analyzer.hpp
 )
 
 # Set C++ Version

@@ -6,7 +6,7 @@ testvalue = "";
 
 
 
-systemChat CONCAT(test,value);
+systemChat CONCAT(test test,value);
 
 private _something = [];
 private _input = _this select 0;

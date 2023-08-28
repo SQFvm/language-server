@@ -370,8 +370,13 @@ sqfvm::language_server::language_server::language_server() {
                     auto db_path,
                     auto &factory,
                     auto file,
-                    auto &text) -> std::unique_ptr<analysis::analyzer> {
-                return std::make_unique<analysis::sqf_ast::sqf_ast_analyzer>(ls_path, db_path, factory, file, text);
+                    auto text) -> std::unique_ptr<analysis::analyzer> {
+                return std::make_unique<analysis::sqf_ast::sqf_ast_analyzer>(
+                        db_path,
+                        file,
+                        factory,
+                        std::move(text),
+                        ls_path);
             });
 }
 
@@ -599,8 +604,7 @@ void sqfvm::language_server::language_server::file_system_item_modified(
     if (iequal(path.filename().string(), "$PBOPREFIX$")) {
         add_or_update_pboprefix_mapping_logging(path);
         mark_all_files_as_outdated();
-    }
-    else {
+    } else {
         auto file_opt = get_file_from_path(path.string(), true);
         if (!file_opt.has_value()) {
             return;
@@ -662,9 +666,126 @@ void sqfvm::language_server::language_server::ensure_git_ignore_file_exists() {
 
 std::optional<std::vector<std::variant<lsp::data::command, lsp::data::code_action>>>
 sqfvm::language_server::language_server::on_textDocument_codeAction(const lsp::data::code_action_params &params) {
-    lsp::data::command cmd;
-    lsp::data::code_action ca;
-    ca.edit = {};
-    ca.edit->document_changes = {};
-    return server::on_textDocument_codeAction(params);
+    using namespace lsp::data;
+    using namespace database::tables;
+    using namespace std::string_literals;
+    const size_t lsp_trash_offset = 1;
+    auto path = std::filesystem::path(
+            std::string(params.textDocument.uri.path().begin(),
+                        params.textDocument.uri.path().end()))
+            .lexically_normal();
+    auto file_opt = get_file_from_path(path.string(), false);
+    if (!file_opt.has_value())
+        return std::nullopt;
+    auto file = file_opt.value();
+
+    std::vector<std::variant<lsp::data::command, lsp::data::code_action>> out_data{};
+
+    {
+        // Get code actions and their corresponding changes from database
+        auto code_actions = m_context->storage().get_all<t_code_action>(
+                where(c(&t_code_action::file_fk) == file.id_pk));
+        for (const auto &code_action: code_actions) {
+            std::vector<std::variant<text_document_edit, create_file, rename_file, lsp::data::delete_file>> out_changes{};
+            auto changes = m_context->storage().get_all<t_code_action_change>(
+                    where(c(&t_code_action_change::code_action_fk) == code_action.id_pk));
+            bool in_range = false;
+            for (const auto &change: changes) {
+                in_range = in_range || change.start_line >= params.range.start.line
+                                       && change.start_column >= params.range.start.character
+                                       && change.end_line <= params.range.end.line
+                                       && change.end_column <= params.range.end.character;
+                auto change_path = sanitize_to_uri(change.path);
+                switch (change.operation) {
+                    case t_code_action_change::file_change:
+                        out_changes.emplace_back(text_document_edit{
+                                .textDocument = optional_versioned_text_document_identifier{
+                                        .version = std::nullopt, // ToDo: Start tracking version numbers because LSP is a stupid piece of shit
+                                        .uri = change_path,
+                                },
+                                .edits = {text_edit{
+                                        .range = range{
+                                                .start = position{
+                                                        .line = change.start_line.value_or(0),
+                                                        .character = change.start_column.value_or(0),
+                                                },
+                                                .end = position{
+                                                        .line = change.end_line.value_or(0),
+                                                        .character = change.end_column.value_or(0),
+                                                },
+                                        },
+                                        .new_text = change.content.value_or(""s),
+                                }},
+                        });
+                        break;
+                    case t_code_action_change::file_create:
+                        out_changes.emplace_back(create_file{
+                                .uri = change_path,
+                                .options = create_file::create_file_options{
+                                        .overwrite = true,
+                                        .ignore_if_exists = true,
+                                },
+                        });
+                        out_changes.emplace_back(text_document_edit{
+                                .textDocument = optional_versioned_text_document_identifier{
+                                        .version = std::nullopt, // ToDo: Start tracking version numbers because LSP is a stupid piece of shit
+                                        .uri = change_path,
+                                },
+                                .edits = {text_edit{
+                                        .range = range{
+                                                .start = position{0, 0},
+                                                .end = position{0, 0},
+                                        },
+                                        .new_text = change.content.value_or(""s),
+                                }},
+                        });
+                        break;
+                    case t_code_action_change::file_delete:
+                        out_changes.emplace_back(lsp::data::delete_file{
+                                .uri = change_path,
+                                .options = lsp::data::delete_file::delete_file_options{
+                                        .recursive = true,
+                                        .ignore_if_not_exists = true,
+                                },
+                        });
+                        break;
+                    case t_code_action_change::file_rename:
+                        out_changes.emplace_back(rename_file{
+                                .oldUri = sanitize_to_uri(change.old_path.value_or(""s)),
+                                .newUri = change_path,
+                                .options = rename_file::rename_file_options{
+                                        .overwrite = true,
+                                        .ignore_if_exists = true,
+                                },
+                        });
+                        break;
+                }
+            }
+            if (out_changes.empty() || !in_range)
+                continue;
+            out_data.push_back(lsp::data::code_action{
+                    .title = code_action.text,
+                    .kind = code_action.kind == database::tables::t_code_action::quick_fix
+                            ? code_action_kind::QuickFix
+                            : code_action.kind == database::tables::t_code_action::refactor
+                              ? code_action_kind::Refactor
+                              : code_action.kind == database::tables::t_code_action::extract_refactor
+                                ? code_action_kind::RefactorExtract
+                                : code_action.kind == database::tables::t_code_action::inline_refactor
+                                  ? code_action_kind::RefactorInline
+                                  : code_action.kind == database::tables::t_code_action::whole_file
+                                    ? code_action_kind::Source
+                                    : code_action.kind == database::tables::t_code_action::rewrite_refactor
+                                      ? code_action_kind::RefactorRewrite
+                                      : code_action_kind::Empty,
+                    .isPreferred = true,
+                    .edit = workspace_edit{
+                            .changes = {},
+                            .document_changes = out_changes,
+                            .change_annotations = {},
+                    },
+            });
+        }
+    }
+    return {out_data};
 }

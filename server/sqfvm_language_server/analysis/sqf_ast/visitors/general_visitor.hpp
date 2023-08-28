@@ -13,7 +13,7 @@
 #include <stack>
 
 namespace sqfvm::language_server::analysis::sqf_ast::visitors {
-    class variables_visitor : public ast_visitor {
+    class general_visitor : public ast_visitor {
         struct scope {
             // The amount of children this scope has
             size_t child_count;
@@ -111,7 +111,7 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
                 const sqf::parser::sqf::bison::astnode &node);
 
     public:
-        ~variables_visitor() override = default;
+        ~general_visitor() override = default;
 
         void start(sqf_ast_analyzer &a) override;
 
