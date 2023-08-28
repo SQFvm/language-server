@@ -50,4 +50,6 @@ namespace sqlite_orm { \
 ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_diagnostic::severity_level, int)
 ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_reference::type_flags, int)
 ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_reference::access_flags, int)
+ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_code_action::action_kind, int)
+ORM_ENUM_MAPPING(sqfvm::language_server::database::tables::t_code_action_change::file_operation, int)
 #endif //SQFVM_LANGUAGE_SERVER_DATABASE_ORM_MAPPINGS_HPP

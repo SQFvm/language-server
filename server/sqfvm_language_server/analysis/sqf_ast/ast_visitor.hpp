@@ -13,9 +13,14 @@ namespace sqfvm::language_server::analysis::sqf_ast {
 
     class ast_visitor {
     protected:
+        struct code_action_tuple {
+            database::tables::t_code_action code_action;
+            std::vector<database::tables::t_code_action_change> changes;
+        };
         std::vector<database::tables::t_reference> m_references;
         std::vector<database::tables::t_variable> m_variables;
         std::vector<database::tables::t_diagnostic> m_diagnostics;
+        std::vector<code_action_tuple> m_code_actions;
 
         friend class sqf_ast_analyzer;
 

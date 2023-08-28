@@ -8,13 +8,14 @@
 #include "runtime/d_string.h"
 #include "runtime/d_scalar.h"
 
+namespace err = logmessage::runtime;
 using namespace ::sqf::runtime;
 using namespace ::sqf::types;
 using namespace ::sqfvm::language_server::database::tables;
 
 struct storage : public runtime::datastorage {
     sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor *m_visitor;
-    sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer* m_ast_analyzer;
+    sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer *m_ast_analyzer;
 };
 
 namespace sqf {
@@ -96,6 +97,13 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
              "* [What are scripted analyzers?](#what-are-scripted-analyzers)\n"
              "* [Data structures, types and enums](#data-structures-types-and-enums)\n"
              "  * [Enum: `SEVERITY`](#enum-severity)\n"
+             "  * [Enum: `CODEACTIONKIND`](#enum-codeactionkind)\n"
+             "  * [Enum: `CODEACTIONCHANGEKIND`](#enum-codeactionchangekind)\n"
+             "  * [Array: `CODEACTION`](#array-codeaction)\n"
+             "  * [Array: `CODEACTIONCHANGE` (`CHANGE`)](#array-codeactionchange-change)\n"
+             "  * [Array: `CODEACTIONCHANGE` (`CREATE`)](#array-codeactionchange-create)\n"
+             "  * [Array: `CODEACTIONCHANGE` (`DELETE`)](#array-codeactionchange-delete)\n"
+             "  * [Array: `CODEACTIONCHANGE` (`RENAME`)](#array-codeactionchange-rename)\n"
              "  * [Array: `DIAGNOSTIC`](#array-diagnostic)\n"
              "  * [Array: `file`](#array-file)\n"
              "  * [Enum: `ASTNODETYPE`](#enum-astnodetype)\n"
@@ -110,6 +118,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
              "  * [Operator: `childrenOf`](#operator-childrenof)\n"
              "  * [Operator: `fileOf`](#operator-fileof)\n"
              "  * [Operator: `reportDiagnostic`](#operator-reportdiagnostic)\n"
+             "  * [Operator: `reportCodeAction`](#operator-reportcodeaction)\n"
              "<!-- TOC -->\n"
              "\n"
              "# Welcome to scripted analyzers\n"
@@ -154,6 +163,152 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
              "| INFO     | The fourth-highest severity, should be used for problems that are not necessarily problems, but might be interesting to the user. | INFO     | WHITE  |\n"
              "| VERBOSE  | The second-lowest severity, should be used for when INFO is too noisy.                                                            |          | GRAY   |\n"
              "| TRACE    | The lowest severity.                                                                                                              |          | GRAY   |\n"
+             "\n"
+             "## Enum: `CODEACTIONKIND`\n"
+             "\n"
+             "```sqf\n"
+             "// One of the following:\n"
+             "\"GENERIC\"\n"
+             "\"QUICK_FIX\"\n"
+             "\"REFACTOR\"\n"
+             "\"EXTRACT_REFACTOR\"\n"
+             "\"INLINE_REFACTOR\"\n"
+             "\"REWRITE_REFACTOR\"\n"
+             "\"WHOLE_FILE\"\n"
+             "```\n"
+             "\n"
+             "The kind of [Array: `CODEACTION`](#array-codeaction). The kind groups the different code actions\n"
+             "into categories.\n"
+             "\n"
+             "| Kind             | Description                                                                                                                   |\n"
+             "|------------------|-------------------------------------------------------------------------------------------------------------------------------|\n"
+             "| GENERIC          | A generic code action. Use only when the code action does not fit into any of the other categories.                           |\n"
+             "| QUICK_FIX        | A quick fix code action.                                                                                                      |\n"
+             "| REFACTOR         | A refactoring code action. Use only when the code action is a refactoring, but does not fit into any of the other categories. |\n"
+             "| EXTRACT_REFACTOR | Extracting modification of code to eg. extract a method out of a block of code.                                               |\n"
+             "| INLINE_REFACTOR  | Inline eg. a function call.                                                                                                   |\n"
+             "| REWRITE_REFACTOR | Modifications which change how something is written, eg. adding/removing parameters, rewriting array access to variables, ... |\n"
+             "| WHOLE_FILE       | Modifications span entire files.                                                                                              |\n"
+             "\n"
+             "## Enum: `CODEACTIONCHANGEKIND`\n"
+             "\n"
+             "```sqf\n"
+             "// One of the following:\n"
+             "\"CHANGE\"\n"
+             "\"CREATE\"\n"
+             "\"DELETE\"\n"
+             "\"RENAME\"\n"
+             "```\n"
+             "\n"
+             "The kind of `CODEACTIONCHANGE`. The kind describes what kind of change\n"
+             "the code action will perform. Each kind has a different set of fields.\n"
+             "\n"
+             "## Array: `CODEACTION`\n"
+             "\n"
+             "```sqf\n"
+             "[\n"
+             "    identifier,   // string\n"
+             "    kind,         // CODEACTIONKIND\n"
+             "]\n"
+             "```\n"
+             "\n"
+             "A code action is a modification that can be performed on the code. It is represented by an array\n"
+             "of the above structure. The fields are as follows:\n"
+             "\n"
+             "| Field      | Description                                                                                                   | Type                                   |\n"
+             "|------------|---------------------------------------------------------------------------------------------------------------|----------------------------------------|\n"
+             "| identifier | An identifier for the code action with the purpose of grouping same code actions together for bulk execution. | string                                 |\n"
+             "| kind       | The kind of the code action.                                                                                  | [CODEACTIONKIND](#enum-codeactionkind) |\n"
+             "\n"
+             "## Array: `CODEACTIONCHANGE` (`CHANGE`)\n"
+             "\n"
+             "```sqf\n"
+             "[\n"
+             "    \"CHANGE\",\n"
+             "    path,         // string\n"
+             "    start_line,   // scalar\n"
+             "    start_column, // scalar\n"
+             "    end_line,     // scalar\n"
+             "    end_column,   // scalar\n"
+             "    content,      // string\n"
+             "]\n"
+             "```\n"
+             "\n"
+             "A change code action is a modification that changes the code. It is represented by an array\n"
+             "of the above structure. Note that the first element of the array is\n"
+             "always [Enum: `\"CHANGE\"`](#enum-codeactionchangekind).\n"
+             "The fields are as follows:\n"
+             "\n"
+             "| Field        | Description                             | Type                                                       |\n"
+             "|--------------|-----------------------------------------|------------------------------------------------------------|\n"
+             "| \"CHANGE\"     | The kind of the code action.            | [Enum: `CODEACTIONCHANGEKIND`](#enum-codeactionchangekind) |\n"
+             "| path         | The path of the file to change.         | string                                                     |\n"
+             "| start_line   | The line of the start of the change.    | scalar                                                     |\n"
+             "| start_column | The column of the start of the change.  | scalar                                                     |\n"
+             "| end_line     | The line of the end of the change.      | scalar                                                     |\n"
+             "| end_column   | The column of the end of the change.    | scalar                                                     |\n"
+             "| content      | The content to replace the change with. | string                                                     |\n"
+             "\n"
+             "## Array: `CODEACTIONCHANGE` (`CREATE`)\n"
+             "\n"
+             "```sqf\n"
+             "[\n"
+             "    \"CREATE\",\n"
+             "    path,         // string\n"
+             "    content,      // string\n"
+             "]\n"
+             "```\n"
+             "\n"
+             "A create code action is a modification that creates a new file. It is represented by an array\n"
+             "of the above structure. Note that the first element of the array is\n"
+             "always [Enum: `\"CREATE\"`](#enum-codeactionchangekind).\n"
+             "The fields are as follows:\n"
+             "\n"
+             "| Field    | Description                        | Type                                                       |\n"
+             "|----------|------------------------------------|------------------------------------------------------------|\n"
+             "| \"CREATE\" | The kind of the code action.       | [Enum: `CODEACTIONCHANGEKIND`](#enum-codeactionchangekind) |\n"
+             "| path     | The path of the file to create.    | string                                                     |\n"
+             "| content  | The content of the file to create. | string                                                     |\n"
+             "\n"
+             "## Array: `CODEACTIONCHANGE` (`DELETE`)\n"
+             "\n"
+             "```sqf\n"
+             "[\n"
+             "    \"DELETE\",\n"
+             "    path,         // string\n"
+             "]\n"
+             "```\n"
+             "\n"
+             "A delete code action is a modification that deletes a file. It is represented by an array\n"
+             "of the above structure. Note that the first element of the array is\n"
+             "always [Enum: `\"DELETE\"`](#enum-codeactionchangekind).\n"
+             "The fields are as follows:\n"
+             "\n"
+             "| Field    | Description                     | Type                                                       |\n"
+             "|----------|---------------------------------|------------------------------------------------------------|\n"
+             "| \"DELETE\" | The kind of the code action.    | [Enum: `CODEACTIONCHANGEKIND`](#enum-codeactionchangekind) |\n"
+             "| path     | The path of the file to delete. | string                                                     |\n"
+             "\n"
+             "## Array: `CODEACTIONCHANGE` (`RENAME`)\n"
+             "\n"
+             "```sqf\n"
+             "[\n"
+             "    \"RENAME\",\n"
+             "    path,         // string\n"
+             "    new_path,     // string\n"
+             "]\n"
+             "```\n"
+             "\n"
+             "A rename code action is a modification that renames a file. It is represented by an array\n"
+             "of the above structure. Note that the first element of the array is\n"
+             "always [Enum: `\"RENAME\"`](#enum-codeactionchangekind).\n"
+             "The fields are as follows:\n"
+             "\n"
+             "| Field    | Description                     | Type                                                       |\n"
+             "|----------|---------------------------------|------------------------------------------------------------|\n"
+             "| \"RENAME\" | The kind of the code action.    | [Enum: `CODEACTIONCHANGEKIND`](#enum-codeactionchangekind) |\n"
+             "| path     | The path of the file to rename. | string                                                     |\n"
+             "| new_path | The new path of the file.       | string                                                     |\n"
              "\n"
              "## Array: `DIAGNOSTIC`\n"
              "\n"
@@ -321,7 +476,22 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
              "reportDiagnostic DIAGNOSTIC\n"
              "```\n"
              "\n"
-             "Reports the given [Array: `DIAGNOSTIC`](#array-diagnostic) to the client.";
+             "Reports the given [Array: `DIAGNOSTIC`](#array-diagnostic) to the client.\n"
+             "\n"
+             "## Operator: `reportCodeAction`\n"
+             "\n"
+             "```sqf\n"
+             "CODEACTION reportCodeAction [CODEACTIONCHANGE]\n"
+             "```\n"
+             "\n"
+             "Reports the given [Array: `CODEACTION`](#array-codeaction) to the client,\n"
+             "containing the given `CODEACTIONCHANGE`s.\n"
+             "The `CODEACTIONCHANGE`s are one of their corresponding subtypes:\n"
+             "\n"
+             "- [Array: `CODEACTIONCHANGE` (`CHANGE`)](#array-codeactionchange-change)\n"
+             "- [Array: `CODEACTIONCHANGE` (`RENAME`)](#array-codeactionchange-rename)\n"
+             "- [Array: `CODEACTIONCHANGE` (`CREATE`)](#array-codeactionchange-create)\n"
+             "- [Array: `CODEACTIONCHANGE` (`DELETE`)](#array-codeactionchange-delete)\n";
         f.flush();
     }
 
@@ -417,7 +587,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                     [](auto &runtime, auto &right) -> sqf::runtime::value {
                         // file is an array [id, path]
                         auto d_node = right.data<d_astnode>();
-                        auto& s = runtime.storage<storage>();
+                        auto &s = runtime.storage<storage>();
                         auto file = s.m_visitor->file_of(*s.m_ast_analyzer);
                         return std::vector<value>{file.id_pk, file.path};
                     }
@@ -428,50 +598,215 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                     t_array(),
                     "Reports the given diagnostic to the client.",
                     [](auto &runtime, auto &right) -> sqf::runtime::value {
-                        auto array = right.data<d_array, std::vector<sqf::runtime::value>>();
-                        auto array_size = array.size();
-                        if (array_size == 9) {
-                            auto severity_string = array[0].data<d_string, std::string>();
-                            auto severity = iequal(severity_string, "error")
-                                            ? t_diagnostic::error
-                                            : iequal(severity_string, "fatal")
-                                              ? t_diagnostic::fatal
-                                              : iequal(severity_string, "error")
-                                                ? t_diagnostic::error
-                                                : iequal(severity_string, "warning")
-                                                  ? t_diagnostic::warning
-                                                  : iequal(severity_string, "info")
-                                                    ? t_diagnostic::info
-                                                    : iequal(severity_string, "verbose")
-                                                      ? t_diagnostic::verbose
-                                                      : iequal(severity_string, "trace")
-                                                        ? t_diagnostic::trace
-                                                        : t_diagnostic::error;
+                        auto array = right.template data<d_array>();
 
-                            auto error_code = array[1].data<d_string, std::string>();
-                            auto content = array[2].data<d_string, std::string>();
-                            auto message = array[3].data<d_string, std::string>();
-                            auto line = array[4].data<d_scalar, uint64_t>();
-                            auto column = array[5].data<d_scalar, uint64_t>();
-                            auto offset = array[6].data<d_scalar, uint64_t>();
-                            auto length = array[7].data<d_scalar, uint64_t>();
-                            auto file_id = array[8].data<d_scalar, uint64_t>();
-                            auto &s = runtime.storage<storage>();
-                            s.m_visitor->m_diagnostics.push_back(
-                                    {
-                                            .id_pk = {},
-                                            .file_fk = file_id,
-                                            .source_file_fk = {},
-                                            .line =   line,
-                                            .column = column,
-                                            .offset = offset,
-                                            .length = length,
-                                            .severity = severity,
-                                            .message = message,
-                                            .code = error_code
-                                    }
-                            );
+                        if (!array->check_type(
+                                runtime,
+                                std::array<sqf::runtime::type, 9>{
+                                        t_string(),
+                                        t_string(),
+                                        t_string(),
+                                        t_string(),
+                                        t_scalar(),
+                                        t_scalar(),
+                                        t_scalar(),
+                                        t_scalar(),
+                                        t_scalar(),
+                                }))
+                            return {};
+
+
+                        auto severity_string = array->template data<0, d_string, std::string>();
+                        auto error_code = array->template data<1, d_string, std::string>();
+                        auto content = array->template data<2, d_string, std::string>();
+                        auto message = array->template data<3, d_string, std::string>();
+                        auto line = array->template data<4, d_scalar, uint64_t>();
+                        auto column = array->template data<5, d_scalar, uint64_t>();
+                        auto offset = array->template data<6, d_scalar, uint64_t>();
+                        auto length = array->template data<7, d_scalar, uint64_t>();
+                        auto file_id = array->template data<8, d_scalar, uint64_t>();
+
+
+                        auto severity = iequal(severity_string, "error")
+                                        ? t_diagnostic::error
+                                        : iequal(severity_string, "fatal")
+                                          ? t_diagnostic::fatal
+                                          : iequal(severity_string, "error")
+                                            ? t_diagnostic::error
+                                            : iequal(severity_string, "warning")
+                                              ? t_diagnostic::warning
+                                              : iequal(severity_string, "info")
+                                                ? t_diagnostic::info
+                                                : iequal(severity_string, "verbose")
+                                                  ? t_diagnostic::verbose
+                                                  : iequal(severity_string, "trace")
+                                                    ? t_diagnostic::trace
+                                                    : t_diagnostic::error;
+                        auto &s = runtime.template storage<storage>();
+                        s.m_visitor->m_diagnostics.push_back(
+                                {
+                                        .id_pk = s.m_visitor->m_diagnostics.size(),
+                                        .file_fk = file_id,
+                                        .source_file_fk = {},
+                                        .line =   line,
+                                        .column = column,
+                                        .offset = offset,
+                                        .length = length,
+                                        .severity = severity,
+                                        .message = message,
+                                        .code = error_code
+                                }
+                        );
+                        return {};
+                    }));
+    runtime->register_sqfop(
+            sqfop::binary(
+                    4,
+                    "reportCodeAction",
+                    t_array(),
+                    t_array(),
+                    "Reports the given code action to the client.",
+                    [](auto &runtime, auto &left, auto &right) -> sqf::runtime::value {
+                        auto code_action_array = left.template data<d_array>();
+                        if (!code_action_array->check_type(
+                                runtime,
+                                std::array<sqf::runtime::type, 2>{t_string(), t_string()}))
+                            return {};
+                        std::vector<t_code_action_change> changes;
+                        auto code_action_identifier = code_action_array->template data<0, d_string, std::string>();
+                        auto code_action_kind_string = code_action_array->template data<1, d_string, std::string>();
+                        auto right_array = right.template data<d_array, std::vector<sqf::runtime::value>>();
+                        bool flag = false;
+                        for (size_t i = 0; i < right_array.size(); i++) {
+                            auto &it = right_array.at(i);
+                            if (!it.template is<t_array>()) {
+                                runtime.__logmsg(
+                                        err::ExpectedSubArrayTypeMissmatch(
+                                                runtime.context_active().current_frame().diag_info_from_position(),
+                                                std::array<size_t, 1>{i},
+                                                t_array(),
+                                                it.type()));
+                                flag = true;
+                                continue;
+                            }
+                            auto it_array = it.template data<d_array>();
+
+                            if (it_array->size() < 1)
+                                continue;
+                            auto code_action_change_operation = it_array->template data<0, d_string, std::string>();
+                            if (iequal(code_action_change_operation, "change")) {
+                                if (!it_array->check_type(
+                                        runtime,
+                                        std::array<sqf::runtime::type, 7>{
+                                                t_string(),
+                                                t_string(),
+                                                t_scalar(),
+                                                t_scalar(),
+                                                t_scalar(),
+                                                t_scalar(),
+                                                t_string()
+                                        })) {
+                                    flag = true;
+                                    continue;
+                                }
+                                auto change = t_code_action_change{
+                                        .operation = t_code_action_change::file_change,
+                                        .path = it_array->template data<1, d_string, std::string>(),
+                                        .start_line = it_array->template data<2, d_scalar, uint64_t>(),
+                                        .start_column = it_array->template data<3, d_scalar, uint64_t>(),
+                                        .end_line = it_array->template data<4, d_scalar, uint64_t>(),
+                                        .end_column = it_array->template data<5, d_scalar, uint64_t>(),
+                                        .content = it_array->template data<6, d_string, std::string>()
+                                };
+                                changes.push_back(change);
+                            } else if (iequal(code_action_change_operation, "create")) {
+
+                                if (!it_array->check_type(
+                                        runtime,
+                                        std::array<sqf::runtime::type, 3>{
+                                                t_string(),
+                                                t_string(),
+                                                t_string()})) {
+                                    flag = true;
+                                    continue;
+                                }
+                                auto change = t_code_action_change{
+                                        .operation = t_code_action_change::file_create,
+                                        .path = it_array->template data<1, d_string, std::string>(),
+                                        .content = it_array->template data<2, d_string, std::string>()
+                                };
+                                changes.push_back(change);
+                            } else if (iequal(code_action_change_operation, "delete")) {
+                                if (!it_array->check_type(
+                                        runtime,
+                                        std::array<sqf::runtime::type, 2>{
+                                                t_string(),
+                                                t_string()})) {
+                                    flag = true;
+                                    continue;
+                                }
+                                auto change = t_code_action_change{
+                                        .operation = t_code_action_change::file_delete,
+                                        .path = it_array->template data<1, d_string, std::string>()
+                                };
+                                changes.push_back(change);
+                            } else if (iequal(code_action_change_operation, "rename")) {
+                                if (!it_array->check_type(
+                                        runtime,
+                                        std::array<sqf::runtime::type, 3>{
+                                                t_string(),
+                                                t_string(),
+                                                t_string()})) {
+                                    flag = true;
+                                    continue;
+                                }
+                                auto change = t_code_action_change{
+                                        .operation = t_code_action_change::file_change,
+                                        .old_path = it_array->template data<1, d_string, std::string>(),
+                                        .path = it_array->template data<2, d_string, std::string>(),
+                                };
+                                changes.push_back(change);
+                            } else {
+                                runtime.__logmsg(
+                                        err::ExpectedSubArrayTypeMissmatch(
+                                                runtime.context_active().current_frame().diag_info_from_position(),
+                                                std::array<size_t, 1>{i},
+                                                t_array(),
+                                                it.type()));
+                                flag = true;
+                                continue;
+                            }
                         }
+                        if (flag)
+                            return {};
+
+                        auto code_action_kind = iequal(code_action_kind_string, "generic")
+                                                ? t_code_action::generic
+                                                : iequal(code_action_kind_string, "quick_fix")
+                                                  ? t_code_action::quick_fix
+                                                  : iequal(code_action_kind_string, "refactor")
+                                                    ? t_code_action::refactor
+                                                    : iequal(code_action_kind_string, "extract_refactor")
+                                                      ? t_code_action::extract_refactor
+                                                      : iequal(code_action_kind_string, "inline_refactor")
+                                                        ? t_code_action::inline_refactor
+                                                        : iequal(code_action_kind_string, "rewrite_refactor")
+                                                          ? t_code_action::rewrite_refactor
+                                                          : iequal(code_action_kind_string, "whole_file")
+                                                            ? t_code_action::whole_file
+                                                            : t_code_action::generic;
+
+                        auto &s = runtime.template storage<storage>();
+                        s.m_visitor->m_code_actions.push_back(
+                                {
+                                        .code_action = t_code_action{
+                                                .identifier = code_action_identifier,
+                                                .kind = code_action_kind,
+                                        },
+                                        .changes = changes
+                                }
+                        );
+
                         return {};
                     }));
 }

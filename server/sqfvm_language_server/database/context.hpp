@@ -5,6 +5,9 @@
 #include <filesystem>
 #include <utility>
 #include <sqlite_orm/sqlite_orm.h>
+#include "tables/t_code_action.h"
+#include "tables/t_code_action_change.h"
+#include "tables/t_diagnostic.h"
 #include "tables/t_file.h"
 #include "tables/t_file_history.h"
 #include "tables/t_reference.h"
@@ -27,6 +30,9 @@ namespace sqfvm::language_server::database {
             using namespace sqlite_orm;
             auto storage = make_storage(
                     path,
+                    make_table(t_db_generation::table_name,
+                               make_column("id_pk", &t_db_generation::id_pk, primary_key().autoincrement()),
+                               make_column("generation", &t_db_generation::generation)),
                     make_table(t_file::table_name,
                                make_column("id_pk", &t_file::id_pk, primary_key().autoincrement()),
                                make_column("last_changed", &t_file::last_changed),
@@ -40,9 +46,24 @@ namespace sqfvm::language_server::database {
                                make_column("is_external", &t_file_history::is_external),
                                make_column("time_stamp_created", &t_file_history::time_stamp_created),
                                foreign_key(&t_file_history::file_fk).references(&t_file::id_pk)),
-                    make_table(t_db_generation::table_name,
-                               make_column("id_pk", &t_db_generation::id_pk, primary_key().autoincrement()),
-                               make_column("generation", &t_db_generation::generation)),
+                    make_table(t_code_action::table_name,
+                               make_column("id_pk", &t_code_action::id_pk, primary_key().autoincrement()),
+                               make_column("file_fk", &t_code_action::file_fk),
+                               make_column("kind", &t_code_action::kind),
+                               make_column("identifier", &t_code_action::identifier),
+                               foreign_key(&t_code_action::file_fk).references(&t_file::id_pk)),
+                    make_table(t_code_action_change::table_name,
+                               make_column("id_pk", &t_code_action_change::id_pk, primary_key().autoincrement()),
+                               make_column("code_action_fk", &t_code_action_change::code_action_fk),
+                               make_column("operation", &t_code_action_change::operation),
+                               make_column("old_path", &t_code_action_change::old_path),
+                               make_column("path", &t_code_action_change::path),
+                               make_column("start_line", &t_code_action_change::start_line),
+                               make_column("start_column", &t_code_action_change::start_column),
+                               make_column("end_line", &t_code_action_change::end_line),
+                               make_column("end_column", &t_code_action_change::end_column),
+                               make_column("content", &t_code_action_change::content),
+                               foreign_key(&t_code_action_change::code_action_fk).references(&t_code_action::id_pk)),
                     make_table(t_reference::table_name,
                                make_column("id_pk", &t_reference::id_pk, primary_key().autoincrement()),
                                make_column("file_fk", &t_reference::file_fk),
@@ -76,6 +97,7 @@ namespace sqfvm::language_server::database {
                                make_column("offset", &t_diagnostic::offset),
                                make_column("length", &t_diagnostic::length),
                                make_column("is_suppressed", &t_diagnostic::is_suppressed),
+                               foreign_key(&t_diagnostic::source_file_fk).references(&t_file::id_pk),
                                foreign_key(&t_diagnostic::file_fk).references(&t_file::id_pk)));
             return storage;
         }
