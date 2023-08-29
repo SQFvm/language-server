@@ -13,14 +13,26 @@ namespace sqfvm::language_server::analysis::sqf_ast {
 
     class ast_visitor {
     protected:
+        struct code_action_tuple {
+            database::tables::t_code_action code_action;
+            std::vector<database::tables::t_code_action_change> changes;
+        };
         std::vector<database::tables::t_reference> m_references;
         std::vector<database::tables::t_variable> m_variables;
         std::vector<database::tables::t_diagnostic> m_diagnostics;
+        std::vector<code_action_tuple> m_code_actions;
 
         friend class sqf_ast_analyzer;
 
         std::filesystem::path ls_folder_of(sqf_ast_analyzer &a) const {
             return a.m_ls_path;
+        }
+
+        auto is_offset_in_macro(sqf_ast_analyzer &a, size_t offset) const {
+            return a.is_offset_in_macro(offset);
+        }
+        auto decode_preprocessed_offset(sqf_ast_analyzer &a, size_t offset) const {
+            return a.decode_preprocessed_offset(offset);
         }
 
         std::shared_ptr<sqf::runtime::runtime> runtime_of(sqf_ast_analyzer &a) {

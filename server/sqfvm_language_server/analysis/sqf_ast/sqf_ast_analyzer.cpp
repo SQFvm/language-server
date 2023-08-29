@@ -1,7 +1,7 @@
 #include "sqf_ast_analyzer.hpp"
 #include "ast_visitor.hpp"
 #include "../../util.hpp"
-#include "visitors/variables_visitor.hpp"
+#include "visitors/general_visitor.hpp"
 #include "visitors/scripted_visitor.hpp"
 #include "../../runtime_logger.hpp"
 #include <functional>
@@ -13,18 +13,6 @@
 #include <parser/preprocessor/default.h>
 #include <parser/config/config_parser.hpp>
 
-void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze() {
-    auto path_info = m_runtime->fileio().get_info(m_file.path, {m_file.path, {}, {}});
-    if (!path_info.has_value()) {
-        m_diagnostics.push_back({
-                                        .file_fk = m_file.id_pk,
-                                        .severity = database::tables::t_diagnostic::severity_level::error,
-                                        .message = "Failed to get path info for file: " + m_file.path,
-                                });
-        return;
-    }
-    analyze_ast(*m_runtime);
-}
 
 namespace {
 
@@ -176,6 +164,31 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
 #pragma endregion
 
 
+#pragma region Code Actions
+        // Remove old code actions
+        for (auto &it: storage.get_all<database::tables::t_code_action>(
+                where(c(&database::tables::t_code_action::file_fk) == m_file.id_pk))) {
+            storage.remove_all<database::tables::t_code_action_change>(
+                    where(c(&database::tables::t_code_action_change::code_action_fk) == it.id_pk));
+        }
+        storage.remove_all<database::tables::t_code_action>(
+                where(c(&database::tables::t_code_action::file_fk) == m_file.id_pk));
+
+        // Add new code actions
+        for (auto &visitor: m_visitors) {
+            for (auto &it: visitor->m_code_actions) {
+                if (it.code_action.file_fk == 0)
+                    it.code_action.file_fk = m_file.id_pk;
+                auto code_action_id = storage.insert(it.code_action);
+                for (auto &change: it.changes) {
+                    change.code_action_fk = code_action_id;
+                }
+                storage.insert_range(it.changes.begin(), it.changes.end());
+            }
+        }
+#pragma endregion
+
+
 #pragma region Diagnostics
         // Remove old diagnostics
         storage.remove_all<database::tables::t_diagnostic>(
@@ -260,16 +273,10 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::recurse(
 
 #pragma clang diagnostic pop
 
-void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze_ast(
-        sqf::runtime::runtime &runtime) {
+void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze(sqf::runtime::runtime &runtime) {
     for (auto &visitor: m_visitors) {
         visitor->start(*this);
     }
-    auto preprocessed_opt = runtime.parser_preprocessor().preprocess(runtime, m_text, {m_file.path, {}, {}});
-    if (!preprocessed_opt.has_value()) {
-        return;
-    }
-    m_preprocessed_text = preprocessed_opt.value();
     auto parser = sqf::parser::sqf::parser(runtime.get_logger());
     auto tokenizer = sqf::parser::sqf::tokenizer(m_preprocessed_text.begin(), m_preprocessed_text.end(), m_file.path);
     sqf::parser::sqf::bison::astnode root;
@@ -284,24 +291,14 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::analyze_ast(
 }
 
 sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::sqf_ast_analyzer(
-        std::filesystem::path ls_path,
         const std::filesystem::path &db_path,
+        database::tables::t_file file,
         sqfvm_factory &factory,
-        sqfvm::language_server::database::tables::t_file file,
-        std::string &text)
-        : m_file(std::move(file)),
-          m_text(text),
-          m_preprocessed_text(text),
-          m_runtime(),
-          m_context(db_path),
-          m_ls_path(std::move(ls_path)),
-          m_slspp_context(std::make_shared<slspp_context>()) {
-    m_runtime = factory.create([&](auto &msg) {
-        auto copy = msg;
-        copy.source_file_fk = m_file.id_pk;
-        m_diagnostics.push_back(copy);
-    }, m_context, m_slspp_context);
-    m_visitors.push_back(new visitors::variables_visitor());
+        std::string text,
+        std::filesystem::path ls_path)
+        : sqfvm_analyzer(db_path, std::move(file), factory, std::move(text)),
+          m_ls_path(std::move(ls_path)) {
+    m_visitors.push_back(new visitors::general_visitor());
     m_visitors.push_back(new visitors::scripted_visitor());
 }
 
@@ -309,4 +306,13 @@ sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::~sqf_ast_analyzer()
     for (auto v: m_visitors) {
         delete v;
     }
+}
+
+void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::macro_resolved(
+        ::sqf::parser::preprocessor::impl_default::macro_resolved_data orig_start,
+        ::sqf::parser::preprocessor::impl_default::macro_resolved_data orig_end, size_t pp_start, size_t pp_end,
+        sqf::runtime::runtime &runtime, sqf::runtime::parser::preprocessor::context &local_fileinfo,
+        sqf::runtime::parser::preprocessor::context &original_fileinfo, const sqf::runtime::parser::macro &m,
+        const std::unordered_map<std::string, std::string> &param_map) {
+
 }

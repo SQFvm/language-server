@@ -682,6 +682,17 @@ namespace x39 {
             return sstream.str();
         }
     };
+
+}
+namespace std {
+    template<>
+    struct std::hash<x39::uri>
+    {
+        std::size_t operator()(x39::uri const& s) const noexcept
+        {
+            return std::hash<std::string_view>{}(s.full());
+        }
+    };
 }
 
 #endif // SQFVM_LANGUAGE_SERVER_URI_HPP

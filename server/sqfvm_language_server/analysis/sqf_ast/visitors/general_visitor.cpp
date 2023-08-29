@@ -1,4 +1,4 @@
-#include "variables_visitor.hpp"
+#include "general_visitor.hpp"
 #include "../sqf_ast_analyzer.hpp"
 
 #include <algorithm>
@@ -284,7 +284,7 @@ namespace {
 }
 
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::start(sqf_ast_analyzer &a) {
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::start(sqf_ast_analyzer &a) {
     // Push initial scope
     m_scope_stack.push_back({0, scope_name_of(a)});
 
@@ -304,7 +304,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::sta
     m_references.push_back(reference);
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::enter(
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::enter(
         sqf_ast_analyzer &a,
         const ::sqf::parser::sqf::bison::astnode &node,
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes
@@ -452,7 +452,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::ent
 }
 
 sqfvm::language_server::database::tables::t_reference
-sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::make_reference(
+sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::make_reference(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
         const sqf::parser::sqf::bison::astnode &node,
         const t_variable &variable,
@@ -463,7 +463,7 @@ sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::make_ref
     return reference;
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::expression_handling_of_isnil(
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expression_handling_of_isnil(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
         const sqf::parser::sqf::bison::astnode &node) {
     // Call only has a right side argument
@@ -494,7 +494,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
     }
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::expression_handling_of_getvariable(
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expression_handling_of_getvariable(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
         const sqf::parser::sqf::bison::astnode &node) {
     // Call may have a left side argument but always has a right side argument
@@ -546,7 +546,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
     }
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::expression_handling_of_setvariable(
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expression_handling_of_setvariable(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
         const sqf::parser::sqf::bison::astnode &node) {
     // Call may have a left side argument but always has a right side argument
@@ -595,7 +595,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
     }
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::expression_handle_needless_parentheses(
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expression_handle_needless_parentheses(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
         const sqf::parser::sqf::bison::astnode &node,
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) {
@@ -607,6 +607,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
     if (actual_parent->kind == sqf::parser::sqf::bison::astkind::EXP_GROUP) {
         auto &left_bracket = group_parent;
         auto &right_bracket = group_parent->children.back();
+        // ToDo: Extract in separate function (CLion refuses to do so right now .... again)
         m_diagnostics.push_back(diag_needless_brackets_008(
                 file_id_of(a, node),
                 file_of(a).id_pk,
@@ -617,6 +618,65 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
                 file_of(a).id_pk,
                 right_bracket,
                 false));
+
+        if (!is_offset_in_macro(a, left_bracket->token.offset) && !is_offset_in_macro(a, right_bracket.token.offset)) {
+            code_action_tuple action{};
+            action.code_action.kind = database::tables::t_code_action::generic;
+            action.code_action.identifier = "VV-008";
+            action.code_action.text = "Remove needless brackets";
+            auto left_bracked_decoded = decode_preprocessed_offset(a, left_bracket->token.offset);
+            auto left_start_line = (left_bracked_decoded.has_value()
+                                    ? left_bracked_decoded.value().resolved.line
+                                    : left_bracket->token.line) +
+                                   LINE_OFFSET;
+            auto left_start_column = (left_bracked_decoded.has_value()
+                                      ? left_bracked_decoded.value().resolved.column
+                                      : left_bracket->token.column);
+            auto left_end_line = (left_bracked_decoded.has_value()
+                                  ? left_bracked_decoded.value().resolved.line
+                                  : left_bracket->token.line) +
+                                 LINE_OFFSET;
+            auto left_end_column = (left_bracked_decoded.has_value()
+                                    ? left_bracked_decoded.value().resolved.column
+                                    : left_bracket->token.column) + 1;
+
+            action.changes.push_back({
+                                             .operation = database::tables::t_code_action_change::file_change,
+                                             .path = file_of(a).path,
+                                             .start_line = left_start_line,
+                                             .start_column = left_start_column,
+                                             .end_line = left_end_line,
+                                             .end_column = left_end_column,
+                                             .content = "",
+                                     });
+            auto right_bracked_decoded = decode_preprocessed_offset(a, right_bracket.token.offset);
+            auto right_start_line = (right_bracked_decoded.has_value()
+                                     ? right_bracked_decoded.value().resolved.line
+                                     : right_bracket.token.line) +
+                                    LINE_OFFSET;
+            auto right_start_column = (right_bracked_decoded.has_value()
+                                       ? right_bracked_decoded.value().resolved.column
+                                       : right_bracket.token.column);
+            auto right_end_line = (right_bracked_decoded.has_value()
+                                   ? right_bracked_decoded.value().resolved.line
+                                   : right_bracket.token.line) +
+                                  LINE_OFFSET;
+            auto right_end_column = (right_bracked_decoded.has_value()
+                                     ? right_bracked_decoded.value().resolved.column
+                                     : right_bracket.token.column) + 1;
+
+            action.changes.push_back({
+                                             .operation = database::tables::t_code_action_change::file_change,
+                                             .path = file_of(a).path,
+                                             .start_line = right_start_line,
+                                             .start_column = right_start_column,
+                                             .end_line = right_end_line,
+                                             .end_column = right_end_column,
+                                             .content = "",
+                                     });
+            m_code_actions.push_back(action);
+        }
+        // End of ToDo
         return;
     }
     uint8_t current_precedence = 0;
@@ -706,6 +766,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
     if (current_precedence > actual_parent_precedence) {
         auto &left_bracket = group_parent;
         auto &right_bracket = group_parent->children.back();
+        // ToDo: Extract in separate function (CLion refuses to do so right now .... again)
         m_diagnostics.push_back(diag_needless_brackets_008(
                 file_id_of(a, node),
                 file_of(a).id_pk,
@@ -716,11 +777,70 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
                 file_of(a).id_pk,
                 right_bracket,
                 false));
+
+        if (!is_offset_in_macro(a, left_bracket->token.offset) && !is_offset_in_macro(a, right_bracket.token.offset)) {
+            code_action_tuple action{};
+            action.code_action.kind = database::tables::t_code_action::generic;
+            action.code_action.identifier = "VV-008";
+            action.code_action.text = "Remove needless brackets";
+            auto left_bracked_decoded = decode_preprocessed_offset(a, left_bracket->token.offset);
+            auto left_start_line = (left_bracked_decoded.has_value()
+                                    ? left_bracked_decoded.value().resolved.line
+                                    : left_bracket->token.line) +
+                                   LINE_OFFSET;
+            auto left_start_column = (left_bracked_decoded.has_value()
+                                      ? left_bracked_decoded.value().resolved.column
+                                      : left_bracket->token.column);
+            auto left_end_line = (left_bracked_decoded.has_value()
+                                  ? left_bracked_decoded.value().resolved.line
+                                  : left_bracket->token.line) +
+                                 LINE_OFFSET;
+            auto left_end_column = (left_bracked_decoded.has_value()
+                                    ? left_bracked_decoded.value().resolved.column
+                                    : left_bracket->token.column) + 1;
+
+            action.changes.push_back({
+                                             .operation = database::tables::t_code_action_change::file_change,
+                                             .path = file_of(a).path,
+                                             .start_line = left_start_line,
+                                             .start_column = left_start_column,
+                                             .end_line = left_end_line,
+                                             .end_column = left_end_column,
+                                             .content = "",
+                                     });
+            auto right_bracked_decoded = decode_preprocessed_offset(a, right_bracket.token.offset);
+            auto right_start_line = (right_bracked_decoded.has_value()
+                                     ? right_bracked_decoded.value().resolved.line
+                                     : right_bracket.token.line) +
+                                    LINE_OFFSET;
+            auto right_start_column = (right_bracked_decoded.has_value()
+                                       ? right_bracked_decoded.value().resolved.column
+                                       : right_bracket.token.column);
+            auto right_end_line = (right_bracked_decoded.has_value()
+                                      ? right_bracked_decoded.value().resolved.line
+                                      : right_bracket.token.line) +
+                                     LINE_OFFSET;
+            auto right_end_column = (right_bracked_decoded.has_value()
+                                        ? right_bracked_decoded.value().resolved.column
+                                        : right_bracket.token.column) + 1;
+
+            action.changes.push_back({
+                                             .operation = database::tables::t_code_action_change::file_change,
+                                             .path = file_of(a).path,
+                                             .start_line = right_start_line,
+                                             .start_column = right_start_column,
+                                             .end_line = right_end_line,
+                                             .end_column = right_end_column,
+                                             .content = "",
+                                     });
+            m_code_actions.push_back(action);
+        }
+        // End of ToDo
         return;
     }
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::expression_handling_of_params(
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expression_handling_of_params(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
         const sqf::parser::sqf::bison::astnode &node) {
     // params may have a left value and always has a right value
@@ -774,7 +894,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
     }
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::expression_handling_of_private(
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expression_handling_of_private(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
         const sqf::parser::sqf::bison::astnode &node) {// private always has a right value and never a left value, so we can just take the first child
     auto right_value = node.children.front();
@@ -824,7 +944,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exp
     }
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exit(
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::exit(
         sqf_ast_analyzer &a,
         const ::sqf::parser::sqf::bison::astnode &node,
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) {
@@ -848,12 +968,12 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::exi
     }
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::end(sqf_ast_analyzer &a) {
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::end(sqf_ast_analyzer &a) {
     pop_scope();
     pop_namespace();
 }
 
-bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_left_side_of_assignment(
+bool sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::is_left_side_of_assignment(
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes,
         const ::sqf::parser::sqf::bison::astnode &node) const {
     // !WARNING! while this method looks similar to is_right_side_of_assignment, it is not the same!
@@ -872,7 +992,7 @@ bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_
            && &parent.children.front() == &node;
 }
 
-bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_right_side_of_assignment(
+bool sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::is_right_side_of_assignment(
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes,
         const ::sqf::parser::sqf::bison::astnode &node) const {
     // !WARNING! while this method looks similar to is_left_side_of_assignment, it is not the same!
@@ -891,7 +1011,7 @@ bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_
            && &parent.children.front() != &node;
 }
 
-t_reference sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::make_reference(
+t_reference sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::make_reference(
         sqf_ast_analyzer &a,
         const ::sqf::parser::sqf::bison::astnode &node) {
 
@@ -906,7 +1026,7 @@ t_reference sqfvm::language_server::analysis::sqf_ast::visitors::variables_visit
     return reference;
 }
 
-uint64_t sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::file_id_of(
+uint64_t sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::file_id_of(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
         const sqf::parser::sqf::bison::astnode &node) {
     auto node_path = std::filesystem::path(*node.token.path).lexically_normal();
@@ -919,7 +1039,7 @@ uint64_t sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor:
     return file.id_pk;
 }
 
-std::string sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::push_scope(
+std::string sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::push_scope(
         sqf_ast_analyzer &a,
         const ::sqf::parser::sqf::bison::astnode &node,
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes
@@ -958,7 +1078,7 @@ std::string sqfvm::language_server::analysis::sqf_ast::visitors::variables_visit
         scope.append(std::to_string(back.child_count));
         m_scope_stack.back().child_count++;
     }
-    variables_visitor::scope s{0, scope, is_detached};
+    general_visitor::scope s{0, scope, is_detached};
     m_scope_stack.push_back(s);
     if (is_detached) {
         // ToDo: implement properly (not every {} scope has _this)
@@ -972,7 +1092,7 @@ std::string sqfvm::language_server::analysis::sqf_ast::visitors::variables_visit
     return scope;
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::add_magic_variables_to_current_scope(
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::add_magic_variables_to_current_scope(
         sqf_ast_analyzer &a,
         const ::sqf::parser::sqf::bison::astnode &node,
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) {
@@ -1007,7 +1127,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::add
     }
 }
 
-bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_detached_scope(
+bool sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::is_detached_scope(
         const std::vector<const ::sqf::parser::sqf::bison::astnode *> &parent_nodes) const {
     bool is_detached = false;
     if (!parent_nodes.empty()) {
@@ -1043,7 +1163,7 @@ bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::is_
     return is_detached;
 }
 
-bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::node_is_expression(
+bool sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::node_is_expression(
         const sqf::parser::sqf::bison::astnode &parent) {
     return parent.kind == sqf::parser::sqf::bison::astkind::EXP0
            || parent.kind == sqf::parser::sqf::bison::astkind::EXP1
@@ -1058,11 +1178,11 @@ bool sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::nod
            || parent.kind == sqf::parser::sqf::bison::astkind::EXPU;
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::pop_scope() {
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::pop_scope() {
     m_scope_stack.pop_back();
 }
 
-t_variable sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::get_or_create_variable(
+t_variable sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::get_or_create_variable(
         std::string_view name) {
     if (is_private_variable(name)) {
         for (auto scope_reverse_it = m_scope_stack.rbegin();
@@ -1106,7 +1226,7 @@ t_variable sqfvm::language_server::analysis::sqf_ast::visitors::variables_visito
     }
 }
 
-void sqfvm::language_server::analysis::sqf_ast::visitors::variables_visitor::analyze(
+void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::analyze(
         sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &sqf_ast_analyzer,
         const sqfvm::language_server::database::context &context) {
     using namespace sqlite_orm;

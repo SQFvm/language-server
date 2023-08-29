@@ -23,7 +23,8 @@
         "onLanguage:sqc",
         "onCommand:sqfVmLanguageServer.openFilePath",
         "onCommand:sqfVmLanguageServer.openRpt",
-        "onCommand:sqfVmLanguageServer.alignEquals"
+        "onCommand:sqfVmLanguageServer.alignEquals",
+        "workspaceContains:*.sqf"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -87,9 +88,26 @@
             }
         ],
         "configuration": {
-            "type": "object",
-            "title": "SQF VM Language server",
+            "title": "%sqfVmLanguageServer.Executable.Title%",
             "properties": {
+                "sqfVmLanguageServer.Executable.PathMappings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "physical": {
+                                "type": "string"
+                            },
+                            "virtual": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "uniqueItems": true,
+                    "title": "%sqfVmLanguageServer.Executable.PathMappings.Title%",
+                    "markdownDescription": "%sqfVmLanguageServer.Executable.PathMappings.MarkdownDescription%",
+                    "scope": "machine-overridable"
+                }
             }
         }
     },

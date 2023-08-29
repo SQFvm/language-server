@@ -13,6 +13,8 @@
 #include <filesystem>
 #include <vector>
 #include <memory>
+#include <sstream>
+#include <functional>
 
 namespace sqfvm::language_server {
     class language_server : public ::lsp::server {
@@ -21,11 +23,11 @@ namespace sqfvm::language_server {
         std::filesystem::path m_db_path;
         analysis::analyzer_factory m_analyzer_factory;
         std::shared_ptr<database::context> m_context;
-        std::unordered_map<std::string, std::string> m_file_contents;
+        std::unordered_map<::lsp::data::document_uri, ::lsp::data::integer> m_versions;
         sqfvm_factory m_sqfvm_factory;
         file_system_watcher m_file_system_watcher;
 
-        bool delete_file(const std::filesystem::path& file);
+        bool delete_file(const std::filesystem::path &file);
 
         void delete_file(database::tables::t_file file);
 
@@ -38,7 +40,7 @@ namespace sqfvm::language_server {
         void analyze_outdated_files();
 
         void push_file_history(
-                const ::sqfvm::language_server::database::tables::t_file& file,
+                const ::sqfvm::language_server::database::tables::t_file &file,
                 std::string contents,
                 bool is_external = false);
 
@@ -51,8 +53,23 @@ namespace sqfvm::language_server {
         void file_system_item_modified(const std::filesystem::path &path,
                                        bool is_directory);
 
-        std::optional<database::tables::t_file>
-        get_file_from_path(const std::filesystem::path& path, bool create_if_not_exists = false);
+        [[nodiscard]] std::string add_or_update_pboprefix_mapping_safe(const std::filesystem::path &);
+
+        void mark_all_files_as_outdated();
+        void add_or_update_pboprefix_mapping_logging(const std::filesystem::path &);
+        void remove_pboprefix_mapping(const std::filesystem::path &);
+
+        std::optional<database::tables::t_file> get_file_from_path(
+                const std::filesystem::path &path,
+                bool create_if_not_exists = false);
+
+        void window_log(
+                ::lsp::data::message_type type,
+                const std::function<void(std::stringstream &sstream)> &func) {
+            std::stringstream sstream;
+            func(sstream);
+            window_logMessage(type, sstream.str());
+        }
 
     protected:
         ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params &params) override;
@@ -62,6 +79,8 @@ namespace sqfvm::language_server {
         void after_initialize(const ::lsp::data::initialize_params &params) override;
 
         void on_workspace_didChangeConfiguration(const ::lsp::data::did_change_configuration_params &params) override;
+
+        void on_textDocument_didOpen(const ::lsp::data::did_open_text_document_params &params) override;
 
         void on_textDocument_didChange(const ::lsp::data::did_change_text_document_params &params) override;
 
@@ -74,6 +93,9 @@ namespace sqfvm::language_server {
 
         std::optional<::lsp::data::completion_list>
         on_textDocument_completion(const ::lsp::data::completion_params &params) override;
+
+        std::optional<std::vector<std::variant<lsp::data::command, lsp::data::code_action>>>
+        on_textDocument_codeAction(const lsp::data::code_action_params &params) override;
 
     public:
         language_server();

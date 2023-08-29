@@ -1,0 +1,5 @@
+{
+    "sqfVmLanguageServer.Executable.Title": "SQF-VM Sprachserver",
+    "sqfVmLanguageServer.Executable.PathMappings.Title": "Pfadzuordnung",
+    "sqfVmLanguageServer.Executable.PathMappings.MarkdownDescription": "Die physischen -> virtuellen Pfadzuordnungen für den zu verwendenden Sprachserver.\n\nBeispiel:\n```json\n\"sqfVmLanguageServer.Executable.PathMappings\": [\n    {\"physical\": \"C:/Physischer/Pfad\", \"virtual\": \"/Virtueller/Pfad\"}\n]\n```"
+}

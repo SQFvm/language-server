@@ -126,18 +126,7 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
                     }
                 }
             } else if (file_path.filename() == "$PBOPREFIX$") {
-                // ToDo: If modified, remove existing mapping and reparse as whole. (or message the user that a reload is required)
-                // ToDo: If created, add mapping and reparse as whole. (or message the user that a reload is required)
-                auto pboprefix_path = file_path.parent_path().string();
-                auto pboprefix_contents_o = runtime->fileio().read_file_from_disk(file_path.string());
-                if (pboprefix_contents_o.has_value()) {
-                    auto pboprefix_contents = pboprefix_contents_o.value();
-                    m_sqfvm_factory.add_mapping(pboprefix_path, pboprefix_contents);
-                } else {
-                    std::stringstream sstream;
-                    sstream << "Failed to read " << pboprefix_path << ". Skipping.";
-                    window_logMessage(lsp::data::message_type::Error, sstream.str());
-                }
+                add_or_update_pboprefix_mapping_logging(file_path);
             }
         }
     }
@@ -221,6 +210,27 @@ void sqfvm::language_server::language_server::analyze_outdated_files() {
 
 void sqfvm::language_server::language_server::on_workspace_didChangeConfiguration(
         const ::lsp::data::did_change_configuration_params &params) {
+    m_sqfvm_factory.clear_workspace_mappings();
+    if (params.settings.has_value() && params.settings->contains("sqfVmLanguageServer")) {
+        auto settings = params.settings.value()["sqfVmLanguageServer"];
+        if (settings.is_object() && settings.contains("Executable")) {
+            auto executable = settings["Executable"];
+            if (executable.is_object() &&executable.contains("PathMappings")) {
+                auto path_mappings = executable["PathMappings"];
+                if (path_mappings.is_array()) {
+                    for (auto &mapping: path_mappings) {
+                        if (mapping.is_object() && mapping.contains("physical") && mapping.contains("virtual")) {
+                            auto physical = mapping["physical"];
+                            auto virtual_ = mapping["virtual"];
+                            if (physical.is_string() && virtual_.is_string()) {
+                                m_sqfvm_factory.add_mapping(physical, virtual_, true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 std::optional<std::vector<lsp::data::location>> sqfvm::language_server::language_server::on_textDocument_references(
@@ -291,22 +301,65 @@ sqfvm::language_server::language_server::get_file_from_path(
     }
 }
 
+void sqfvm::language_server::language_server::remove_pboprefix_mapping(
+        const std::filesystem::path &pboprefix) {
+    m_sqfvm_factory.remove_mapping(pboprefix.parent_path().string());
+}
+
+std::string sqfvm::language_server::language_server::add_or_update_pboprefix_mapping_safe(
+        const std::filesystem::path &pboprefix) {
+    if (!exists(pboprefix))
+        return ("File '" + pboprefix.string() + "' does not exist.");
+    auto content_opt = sqf::fileio::passthrough::read_file_from_disk(pboprefix.string());
+    if (!content_opt.has_value())
+        return ("Failed to read file '" + pboprefix.string() + "'.");
+    auto content = content_opt.value();
+    m_sqfvm_factory.update_mapping(pboprefix.parent_path().string(), content);
+    return {};
+}
+
+void sqfvm::language_server::language_server::add_or_update_pboprefix_mapping_logging(
+        const std::filesystem::path &pboprefix) {
+    auto result = add_or_update_pboprefix_mapping_safe(pboprefix);
+    if (!result.empty()) {
+        window_log(::lsp::data::message_type::Error, [&](auto &sstream) {
+            sstream << "Failed to read '" << pboprefix << "': " << result;
+        });
+    }
+}
+
+void sqfvm::language_server::language_server::on_textDocument_didOpen(
+        const lsp::data::did_open_text_document_params &params) {
+    m_versions[static_cast<::lsp::data::document_uri>(params.text_document.uri.full())] = params.text_document.version;
+}
+
 void sqfvm::language_server::language_server::on_textDocument_didChange(
         const ::lsp::data::did_change_text_document_params &params) {
+    m_versions[static_cast<::lsp::data::document_uri>(params.text_document.uri.full())] = params.text_document.version;
     auto path = std::filesystem::path(
-            std::string(params.textDocument.uri.path().begin(),
-                        params.textDocument.uri.path().end()))
+            std::string(params.text_document.uri.path().begin(),
+                        params.text_document.uri.path().end()))
             .lexically_normal();
-    auto file_opt = get_file_from_path(path, true);
-    if (!file_opt.has_value())
-        return;
-    auto file = file_opt.value();
-    file.is_outdated = true;
-    m_context->storage().update(file);
 
-    push_file_history(file, params.contentChanges[0].text);
-    mark_related_files_as_outdated(file);
-    analyze_outdated_files();
+    if (iequal(path.filename().string(), "$PBOPREFIX$")) {
+        // We intentionally ignore the results here to delay the update of the mapping until the user saves the file
+        window_log(::lsp::data::message_type::Info, [&](auto &sstream) {
+            sstream << "Detected change in '"
+                    << path
+                    << "'. Language server will update the mapping when the file is saved.";
+        });
+    } else {
+        auto file_opt = get_file_from_path(path, true);
+        if (!file_opt.has_value())
+            return;
+        auto file = file_opt.value();
+        file.is_outdated = true;
+        m_context->storage().update(file);
+
+        push_file_history(file, params.content_changes[0].text);
+        mark_related_files_as_outdated(file);
+        analyze_outdated_files();
+    }
 }
 
 void sqfvm::language_server::language_server::push_file_history(
@@ -344,8 +397,13 @@ sqfvm::language_server::language_server::language_server() {
                     auto db_path,
                     auto &factory,
                     auto file,
-                    auto &text) -> std::unique_ptr<analysis::analyzer> {
-                return std::make_unique<analysis::sqf_ast::sqf_ast_analyzer>(ls_path, db_path, factory, file, text);
+                    auto text) -> std::unique_ptr<analysis::analyzer> {
+                return std::make_unique<analysis::sqf_ast::sqf_ast_analyzer>(
+                        db_path,
+                        file,
+                        factory,
+                        std::move(text),
+                        ls_path);
             });
 }
 
@@ -428,11 +486,9 @@ void sqfvm::language_server::language_server::analyse_file(
     if (!analyzer_opt.has_value()) {
         return;
     }
-    {
-        std::stringstream sstream;
+    window_log(::lsp::data::message_type::Log, [&](auto &sstream) {
         sstream << "Analyzing '" << file.path << "'";
-        window_logMessage(::lsp::data::message_type::Log, sstream.str());
-    }
+    });
     try {
         analyzer_opt.value()->analyze();
         analyzer_opt.value()->commit();
@@ -455,9 +511,9 @@ void sqfvm::language_server::language_server::analyse_file(
         publish_diagnostics(file);
     }
     catch (std::exception &e) {
-        std::stringstream sstream;
-        sstream << "Failed to publish diagnostics for '" << file.path << "': " << e.what();
-        window_logMessage(::lsp::data::message_type::Error, sstream.str());
+        window_log(::lsp::data::message_type::Error, [&](auto &sstream) {
+            sstream << "Failed to publish diagnostics for '" << file.path << "': " << e.what();
+        });
     }
 }
 
@@ -520,6 +576,10 @@ void sqfvm::language_server::language_server::mark_file_as_outdated(const std::f
         m_context->storage().update(file);
 }
 
+void sqfvm::language_server::language_server::mark_all_files_as_outdated() {
+    m_context->storage().update_all(set(c(&database::tables::t_file::is_outdated) = true));
+}
+
 void sqfvm::language_server::language_server::file_system_item_removed(
         const std::filesystem::path &path,
         bool is_directory) {
@@ -531,6 +591,9 @@ void sqfvm::language_server::language_server::file_system_item_removed(
         for (const auto &file: files) {
             delete_file(file);
         }
+    } else if (iequal(path.filename().string(), "$PBOPREFIX$")) {
+        remove_pboprefix_mapping(path);
+        mark_all_files_as_outdated();
     } else {
         if (!delete_file(path))
             return;
@@ -549,6 +612,9 @@ void sqfvm::language_server::language_server::file_system_item_added(
                 continue;
             mark_file_as_outdated(p);
         }
+    } else if (iequal(path.filename().string(), "$PBOPREFIX$")) {
+        add_or_update_pboprefix_mapping_logging(path);
+        mark_all_files_as_outdated();
     } else {
         mark_file_as_outdated(path);
     }
@@ -562,16 +628,21 @@ void sqfvm::language_server::language_server::file_system_item_modified(
         return;
     if (is_subpath(path, m_lsp_folder.parent_path()))
         return;
-    auto file_opt = get_file_from_path(path.string(), true);
-    if (!file_opt.has_value()) {
-        return;
+    if (iequal(path.filename().string(), "$PBOPREFIX$")) {
+        add_or_update_pboprefix_mapping_logging(path);
+        mark_all_files_as_outdated();
+    } else {
+        auto file_opt = get_file_from_path(path.string(), true);
+        if (!file_opt.has_value()) {
+            return;
+        }
+        auto file = file_opt.value();
+        if (!file.is_outdated) {
+            file.is_outdated = true;
+            m_context->storage().update(file);
+        }
+        mark_related_files_as_outdated(file);
     }
-    auto file = file_opt.value();
-    if (!file.is_outdated) {
-        file.is_outdated = true;
-        m_context->storage().update(file);
-    }
-    mark_related_files_as_outdated(file);
     analyze_outdated_files();
 }
 
@@ -607,15 +678,145 @@ void sqfvm::language_server::language_server::ensure_git_ignore_file_exists() {
     res.capabilities.completionProvider = lsp::data::initialize_result::server_capabilities::completion_options{.resolveProvider = true};
     res.capabilities.referencesProvider = lsp::data::initialize_result::server_capabilities::reference_options{.workDoneProgress = false};
     res.capabilities.codeActionProvider = lsp::data::initialize_result::server_capabilities::code_action_options{
-        .codeActionKinds = {std::vector<lsp::data::code_action_kind>{
-            lsp::data::code_action_kind::QuickFix,
-            lsp::data::code_action_kind::Refactor,
-            lsp::data::code_action_kind::RefactorExtract,
-            lsp::data::code_action_kind::RefactorInline,
-            lsp::data::code_action_kind::Source,
-            lsp::data::code_action_kind::RefactorRewrite,
-        }}
+            .codeActionKinds = {std::vector<lsp::data::code_action_kind>{
+                    lsp::data::code_action_kind::QuickFix,
+                    lsp::data::code_action_kind::Refactor,
+                    lsp::data::code_action_kind::RefactorExtract,
+                    lsp::data::code_action_kind::RefactorInline,
+                    lsp::data::code_action_kind::Source,
+                    lsp::data::code_action_kind::RefactorRewrite,
+            }}
     };
 
     return res;
+}
+
+std::optional<std::vector<std::variant<lsp::data::command, lsp::data::code_action>>>
+sqfvm::language_server::language_server::on_textDocument_codeAction(const lsp::data::code_action_params &params) {
+    using namespace lsp::data;
+    using namespace database::tables;
+    using namespace std::string_literals;
+    const size_t lsp_trash_offset = 1;
+    auto path = std::filesystem::path(
+            std::string(params.textDocument.uri.path().begin(),
+                        params.textDocument.uri.path().end()))
+            .lexically_normal();
+    auto file_opt = get_file_from_path(path.string(), false);
+    if (!file_opt.has_value())
+        return std::nullopt;
+    auto file = file_opt.value();
+
+    std::vector<std::variant<lsp::data::command, lsp::data::code_action>> out_data{};
+
+    {
+        // Get code actions and their corresponding changes from database
+        auto code_actions = m_context->storage().get_all<t_code_action>(
+                where(c(&t_code_action::file_fk) == file.id_pk));
+        for (const auto &code_action: code_actions) {
+            std::vector<std::variant<text_document_edit, create_file, rename_file, lsp::data::delete_file>> out_changes{};
+            auto changes = m_context->storage().get_all<t_code_action_change>(
+                    where(c(&t_code_action_change::code_action_fk) == code_action.id_pk));
+            bool in_range = false;
+            for (const auto &change: changes) {
+                in_range = in_range || change.start_line >= params.range.start.line
+                                       && change.start_column >= params.range.start.character
+                                       && change.end_line >= params.range.end.line
+                                       && change.end_column >= params.range.end.character;
+                auto change_path = sanitize_to_uri(change.path);
+                auto document_uri = static_cast<::lsp::data::document_uri>(change_path.full());
+                auto lsp_file_version = m_versions.contains(document_uri)
+                                        ? std::optional<::lsp::data::integer>{m_versions.at(document_uri)}
+                                        : std::nullopt;
+                switch (change.operation) {
+                    case t_code_action_change::file_change:
+                        out_changes.emplace_back(text_document_edit{
+                                .textDocument = optional_versioned_text_document_identifier{
+                                        .version = lsp_file_version,
+                                        .uri = change_path,
+                                },
+                                .edits = {text_edit{
+                                        .range = range{
+                                                .start = position{
+                                                        .line = change.start_line.value_or(0),
+                                                        .character = change.start_column.value_or(0),
+                                                },
+                                                .end = position{
+                                                        .line = change.end_line.value_or(0),
+                                                        .character = change.end_column.value_or(0),
+                                                },
+                                        },
+                                        .new_text = change.content.value_or(""s),
+                                }},
+                        });
+                        break;
+                    case t_code_action_change::file_create:
+                        out_changes.emplace_back(create_file{
+                                .uri = change_path,
+                                .options = create_file::create_file_options{
+                                        .overwrite = true,
+                                        .ignore_if_exists = true,
+                                },
+                        });
+                        out_changes.emplace_back(text_document_edit{
+                                .textDocument = optional_versioned_text_document_identifier{
+                                        .version = lsp_file_version,
+                                        .uri = change_path,
+                                },
+                                .edits = {text_edit{
+                                        .range = range{
+                                                .start = position{0, 0},
+                                                .end = position{0, 0},
+                                        },
+                                        .new_text = change.content.value_or(""s),
+                                }},
+                        });
+                        break;
+                    case t_code_action_change::file_delete:
+                        out_changes.emplace_back(lsp::data::delete_file{
+                                .uri = change_path,
+                                .options = lsp::data::delete_file::delete_file_options{
+                                        .recursive = true,
+                                        .ignore_if_not_exists = true,
+                                },
+                        });
+                        break;
+                    case t_code_action_change::file_rename:
+                        out_changes.emplace_back(rename_file{
+                                .oldUri = sanitize_to_uri(change.old_path.value_or(""s)),
+                                .newUri = change_path,
+                                .options = rename_file::rename_file_options{
+                                        .overwrite = true,
+                                        .ignore_if_exists = true,
+                                },
+                        });
+                        break;
+                }
+            }
+            if (out_changes.empty() || !in_range)
+                continue;
+            out_data.push_back(lsp::data::code_action{
+                    .title = code_action.text,
+                    .kind = code_action.kind == database::tables::t_code_action::quick_fix
+                            ? code_action_kind::QuickFix
+                            : code_action.kind == database::tables::t_code_action::refactor
+                              ? code_action_kind::Refactor
+                              : code_action.kind == database::tables::t_code_action::extract_refactor
+                                ? code_action_kind::RefactorExtract
+                                : code_action.kind == database::tables::t_code_action::inline_refactor
+                                  ? code_action_kind::RefactorInline
+                                  : code_action.kind == database::tables::t_code_action::whole_file
+                                    ? code_action_kind::Source
+                                    : code_action.kind == database::tables::t_code_action::rewrite_refactor
+                                      ? code_action_kind::RefactorRewrite
+                                      : code_action_kind::Empty,
+                    .isPreferred = true,
+                    .edit = workspace_edit{
+                            .changes = {},
+                            .document_changes = out_changes,
+                            .change_annotations = {},
+                    },
+            });
+        }
+    }
+    return {out_data};
 }

@@ -5,7 +5,6 @@
 #include <parser/preprocessor/default.h>
 #include <parser/config/config_parser.hpp>
 #include <utility>
-#include "operators/ops.h"
 
 std::shared_ptr<sqf::runtime::runtime> sqfvm::language_server::sqfvm_factory::create(
         const std::function<void(const sqfvm::language_server::database::tables::t_diagnostic &)> &log,
@@ -58,7 +57,8 @@ std::shared_ptr<sqf::runtime::runtime> sqfvm::language_server::sqfvm_factory::cr
     }});
     runtime->parser_preprocessor(std::move(preprocessor));
     sqf::operators::ops(*runtime);
-    for (const auto &mapping: m_mappings) {
+    for (const auto &tuple: m_mappings) {
+        auto mapping = tuple.mapping;
         runtime->fileio().add_mapping(mapping.physical, mapping.virtual_);
     }
     return runtime;
