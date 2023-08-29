@@ -215,7 +215,7 @@ void sqfvm::language_server::language_server::on_workspace_didChangeConfiguratio
         auto settings = params.settings.value()["sqfVmLanguageServer"];
         if (settings.is_object() && settings.contains("Executable")) {
             auto executable = settings["Executable"];
-            if (executable.is_object() &&executable.contains("PathMappings")) {
+            if (executable.is_object() && executable.contains("PathMappings")) {
                 auto path_mappings = executable["PathMappings"];
                 if (path_mappings.is_array()) {
                     for (auto &mapping: path_mappings) {
@@ -687,6 +687,7 @@ void sqfvm::language_server::language_server::ensure_git_ignore_file_exists() {
                     lsp::data::code_action_kind::RefactorRewrite,
             }}
     };
+    res.capabilities.hoverProvider = lsp::data::initialize_result::server_capabilities::hover_options{.workDoneProgress = false};
 
     return res;
 }
@@ -718,8 +719,8 @@ sqfvm::language_server::language_server::on_textDocument_codeAction(const lsp::d
                     where(c(&t_code_action_change::code_action_fk) == code_action.id_pk));
             bool in_range = false;
             for (const auto &change: changes) {
-                in_range = in_range || change.start_line >= params.range.start.line
-                                       && change.start_column >= params.range.start.character
+                in_range = in_range || change.start_line <= params.range.start.line
+                                       && change.start_column <= params.range.start.character
                                        && change.end_line >= params.range.end.line
                                        && change.end_column >= params.range.end.character;
                 auto change_path = sanitize_to_uri(change.path);
@@ -819,4 +820,68 @@ sqfvm::language_server::language_server::on_textDocument_codeAction(const lsp::d
         }
     }
     return {out_data};
+}
+
+std::optional<lsp::data::hover> sqfvm::language_server::language_server::on_textDocument_hover(
+        const lsp::data::hover_params &params) {
+    using namespace ::lsp::data;
+    using namespace std::string_literals;
+
+    auto path = std::filesystem::path(
+            std::string(params.text_document.uri.path().begin(),
+                        params.text_document.uri.path().end()))
+            .lexically_normal();
+    auto file_opt = get_file_from_path(path.string(), false);
+    if (!file_opt.has_value())
+        return std::nullopt;
+    auto file = file_opt.value();
+    auto hovers = m_context->storage().get_all<database::tables::t_hover>(
+            where(c(&database::tables::t_hover::file_fk) == file.id_pk
+                  && c(&database::tables::t_hover::start_line) <= params.position.line + 1
+                  && c(&database::tables::t_hover::start_column) <= params.position.character + 1
+                  && c(&database::tables::t_hover::end_line) >= params.position.line + 1
+                  && c(&database::tables::t_hover::end_column) >= params.position.character + 1));
+    if (hovers.empty())
+        return std::nullopt;
+
+    std::vector<hover> out_hovers;
+    for (const auto &hover: hovers) {
+        out_hovers.emplace_back(
+                markup_content{markup_kind::Markdown, hover.markdown},
+                range{
+                        .start = position{
+                                .line = hover.start_line,
+                                .character = hover.start_column,
+                        },
+                        .end = position{
+                                .line = hover.end_line,
+                                .character = hover.end_column,
+                        },
+                });
+    }
+
+    if (out_hovers.size() == 1)
+        return out_hovers.front();
+
+    std::stringstream sstream;
+    position smallest_start = out_hovers.front().range->start;
+    position largest_end = out_hovers.front().range->end;
+
+    for (const auto &hover: out_hovers) {
+        if (hover.range->start.line < smallest_start.line || (hover.range->start.line == smallest_start.line && hover.range->start.character < smallest_start.character))
+            smallest_start = hover.range->start;
+        if (hover.range->end.line > largest_end.line || (hover.range->end.line == largest_end.line && hover.range->end.character > largest_end.character))
+            largest_end = hover.range->end;
+        if (sstream.tellp() > 0)
+            sstream << "\n\n";
+        sstream << hover.contents.value;
+    }
+
+    return hover{
+            .contents = markup_content{markup_kind::Markdown, sstream.str()},
+            .range = range{
+                    .start = smallest_start,
+                    .end = largest_end,
+            },
+    };
 }

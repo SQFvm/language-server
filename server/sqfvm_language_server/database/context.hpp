@@ -8,6 +8,7 @@
 #include "tables/t_code_action.h"
 #include "tables/t_code_action_change.h"
 #include "tables/t_diagnostic.h"
+#include "tables/t_hover.h"
 #include "tables/t_file.h"
 #include "tables/t_file_history.h"
 #include "tables/t_reference.h"
@@ -39,6 +40,15 @@ namespace sqfvm::language_server::database {
                                make_column("path", &t_file::path),
                                make_column("is_outdated", &t_file::is_outdated),
                                make_column("is_deleted", &t_file::is_deleted)),
+                    make_table(t_hover::table_name,
+                               make_column("id_pk", &t_hover::id_pk, primary_key().autoincrement()),
+                               make_column("file_fk", &t_hover::file_fk),
+                               make_column("start_line", &t_hover::start_line),
+                               make_column("start_column", &t_hover::start_column),
+                               make_column("end_line", &t_hover::end_line),
+                               make_column("end_column", &t_hover::end_column),
+                               make_column("markdown", &t_hover::markdown),
+                               foreign_key(&t_hover::file_fk).references(&t_file::id_pk)),
                     make_table(t_file_history::table_name,
                                make_column("id_pk", &t_file_history::id_pk, primary_key().autoincrement()),
                                make_column("file_fk", &t_file_history::file_fk),

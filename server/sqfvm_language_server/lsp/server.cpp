@@ -177,6 +177,19 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 }
             });
     m_rpc.register_method(
+            "textDocument/hover", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
+                try {
+                    auto params = data::hover_params::from_json(msg.params.value());
+                    auto res = on_textDocument_hover(params);
+                    rpc.send({msg.id, to_json(res)});
+                }
+                catch (const std::exception &e) {
+                    std::stringstream sstream;
+                    sstream << "rpc call 'textDocument/codeAction' failed with: '" << e.what() << "'.";
+                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                }
+            });
+    m_rpc.register_method(
             "workspace/didChangeConfiguration", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
                 try {
                     auto params = data::did_change_configuration_params::from_json(msg.params.value());

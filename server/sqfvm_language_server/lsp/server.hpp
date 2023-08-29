@@ -66,6 +66,11 @@ namespace lsp {
             return {};
         }
 
+        virtual std::optional<lsp::data::hover> on_textDocument_hover(
+                const lsp::data::hover_params &params) {
+            return {};
+        }
+
         virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(
                 const lsp::data::folding_range_params &params) {
             return {};

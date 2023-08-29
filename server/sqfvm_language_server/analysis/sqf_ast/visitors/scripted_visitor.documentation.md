@@ -308,6 +308,31 @@ strings.
 
 A new type introduced to allow introspection of the AST for SQF.
 
+## Array: `HOVER`
+
+```sqf
+[
+    start_line,   // scalar
+    start_column, // scalar
+    end_line,     // scalar
+    end_column,   // scalar
+    markdown      // string
+]
+```
+
+A hover is a piece of text that is displayed when the user hovers over a piece
+of code. It is represented by an array of the above structure. The fields are
+as follows:
+
+| Field        | Description                             | Type   |
+|--------------|-----------------------------------------|--------|
+| start_line   | The line of the start of the hover.     | scalar |
+| start_column | The column of the start of the hover.   | scalar |
+| end_line     | The line of the end of the hover.       | scalar |
+| end_column   | The column of the end of the hover.     | scalar |
+| markdown     | The markdown of the hover.              | string |
+
+
 # New operators
 
 The following are the operators that are available to the analyzers.
@@ -398,3 +423,11 @@ The `CODEACTIONCHANGE`s are one of their corresponding subtypes:
 - [Array: `CODEACTIONCHANGE` (`RENAME`)](#array-codeactionchange-rename)
 - [Array: `CODEACTIONCHANGE` (`CREATE`)](#array-codeactionchange-create)
 - [Array: `CODEACTIONCHANGE` (`DELETE`)](#array-codeactionchange-delete)
+
+## Operator: `reportHover`
+
+```sqf
+reportHover HOVER
+```
+
+Reports the given [Array: `HOVER`](#array-hover) to the client.

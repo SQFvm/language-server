@@ -20,7 +20,7 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
 
         void initialize_functions_and_documentation(
                 sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer &a,
-                std::shared_ptr<sqf::runtime::runtime> runtime,
+                std::shared_ptr<sqf::runtime::runtime> right,
                 std::filesystem::path file);
 
         void initialize_start_script(std::shared_ptr<sqf::runtime::runtime> runtime, std::filesystem::path file);

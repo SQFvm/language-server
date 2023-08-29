@@ -402,6 +402,31 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
              "\n"
              "A new type introduced to allow introspection of the AST for SQF.\n"
              "\n"
+             "## Array: `HOVER`\n"
+             "\n"
+             "```sqf\n"
+             "[\n"
+             "    start_line,   // scalar\n"
+             "    start_column, // scalar\n"
+             "    end_line,     // scalar\n"
+             "    end_column,   // scalar\n"
+             "    markdown      // string\n"
+             "]\n"
+             "```\n"
+             "\n"
+             "A hover is a piece of text that is displayed when the user hovers over a piece\n"
+             "of code. It is represented by an array of the above structure. The fields are\n"
+             "as follows:\n"
+             "\n"
+             "| Field        | Description                             | Type   |\n"
+             "|--------------|-----------------------------------------|--------|\n"
+             "| start_line   | The line of the start of the hover.     | scalar |\n"
+             "| start_column | The column of the start of the hover.   | scalar |\n"
+             "| end_line     | The line of the end of the hover.       | scalar |\n"
+             "| end_column   | The column of the end of the hover.     | scalar |\n"
+             "| markdown     | The markdown of the hover.              | string |\n"
+             "\n"
+             "\n"
              "# New operators\n"
              "\n"
              "The following are the operators that are available to the analyzers.\n"
@@ -491,7 +516,15 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
              "- [Array: `CODEACTIONCHANGE` (`CHANGE`)](#array-codeactionchange-change)\n"
              "- [Array: `CODEACTIONCHANGE` (`RENAME`)](#array-codeactionchange-rename)\n"
              "- [Array: `CODEACTIONCHANGE` (`CREATE`)](#array-codeactionchange-create)\n"
-             "- [Array: `CODEACTIONCHANGE` (`DELETE`)](#array-codeactionchange-delete)\n";
+             "- [Array: `CODEACTIONCHANGE` (`DELETE`)](#array-codeactionchange-delete)\n"
+             "\n"
+             "## Operator: `reportHover`\n"
+             "\n"
+             "```sqf\n"
+             "reportHover HOVER\n"
+             "```\n"
+             "\n"
+             "Reports the given [Array: `HOVER`](#array-hover) to the client.\n";
         f.flush();
     }
 
@@ -808,6 +841,38 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                         );
 
                         return {};
+                    }));
+    runtime->register_sqfop(
+            sqfop::unary(
+                    "reportHover",
+                    t_array(),
+                    "Reports a hover information to the client.",
+                    [](auto &runtime, auto &right) -> sqf::runtime::value {
+                        // SQF input: [start_line: scalar, start_column: scalar, end_line: scalar, end_column: scalar, markdown: string]
+
+                        auto array = right.template data<d_array>();
+                        if (!array->check_type(
+                                runtime,
+                                std::array<sqf::runtime::type, 5>{t_scalar(), t_scalar(), t_scalar(), t_scalar(),
+                                                                  t_string()}))
+                            return {};
+
+                        auto start_line = array->template data<0, d_scalar, uint64_t>();
+                        auto start_column = array->template data<1, d_scalar, uint64_t>();
+                        auto end_line = array->template data<2, d_scalar, uint64_t>();
+                        auto end_column = array->template data<3, d_scalar, uint64_t>();
+                        auto markdown = array->template data<4, d_string, std::string>();
+
+                        auto &s = runtime.template storage<storage>();
+                        s.m_visitor->m_hovers.push_back(
+                                {
+                                        .start_line = start_line,
+                                        .start_column = start_column,
+                                        .end_line = end_line,
+                                        .end_column = end_column,
+                                        .markdown = markdown
+                                }
+                        );
                     }));
 }
 

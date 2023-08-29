@@ -863,13 +863,13 @@ namespace lsp::data {
          */
     struct markup_content {
         /**
-             * The type of the Markup
-             */
+         * The type of the Markup
+         */
         markup_kind kind = markup_kind::PlainText;
 
         /**
-             * The content itself
-             */
+         * The content itself
+         */
         std::string value;
 
         static markup_content from_json(const nlohmann::json &node) {
@@ -4339,6 +4339,64 @@ namespace lsp::data {
         nlohmann::json to_json() const {
             nlohmann::json json;
             data::set_json(json, "textDocument", text_document);
+            return json;
+        }
+    };
+    struct hover {
+        /**
+         * The hover's content
+         */
+        markup_content contents;
+
+        /**
+         * An optional range is a range inside a text document
+         * that is used to visualize a hover, e.g. by changing the background color.
+         */
+        std::optional<range> range;
+
+        // static hover_params from_json(const nlohmann::json &node) {
+        //     hover_params res;
+        //     data::from_json(node, "contents", res.contents);
+        //     data::from_json(node, "range", res.range);
+        //     return res;
+        // }
+
+        nlohmann::json to_json() const {
+            nlohmann::json json;
+            data::set_json(json, "contents", contents);
+            data::set_json(json, "range", range);
+            return json;
+        }
+    };
+    struct hover_params {
+
+        /**
+        * An optional token that a server can use to report work done progress.
+        */
+        std::optional<std::string> work_done_token;
+        /**
+        * The text document.
+        */
+        text_document_identifier text_document;
+
+        /**
+        * The position inside the text document.
+        */
+        position position;
+
+        static hover_params from_json(const nlohmann::json &node) {
+            hover_params res;
+            data::from_json(node, "workDoneToken", res.work_done_token);
+            data::from_json(node, "textDocument", res.text_document);
+            data::from_json(node, "position", res.position);
+            return res;
+        }
+
+        nlohmann::json to_json() const {
+            nlohmann::json json;
+            data::set_json(json, "workDoneToken", work_done_token);
+            data::set_json(json, "textDocument", text_document);
+            data::set_json(json, "position", position);
             return json;
         }
     };

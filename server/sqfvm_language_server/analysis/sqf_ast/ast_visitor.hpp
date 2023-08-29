@@ -20,6 +20,7 @@ namespace sqfvm::language_server::analysis::sqf_ast {
         std::vector<database::tables::t_reference> m_references;
         std::vector<database::tables::t_variable> m_variables;
         std::vector<database::tables::t_diagnostic> m_diagnostics;
+        std::vector<database::tables::t_hover> m_hovers;
         std::vector<code_action_tuple> m_code_actions;
 
         friend class sqf_ast_analyzer;

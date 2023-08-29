@@ -14,7 +14,18 @@ namespace sqfvm::language_server::analysis::sqf_ast {
     class sqf_ast_analyzer : public sqfvm_analyzer {
         friend class ast_visitor;
 
+        struct hover_tuple {
+            size_t raw_start;
+            size_t raw_end;
+            size_t pp_start;
+            size_t pp_end;
+            uint64_t start_line;
+            uint64_t start_column;
+            uint64_t end_line;
+            uint64_t end_column;
+        };
         std::vector<database::tables::t_diagnostic> m_diagnostics;
+        std::vector<hover_tuple> m_hover_tuples;
         std::vector<ast_visitor *> m_visitors;
         std::vector<const ::sqf::parser::sqf::bison::astnode *> m_descend_ast_nodes;
         std::filesystem::path m_ls_path;

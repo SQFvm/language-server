@@ -1,17 +1,16 @@
 #include "include.h"
-#include "/pboprefix/sample/include.h"
-#define TEST
-#define CFUNC(ARG) ARG
+#define TEST test
+#define CFUNC(ARG) CONCAT(ARG,TEST)
 testvalue = "";
 
 
 
-systemChat CONCAT(test test,value);
+systemChat CONCAT(test,value);
 
 private _something = [];
 private _input = _this select 0;
 [1, 2, 3] params ["_one", "_two", ["_three", 3]];
-
+ 
 // Reserved forEach variables
 {
     _x;

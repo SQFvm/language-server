@@ -97,6 +97,8 @@ namespace sqfvm::language_server {
         std::optional<std::vector<std::variant<lsp::data::command, lsp::data::code_action>>>
         on_textDocument_codeAction(const lsp::data::code_action_params &params) override;
 
+        std::optional<lsp::data::hover> on_textDocument_hover(const lsp::data::hover_params &params) override;
+
     public:
         language_server();
 
