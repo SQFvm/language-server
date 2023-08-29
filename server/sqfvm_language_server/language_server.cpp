@@ -388,7 +388,7 @@ std::optional<::lsp::data::completion_list> sqfvm::language_server::language_ser
     return {};
 }
 
-sqfvm::language_server::language_server::language_server() {
+sqfvm::language_server::language_server::language_server() : m_sqfvm_factory(this) {
     // Setup SQF-VM
     // Setup analyzers
     m_analyzer_factory.set(

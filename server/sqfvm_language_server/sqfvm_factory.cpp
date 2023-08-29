@@ -5,13 +5,65 @@
 #include <parser/preprocessor/default.h>
 #include <parser/config/config_parser.hpp>
 #include <utility>
+#include "language_server.hpp"
+
+
+void sqfvm::language_server::sqfvm_factory::log_to_window(const LogMessageBase &msg) const {
+    auto level = msg.getLevel();
+    ::lsp::data::message_type message_type;
+    switch (level) {
+        case loglevel::fatal:
+        case loglevel::error:
+            message_type = ::lsp::data::message_type::Error;
+            break;
+        case loglevel::warning:
+            message_type = ::lsp::data::message_type::Warning;
+            break;
+        case loglevel::info:
+            message_type = ::lsp::data::message_type::Info;
+            break;
+        case loglevel::verbose:
+        case loglevel::trace:
+            message_type = ::lsp::data::message_type::Log;
+            break;
+    }
+    m_language_server->window_log(message_type, [&](auto &sstream) {
+        auto error_code = msg.getErrorCode();
+        auto message = msg.formatMessage();
+        switch (level) {
+            case loglevel::fatal:
+                sstream << "[" << std::setfill('0') << std::setw(5) << error_code << "] FTL: " << message;
+                break;
+            case loglevel::error:
+                sstream << "[" << std::setfill('0') << std::setw(5) << error_code << "] ERR: " << message;
+                break;
+            case loglevel::warning:
+                sstream << "[" << std::setfill('0') << std::setw(5) << error_code << "] WRN: " << message;
+                break;
+            case loglevel::info:
+                sstream << "[" << std::setfill('0') << std::setw(5) << error_code << "] INF: " << message;
+                break;
+            case loglevel::verbose:
+                sstream << "[" << std::setfill('0') << std::setw(5) << error_code << "] VRB: " << message;
+                break;
+            case loglevel::trace:
+                sstream << "[" << std::setfill('0') << std::setw(5) << error_code << "] TRC: " << message;
+                break;
+        }
+
+
+    });
+}
 
 std::shared_ptr<sqf::runtime::runtime> sqfvm::language_server::sqfvm_factory::create(
         const std::function<void(const sqfvm::language_server::database::tables::t_diagnostic &)> &log,
         sqfvm::language_server::database::context &context,
-        const std::shared_ptr<analysis::slspp_context>& slspp) const {
+        const std::shared_ptr<analysis::slspp_context> &slspp) const {
     using namespace std::string_literals;
-    auto logger = std::make_shared<runtime_logger>(context, log);
+    auto logger = std::make_shared<runtime_logger>(
+            context,
+            [&](const LogMessageBase &msg) { log_to_window(msg); },
+            log);
     auto runtime = std::make_shared<::sqf::runtime::runtime>(*logger, ::sqf::runtime::runtime::runtime_conf{});
     runtime->add_finalizer([logger]() { /* holds reference to logger */ });
     runtime->fileio(std::make_unique<::sqf::fileio::impl_default>(*logger));
@@ -58,7 +110,7 @@ std::shared_ptr<sqf::runtime::runtime> sqfvm::language_server::sqfvm_factory::cr
     runtime->parser_preprocessor(std::move(preprocessor));
     sqf::operators::ops(*runtime);
     for (const auto &tuple: m_mappings) {
-        auto mapping = tuple.mapping;
+        auto& mapping = tuple.mapping;
         runtime->fileio().add_mapping(mapping.physical, mapping.virtual_);
     }
     return runtime;

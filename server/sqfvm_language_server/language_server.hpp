@@ -63,14 +63,6 @@ namespace sqfvm::language_server {
                 const std::filesystem::path &path,
                 bool create_if_not_exists = false);
 
-        void window_log(
-                ::lsp::data::message_type type,
-                const std::function<void(std::stringstream &sstream)> &func) {
-            std::stringstream sstream;
-            func(sstream);
-            window_logMessage(type, sstream.str());
-        }
-
     protected:
         ::lsp::data::initialize_result on_initialize(const ::lsp::data::initialize_params &params) override;
 
@@ -107,6 +99,14 @@ namespace sqfvm::language_server {
         void log_sqlite_migration_report();
 
         void mark_file_as_outdated(const std::filesystem::path &path);
+
+        void window_log(
+                ::lsp::data::message_type type,
+                const std::function<void(std::stringstream &sstream)> &func) {
+            std::stringstream sstream;
+            func(sstream);
+            window_logMessage(type, sstream.str());
+        }
     };
 }
 #endif // SQFVM_LANGUAGE_SERVER_LANGUAGE_SERVER_HPP

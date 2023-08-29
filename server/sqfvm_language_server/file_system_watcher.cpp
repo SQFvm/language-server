@@ -96,7 +96,7 @@ void sqfvm::language_server::file_system_watcher::handle_item_modified(
         const Poco::DirectoryWatcher::DirectoryEvent &event) {
     std::filesystem::path path = event.item.path();
     if (m_callback_modify)
-        m_callback_modify(path, event.event == Poco::DirectoryWatcher::DW_ITEM_MODIFIED);
+        m_callback_modify(path, is_directory(path));
 }
 
 void sqfvm::language_server::file_system_watcher::watch(

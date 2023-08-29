@@ -8,16 +8,20 @@
 namespace sqfvm::language_server {
     class runtime_logger : public Logger {
         sqfvm::language_server::database::context &m_context;
+        std::function<void(const LogMessageBase &base)> m_vscode_log_func;
         std::function<void(const sqfvm::language_server::database::tables::t_diagnostic &)> m_func;
     public:
         explicit runtime_logger(
                 sqfvm::language_server::database::context &context,
+                std::function<void(const LogMessageBase &base)> vscode_log_func,
                 std::function<void(const sqfvm::language_server::database::tables::t_diagnostic &)> func)
                 : Logger(),
                   m_context(context),
+                  m_vscode_log_func(std::move(vscode_log_func)),
                   m_func(std::move(func)) {}
 
         void log(const LogMessageBase &base) override {
+            m_vscode_log_func(base);
             // Skip virtual file lookup errors
             if (base.getErrorCode() >= 70000 && base.getErrorCode() < 80000 && base.getErrorCode() != 70014) {
                 return;

@@ -14,17 +14,19 @@
   * [Array: `file`](#array-file)
   * [Enum: `ASTNODETYPE`](#enum-astnodetype)
   * [Type: `ASTNODE`](#type-astnode)
+  * [Array: `HOVER`](#array-hover)
 * [New operators](#new-operators)
-  * [Operator: `lineOf`](#operator-lineof)
-  * [Operator: `columnOf`](#operator-columnof)
-  * [Operator: `offsetOf`](#operator-offsetof)
-  * [Operator: `contentOf`](#operator-contentof)
-  * [Operator: `pathOf`](#operator-pathof)
-  * [Operator: `typeOf`](#operator-typeof)
-  * [Operator: `childrenOf`](#operator-childrenof)
-  * [Operator: `fileOf`](#operator-fileof)
-  * [Operator: `reportDiagnostic`](#operator-reportdiagnostic)
-  * [Operator: `reportCodeAction`](#operator-reportcodeaction)
+  * [Operator: `lineOf ASTNODE`](#operator-lineof-astnode)
+  * [Operator: `columnOf ASTNODE`](#operator-columnof-astnode)
+  * [Operator: `offsetOf ASTNODE`](#operator-offsetof-astnode)
+  * [Operator: `contentOf ASTNODE`](#operator-contentof-astnode)
+  * [Operator: `pathOf ASTNODE`](#operator-pathof-astnode)
+  * [Operator: `typeOf ASTNODE`](#operator-typeof-astnode)
+  * [Operator: `childrenOf ASTNODE`](#operator-childrenof-astnode)
+  * [Operator: `fileOf ASTNODE`](#operator-fileof-astnode)
+  * [Operator: `reportDiagnostic ARRAY`](#operator-reportdiagnostic-array)
+  * [Operator: `CODEACTION reportCodeAction ARRAY`](#operator-codeaction-reportcodeaction-array)
+  * [Operator: `reportHover ARRAY`](#operator-reporthover-array)
 <!-- TOC -->
 
 # Welcome to scripted analyzers
@@ -337,7 +339,7 @@ as follows:
 
 The following are the operators that are available to the analyzers.
 
-## Operator: `lineOf`
+## Operator: `lineOf ASTNODE`
 
 ```sqf
 lineOf ASTNODE
@@ -345,7 +347,7 @@ lineOf ASTNODE
 
 Returns the line of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
-## Operator: `columnOf`
+## Operator: `columnOf ASTNODE`
 
 ```sqf
 columnOf ASTNODE
@@ -353,7 +355,7 @@ columnOf ASTNODE
 
 Returns the column of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
-## Operator: `offsetOf`
+## Operator: `offsetOf ASTNODE`
 
 ```sqf
 offsetOf ASTNODE
@@ -361,7 +363,7 @@ offsetOf ASTNODE
 
 Returns the offset of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
-## Operator: `contentOf`
+## Operator: `contentOf ASTNODE`
 
 ```sqf
 contentOf ASTNODE
@@ -369,7 +371,7 @@ contentOf ASTNODE
 
 Returns the content of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
-## Operator: `pathOf`
+## Operator: `pathOf ASTNODE`
 
 ```sqf
 pathOf ASTNODE
@@ -377,7 +379,7 @@ pathOf ASTNODE
 
 Returns the path of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
-## Operator: `typeOf`
+## Operator: `typeOf ASTNODE`
 
 ```sqf
 typeOf ASTNODE
@@ -385,7 +387,7 @@ typeOf ASTNODE
 
 Returns the [Enum: `ASTNODETYPE`](#enum-astnodetype) of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
-## Operator: `childrenOf`
+## Operator: `childrenOf ASTNODE`
 
 ```sqf
 childrenOf ASTNODE
@@ -393,7 +395,7 @@ childrenOf ASTNODE
 
 Returns the children (`[ASTNODE]`) of the given AST node.
 
-## Operator: `fileOf`
+## Operator: `fileOf ASTNODE`
 
 ```sqf
 fileOf ASTNODE
@@ -401,7 +403,7 @@ fileOf ASTNODE
 
 Returns the [Array: `file`](#array-file) of the given AST node ([Type: `ASTNODE`](#type-astnode)).
 
-## Operator: `reportDiagnostic`
+## Operator: `reportDiagnostic ARRAY`
 
 ```sqf
 reportDiagnostic DIAGNOSTIC
@@ -409,7 +411,7 @@ reportDiagnostic DIAGNOSTIC
 
 Reports the given [Array: `DIAGNOSTIC`](#array-diagnostic) to the client.
 
-## Operator: `reportCodeAction`
+## Operator: `ARRAY reportCodeAction ARRAY`
 
 ```sqf
 CODEACTION reportCodeAction [CODEACTIONCHANGE]
@@ -424,7 +426,7 @@ The `CODEACTIONCHANGE`s are one of their corresponding subtypes:
 - [Array: `CODEACTIONCHANGE` (`CREATE`)](#array-codeactionchange-create)
 - [Array: `CODEACTIONCHANGE` (`DELETE`)](#array-codeactionchange-delete)
 
-## Operator: `reportHover`
+## Operator: `reportHover ARRAY`
 
 ```sqf
 reportHover HOVER

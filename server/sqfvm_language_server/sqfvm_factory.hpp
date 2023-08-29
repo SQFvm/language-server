@@ -11,13 +11,17 @@
 #include <vector>
 
 namespace sqfvm::language_server {
+    class language_server;
     class sqfvm_factory {
         struct mapping_tuple {
             sqf::runtime::fileio::pathinfo mapping;
             bool is_workspace_mapping;
         };
         std::vector<mapping_tuple> m_mappings;
+        language_server* m_language_server;
+        void log_to_window(const LogMessageBase &base) const;
     public:
+        explicit sqfvm_factory(language_server* ls) : m_language_server(ls) {}
         void add_mapping(std::string physical_path, std::string virtual_path, bool is_workspace_mapping = false) {
             m_mappings.emplace_back(
                 sqf::runtime::fileio::pathinfo{
@@ -29,7 +33,7 @@ namespace sqfvm::language_server {
         }
         void update_mapping(std::string physical_path, std::string virtual_path, bool is_workspace_mapping = false) {
             for (auto& tuple : m_mappings) {
-                auto mapping = tuple.mapping;
+                auto& mapping = tuple.mapping;
                 if (mapping.physical == physical_path) {
                     mapping.virtual_ = std::move(virtual_path);
                     return;

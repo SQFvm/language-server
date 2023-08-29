@@ -1,5 +1,14 @@
 Provides a Language Server for the Scripting Language SQF, that is used in the `Arma` Series and `Virtual Battle Space` Simulation.
 
+<!-- TOC -->
+* [Features](#features)
+* [Planned Features](#planned-features)
+* [How to report errors](#how-to-report-errors)
+* [How to use](#how-to-use)
+* [Social Channels](#social-channels)
+* [FAQ](#faq)
+  * [Enable/Disable a problem](#enabledisable-a-problem)
+<!-- TOC -->
 
 ![](https://raw.githubusercontent.com/SQFvm/vscode/master/clients/vscode/assets/readme/variable_not_defined.gif)
 ![](https://raw.githubusercontent.com/SQFvm/vscode/master/clients/vscode/assets/readme/symbol_lookup.gif)
@@ -47,4 +56,14 @@ To disable (and later enable) an error code on a long span, use
 #pragma sls enable ERROR-CODE
 ```
 
-Note that while this feature is file-scoped.
+## Scripted analyzers
+The language server supports scripted analyzers.
+A scripted analyzer is a script that is called by the language server on every file,
+allowing you to implement your own analyzers in SQF.
+
+To enable scripted analyzers, you have to create an empty file called `use_scripted_analyzers`
+at `<workspace>/.vscode/sqfvm-lsp/use_scripted_analyzers` (where `<workspace>` is the workspace root).
+
+After touching any other file managed by the language server, the language server will
+automatically generate template files for the scripted analyzers, including a documentation
+on how to use them.
