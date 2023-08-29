@@ -1,0 +1,5 @@
+{
+    "sqfVmLanguageServer.Executable.Title": "SQF-VM Language Server",
+    "sqfVmLanguageServer.Executable.PathMappings.Title": "Path mappings",
+    "sqfVmLanguageServer.Executable.PathMappings.MarkdownDescription": "The physical -> virtual path mappings for the language server to use.\n\nSample:\n```json\n\"sqfVmLanguageServer.Executable.PathMappings\": [\n    {\"physical\": \"C:/Physical/Path\", \"virtual\": \"/Virtual/Path\"}\n]\n```"
+}

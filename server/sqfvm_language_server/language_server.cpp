@@ -210,6 +210,27 @@ void sqfvm::language_server::language_server::analyze_outdated_files() {
 
 void sqfvm::language_server::language_server::on_workspace_didChangeConfiguration(
         const ::lsp::data::did_change_configuration_params &params) {
+    m_sqfvm_factory.clear_workspace_mappings();
+    if (params.settings.has_value() && params.settings->contains("sqfVmLanguageServer")) {
+        auto settings = params.settings.value()["sqfVmLanguageServer"];
+        if (settings.is_object() && settings.contains("Executable")) {
+            auto executable = settings["Executable"];
+            if (executable.is_object() &&executable.contains("PathMappings")) {
+                auto path_mappings = executable["PathMappings"];
+                if (path_mappings.is_array()) {
+                    for (auto &mapping: path_mappings) {
+                        if (mapping.is_object() && mapping.contains("physical") && mapping.contains("virtual")) {
+                            auto physical = mapping["physical"];
+                            auto virtual_ = mapping["virtual"];
+                            if (physical.is_string() && virtual_.is_string()) {
+                                m_sqfvm_factory.add_mapping(physical, virtual_, true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 std::optional<std::vector<lsp::data::location>> sqfvm::language_server::language_server::on_textDocument_references(
