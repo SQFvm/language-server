@@ -23,7 +23,7 @@ namespace sqfvm::language_server {
         std::filesystem::path m_db_path;
         analysis::analyzer_factory m_analyzer_factory;
         std::shared_ptr<database::context> m_context;
-        std::unordered_map<std::string, std::string> m_file_contents;
+        std::unordered_map<::lsp::data::document_uri, ::lsp::data::integer> m_versions;
         sqfvm_factory m_sqfvm_factory;
         file_system_watcher m_file_system_watcher;
 
@@ -79,6 +79,8 @@ namespace sqfvm::language_server {
         void after_initialize(const ::lsp::data::initialize_params &params) override;
 
         void on_workspace_didChangeConfiguration(const ::lsp::data::did_change_configuration_params &params) override;
+
+        void on_textDocument_didOpen(const ::lsp::data::did_open_text_document_params &params) override;
 
         void on_textDocument_didChange(const ::lsp::data::did_change_text_document_params &params) override;
 

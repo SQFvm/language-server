@@ -307,11 +307,17 @@ void sqfvm::language_server::language_server::add_or_update_pboprefix_mapping_lo
     }
 }
 
+void sqfvm::language_server::language_server::on_textDocument_didOpen(
+        const lsp::data::did_open_text_document_params &params) {
+    m_versions[static_cast<::lsp::data::document_uri>(params.text_document.uri.full())] = params.text_document.version;
+}
+
 void sqfvm::language_server::language_server::on_textDocument_didChange(
         const ::lsp::data::did_change_text_document_params &params) {
+    m_versions[static_cast<::lsp::data::document_uri>(params.text_document.uri.full())] = params.text_document.version;
     auto path = std::filesystem::path(
-            std::string(params.textDocument.uri.path().begin(),
-                        params.textDocument.uri.path().end()))
+            std::string(params.text_document.uri.path().begin(),
+                        params.text_document.uri.path().end()))
             .lexically_normal();
 
     if (iequal(path.filename().string(), "$PBOPREFIX$")) {
@@ -329,7 +335,7 @@ void sqfvm::language_server::language_server::on_textDocument_didChange(
         file.is_outdated = true;
         m_context->storage().update(file);
 
-        push_file_history(file, params.contentChanges[0].text);
+        push_file_history(file, params.content_changes[0].text);
         mark_related_files_as_outdated(file);
         analyze_outdated_files();
     }
@@ -693,14 +699,18 @@ sqfvm::language_server::language_server::on_textDocument_codeAction(const lsp::d
             for (const auto &change: changes) {
                 in_range = in_range || change.start_line >= params.range.start.line
                                        && change.start_column >= params.range.start.character
-                                       && change.end_line <= params.range.end.line
-                                       && change.end_column <= params.range.end.character;
+                                       && change.end_line >= params.range.end.line
+                                       && change.end_column >= params.range.end.character;
                 auto change_path = sanitize_to_uri(change.path);
+                auto document_uri = static_cast<::lsp::data::document_uri>(change_path.full());
+                auto lsp_file_version = m_versions.contains(document_uri)
+                                        ? std::optional<::lsp::data::integer>{m_versions.at(document_uri)}
+                                        : std::nullopt;
                 switch (change.operation) {
                     case t_code_action_change::file_change:
                         out_changes.emplace_back(text_document_edit{
                                 .textDocument = optional_versioned_text_document_identifier{
-                                        .version = std::nullopt, // ToDo: Start tracking version numbers because LSP is a stupid piece of shit
+                                        .version = lsp_file_version,
                                         .uri = change_path,
                                 },
                                 .edits = {text_edit{
@@ -728,7 +738,7 @@ sqfvm::language_server::language_server::on_textDocument_codeAction(const lsp::d
                         });
                         out_changes.emplace_back(text_document_edit{
                                 .textDocument = optional_versioned_text_document_identifier{
-                                        .version = std::nullopt, // ToDo: Start tracking version numbers because LSP is a stupid piece of shit
+                                        .version = lsp_file_version,
                                         .uri = change_path,
                                 },
                                 .edits = {text_edit{

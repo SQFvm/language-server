@@ -776,27 +776,27 @@ namespace lsp::data {
 
     struct text_document_item {
         /**
-             * The text document's URI.
-             */
+         * The text document's URI.
+         */
         uri uri;
         /**
-             * The text document's language identifier.
-             */
-        std::string languageId;
+         * The text document's language identifier.
+         */
+        std::string language_id;
         /**
-             * The version number of this document (it will increase after each
-             * change, including undo/redo).
-             */
+         * The version number of this document (it will increase after each
+         * change, including undo/redo).
+         */
         integer version{};
         /**
-             * The content of the opened text document.
-             */
+         * The content of the opened text document.
+         */
         std::string text;
 
         static text_document_item from_json(const nlohmann::json &node) {
             text_document_item res;
             data::from_json(node, "uri", res.uri);
-            data::from_json(node, "languageId", res.languageId);
+            data::from_json(node, "languageId", res.language_id);
             data::from_json(node, "version", res.version);
             data::from_json(node, "text", res.text);
             return res;
@@ -805,7 +805,7 @@ namespace lsp::data {
         [[nodiscard]] nlohmann::json to_json() const {
             nlohmann::json json;
             data::set_json(json, "uri", uri);
-            data::set_json(json, "languageId", languageId);
+            data::set_json(json, "languageId", language_id);
             data::set_json(json, "version", version);
             data::set_json(json, "text", text);
             return json;
@@ -813,18 +813,14 @@ namespace lsp::data {
     };
 
     struct versioned_text_document_identifier {
-        uri uri;
+        uri uri{};
         /**
-             * The version number of this document. If a versioned text document identifier
-             * is sent from the server to the client and the file is not open in the editor
-             * (the server has not received an open notification before) the server can send
-             * `null` to indicate that the version is known and the content on disk is the
-             * master (as speced with document content ownership).
-             *
-             * The version number of a document will increase after each change, including
-             * undo/redo. The number doesn't need to be consecutive.
-             */
-        std::optional<integer> version;
+         * The version number of this document.
+         *
+         * The version number of a document will increase after each change,
+         * including undo/redo. The number doesn't need to be consecutive.
+         */
+        integer version{};
 
         static versioned_text_document_identifier from_json(const nlohmann::json &node) {
             versioned_text_document_identifier res;
@@ -4185,19 +4181,19 @@ namespace lsp::data {
 
     struct did_open_text_document_params {
         /**
-                * The document that was opened.
-                */
-        text_document_item textDocument;
+         * The document that was opened.
+         */
+        text_document_item text_document;
 
         static did_open_text_document_params from_json(const nlohmann::json &node) {
             did_open_text_document_params res;
-            data::from_json(node, "textDocument", res.textDocument);
+            data::from_json(node, "textDocument", res.text_document);
             return res;
         }
 
         nlohmann::json to_json() const {
             nlohmann::json json;
-            data::set_json(json, "textDocument", textDocument);
+            data::set_json(json, "textDocument", text_document);
             return json;
         }
     };
@@ -4205,26 +4201,26 @@ namespace lsp::data {
     struct did_change_text_document_params {
         struct text_document_content_change_event {
             /**
-                    * The range of the document that changed.
-                    */
+            * The range of the document that changed.
+            */
             std::optional<range> range;
 
             /**
-                    * The optional length of the range that got replaced.
-                    *
-                    * @deprecated use range instead.
-                    */
-            std::optional<size_t> rangeLength;
+            * The optional length of the range that got replaced.
+            *
+            * @deprecated use range instead.
+            */
+            std::optional<size_t> range_length;
 
             /**
-                    * The new text for the provided range.
-                    */
+            * The new text for the provided range.
+            */
             std::string text;
 
             static text_document_content_change_event from_json(const nlohmann::json &node) {
                 text_document_content_change_event res;
                 data::from_json(node, "range", res.range);
-                data::from_json(node, "rangeLength", res.rangeLength);
+                data::from_json(node, "rangeLength", res.range_length);
                 data::from_json(node, "text", res.text);
                 return res;
             }
@@ -4232,70 +4228,70 @@ namespace lsp::data {
             nlohmann::json to_json() const {
                 nlohmann::json json;
                 data::set_json(json, "range", range);
-                data::set_json(json, "rangeLength", rangeLength);
+                data::set_json(json, "rangeLength", range_length);
                 data::set_json(json, "text", text);
                 return json;
             }
         };
 
         /**
-                * The document that did change. The version number points
-                * to the version after all provided content changes have
-                * been applied.
-                */
-        versioned_text_document_identifier textDocument;
+        * The document that did change. The version number points
+        * to the version after all provided content changes have
+        * been applied.
+        */
+        versioned_text_document_identifier text_document;
 
         /**
-                * The actual content changes. The content changes describe single state changes
-                * to the document. So if there are two content changes c1 (at array index 0) and
-                * c2 (at array index 1) for a document in state S then c1 moves the document from
-                * S to S' and c2 from S' to S''. So c1 is computed on the state S and c2 is computed
-                * on the state S'.
-                *
-                * To mirror the content of a document using change events use the following approach:
-                * - start with the same initial content
-                * - apply the 'textDocument/didChange' notifications in the order you recevie them.
-                * - apply the `TextDocumentContentChangeEvent`s in a single notification in the order
-                *   you receive them.
-                */
-        std::vector<text_document_content_change_event> contentChanges;
+        * The actual content changes. The content changes describe single state changes
+        * to the document. So if there are two content changes c1 (at array index 0) and
+        * c2 (at array index 1) for a document in state S then c1 moves the document from
+        * S to S' and c2 from S' to S''. So c1 is computed on the state S and c2 is computed
+        * on the state S'.
+        *
+        * To mirror the content of a document using change events use the following approach:
+        * - start with the same initial content
+        * - apply the 'textDocument/didChange' notifications in the order you recevie them.
+        * - apply the `TextDocumentContentChangeEvent`s in a single notification in the order
+        *   you receive them.
+        */
+        std::vector<text_document_content_change_event> content_changes;
 
         static did_change_text_document_params from_json(const nlohmann::json &node) {
             did_change_text_document_params res;
-            data::from_json(node, "textDocument", res.textDocument);
-            data::from_json(node, "contentChanges", res.contentChanges);
+            data::from_json(node, "textDocument", res.text_document);
+            data::from_json(node, "contentChanges", res.content_changes);
             return res;
         }
 
         nlohmann::json to_json() const {
             nlohmann::json json;
-            data::set_json(json, "textDocument", textDocument);
-            data::set_json(json, "contentChanges", contentChanges);
+            data::set_json(json, "textDocument", text_document);
+            data::set_json(json, "contentChanges", content_changes);
             return json;
         }
     };
 
     struct will_save_text_document_params {
         /**
-                * The document that will be saved.
-                */
-        text_document_identifier textDocument;
+        * The document that will be saved.
+        */
+        text_document_identifier text_document;
 
         /**
-                * The 'TextDocumentSaveReason'.
-                */
+        * The 'TextDocumentSaveReason'.
+        */
         text_document_save_reason reason;
 
         static will_save_text_document_params from_json(const nlohmann::json &node) {
             will_save_text_document_params res;
-            data::from_json(node, "textDocument", res.textDocument);
+            data::from_json(node, "textDocument", res.text_document);
             data::from_json(node, "reason", res.reason);
             return res;
         }
 
         nlohmann::json to_json() const {
             nlohmann::json json;
-            data::set_json(json, "textDocument", textDocument);
+            data::set_json(json, "textDocument", text_document);
             data::set_json(json, "reason", reason);
             return json;
         }
@@ -4303,26 +4299,26 @@ namespace lsp::data {
 
     struct did_save_text_document_params {
         /**
-                * The document that was saved.
-                */
-        text_document_identifier textDocument;
+        * The document that was saved.
+        */
+        text_document_identifier text_document;
 
         /**
-                * Optional the content when saved. Depends on the includeText value
-                * when the save notification was requested.
-                */
+        * Optional the content when saved. Depends on the includeText value
+        * when the save notification was requested.
+        */
         std::optional<std::string> text;
 
         static did_save_text_document_params from_json(const nlohmann::json &node) {
             did_save_text_document_params res;
-            data::from_json(node, "textDocument", res.textDocument);
+            data::from_json(node, "textDocument", res.text_document);
             data::from_json(node, "text", res.text);
             return res;
         }
 
         nlohmann::json to_json() const {
             nlohmann::json json;
-            data::set_json(json, "textDocument", textDocument);
+            data::set_json(json, "textDocument", text_document);
             data::set_json(json, "text", text);
             return json;
         }
@@ -4330,19 +4326,19 @@ namespace lsp::data {
 
     struct did_close_text_document_params {
         /**
-                * The document that was closed.
-                */
-        text_document_identifier textDocument;
+        * The document that was closed.
+        */
+        text_document_identifier text_document;
 
         static did_close_text_document_params from_json(const nlohmann::json &node) {
             did_close_text_document_params res;
-            data::from_json(node, "textDocument", res.textDocument);
+            data::from_json(node, "textDocument", res.text_document);
             return res;
         }
 
         nlohmann::json to_json() const {
             nlohmann::json json;
-            data::set_json(json, "textDocument", textDocument);
+            data::set_json(json, "textDocument", text_document);
             return json;
         }
     };
@@ -4350,27 +4346,27 @@ namespace lsp::data {
     struct completion_params {
         struct CompletionContext {
             /**
-                    * How the completion was triggered.
-                    */
-            completion_trigger_kind triggerKind;
+            * How the completion was triggered.
+            */
+            completion_trigger_kind trigger_kind;
 
             /**
-                    * The trigger character (a single character) that has trigger code complete.
-                    * Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
-                    */
-            std::optional<std::string> triggerCharacter;
+            * The trigger character (a single character) that has trigger code complete.
+            * Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
+            */
+            std::optional<std::string> trigger_character;
 
             static CompletionContext from_json(const nlohmann::json &node) {
                 CompletionContext res;
-                data::from_json(node, "triggerKind", res.triggerKind);
-                data::from_json(node, "triggerCharacter", res.triggerCharacter);
+                data::from_json(node, "triggerKind", res.trigger_kind);
+                data::from_json(node, "triggerCharacter", res.trigger_character);
                 return res;
             }
 
             nlohmann::json to_json() const {
                 nlohmann::json json;
-                data::set_json(json, "triggerKind", triggerKind);
-                data::set_json(json, "triggerCharacter", triggerCharacter);
+                data::set_json(json, "triggerKind", trigger_kind);
+                data::set_json(json, "triggerCharacter", trigger_character);
                 return json;
             }
         };
