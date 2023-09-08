@@ -64,6 +64,9 @@ namespace sqfvm::language_server::database::tables {
         // The type this t_reference refers to.
         type_flags types;
 
+        // Whether this reference is a declaration.
+        bool is_declaration;
+
         // Whether this reference is a magic variable. Magic variables are variables that are not explicitly declared
         // but rather implicitly created by the engine. Examples are: _this, _x, _forEachIndex
         bool is_magic_variable;

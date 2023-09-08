@@ -59,7 +59,6 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
             visitor->analyze(*this, m_context);
         }
 
-
 #pragma region Variables
         // Get all variables related to this file
         auto file_scope_name = scope_name();
@@ -141,7 +140,6 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
             }
         }
 #pragma endregion
-
 #pragma region References
         // Remove all references related to this file
         storage.remove_all<database::tables::t_reference>(
@@ -162,8 +160,6 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
             }
         }
 #pragma endregion
-
-
 #pragma region Code Actions
         // Remove old code actions
         for (auto &it: storage.get_all<database::tables::t_code_action>(
@@ -187,7 +183,6 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
             }
         }
 #pragma endregion
-
 #pragma region Hovers
         // Remove old hovers
         storage.remove_all<database::tables::t_hover>(

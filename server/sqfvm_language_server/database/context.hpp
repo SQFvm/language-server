@@ -86,6 +86,7 @@ namespace sqfvm::language_server::database {
                                make_column("offset", &t_reference::offset),
                                make_column("length", &t_reference::length),
                                make_column("types", &t_reference::types),
+                               make_column("is_declaration", &t_reference::is_declaration),
                                make_column("is_magic_variable", &t_reference::is_magic_variable),
                                foreign_key(&t_reference::file_fk).references(&t_file::id_pk),
                                foreign_key(&t_reference::variable_fk).references(&t_variable::id_pk)),

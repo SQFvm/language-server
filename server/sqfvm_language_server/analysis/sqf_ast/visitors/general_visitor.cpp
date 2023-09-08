@@ -281,6 +281,64 @@ namespace {
                 .code = "VV-008",
         };
     }
+
+    t_diagnostic diag_private_variable_is_shadowing_other_private_variable_009(
+            uint64_t self_file_id,
+            const t_variable &shadowed_variable,
+            const t_reference &shadowing_reference) {
+        std::string message{};
+        message.reserve(
+                "Private variable '"sv.length()
+                + shadowed_variable.variable_name.length()
+                + "' is shadowing a previously declared private variable"sv.length()
+        );
+        message.append("Private variable '"sv);
+        message.append(shadowed_variable.variable_name);
+        message.append("' is shadowing a previously declared private variable"sv);
+
+        return {
+                .id_pk = {},
+                .file_fk = shadowing_reference.file_fk,
+                .source_file_fk = self_file_id,
+                .line = shadowing_reference.line + LINE_OFFSET,
+                .column = shadowing_reference.column,
+                .offset = shadowing_reference.offset,
+                .length = shadowing_reference.length,
+                .severity = t_diagnostic::warning,
+                .message = message,
+                .content = shadowed_variable.variable_name,
+                .code = "VV-009",
+        };
+    }
+
+    t_diagnostic diag_private_variable_is_shadowed_by_another_private_variable_009(
+            uint64_t self_file_id,
+            const t_variable &shadowed_variable,
+            const t_reference &shadowing_reference) {
+        std::string message{};
+        message.reserve(
+                "Private variable '"sv.length()
+                + shadowed_variable.variable_name.length()
+                + "' is shadowed"sv.length()
+        );
+        message.append("Private variable '"sv);
+        message.append(shadowed_variable.variable_name);
+        message.append("' is shadowed"sv);
+
+        return {
+                .id_pk = {},
+                .file_fk = shadowing_reference.file_fk,
+                .source_file_fk = self_file_id,
+                .line = shadowing_reference.line + LINE_OFFSET,
+                .column = shadowing_reference.column,
+                .offset = shadowing_reference.offset,
+                .length = shadowing_reference.length,
+                .severity = t_diagnostic::verbose,
+                .message = message,
+                .content = shadowed_variable.variable_name,
+                .code = "VV-009",
+        };
+    }
 }
 
 
@@ -361,6 +419,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::enter
                     auto variable_name = first_child.token.contents;
                     auto variable = get_or_create_variable(sqf_destringify(variable_name));
                     auto reference = make_reference(a, first_child, variable, t_reference::access_flags::set);
+                    reference.is_declaration = true;
                     m_references.push_back(reference);
                 }
             }
@@ -427,15 +486,21 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::enter
                 m_references.push_back(*m_assignment_candidate);
                 m_assignment_candidate = {};
             }
-        } // fallthrough
+        } // Fallthrough
+        case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT:
         case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL: {
+            auto is_declaration = node.kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL
+                                  || (parent_nodes.size() > 1
+                                      && parent_nodes.back()->kind ==
+                                         ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL);
             auto reference = make_reference(a, node);
-            auto variable = get_or_create_variable(node.token.contents);
+            auto variable = get_or_create_variable(node.token.contents, is_declaration);
             reference.variable_fk = variable.id_pk;
 
             // Check if we are on the left side of an assignment
             if (is_left_side_of_assignment(parent_nodes, node)) {
                 // Yes - We set this IDENT so put it into temp for later evaluation in parent or the code following
+                reference.is_declaration = is_declaration;
                 reference.access = t_reference::access_flags::set;
                 m_assignment_candidate = reference;
             } else {
@@ -817,12 +882,12 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
                                        ? right_bracked_decoded.value().resolved.column
                                        : right_bracket.token.column);
             auto right_end_line = (right_bracked_decoded.has_value()
-                                      ? right_bracked_decoded.value().resolved.line
-                                      : right_bracket.token.line) +
-                                     LINE_OFFSET;
+                                   ? right_bracked_decoded.value().resolved.line
+                                   : right_bracket.token.line) +
+                                  LINE_OFFSET;
             auto right_end_column = (right_bracked_decoded.has_value()
-                                        ? right_bracked_decoded.value().resolved.column
-                                        : right_bracket.token.column) + 1;
+                                     ? right_bracked_decoded.value().resolved.column
+                                     : right_bracket.token.column) + 1;
 
             action.changes.push_back({
                                              .operation = database::tables::t_code_action_change::file_change,
@@ -936,6 +1001,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
     }
     for (auto &variable_node: variable_nodes) {
         auto reference = make_reference(a, variable_node);
+        reference.is_declaration = true;
         auto variable = get_or_create_variable(sqf_destringify(variable_node.token.contents));
         reference.variable_fk = variable.id_pk;
         reference.types = database::tables::t_reference::type_flags::nil;
@@ -1083,6 +1149,7 @@ std::string sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor
     if (is_detached) {
         // ToDo: implement properly (not every {} scope has _this)
         auto reference = make_reference(a, node);
+        reference.is_declaration = true;
         auto variable = get_or_create_variable("_this");
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
@@ -1117,6 +1184,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::add_m
             }
             for (auto &magic_variable: magic_variables) {
                 auto reference = make_reference(a, node);
+                reference.is_declaration = true;
                 auto variable = get_or_create_variable(magic_variable);
                 reference.variable_fk = variable.id_pk;
                 reference.access = t_reference::access_flags::set;
@@ -1183,22 +1251,25 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::pop_s
 }
 
 t_variable sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::get_or_create_variable(
-        std::string_view name) {
+        std::string_view name,
+        bool is_declaration) {
     if (is_private_variable(name)) {
-        for (auto scope_reverse_it = m_scope_stack.rbegin();
-             scope_reverse_it != m_scope_stack.rend(); ++scope_reverse_it) {
-            auto &scope = *scope_reverse_it;
-            auto find_res = std::find_if(
-                    m_variables.begin(),
-                    m_variables.end(),
-                    [name, &scope](auto val) {
-                        return iequal(val.variable_name, name) && val.scope == scope.full_name;
-                    });
-            if (find_res != m_variables.end()) {
-                return *find_res;
+        if (!is_declaration) {
+            for (auto scope_reverse_it = m_scope_stack.rbegin();
+                 scope_reverse_it != m_scope_stack.rend(); ++scope_reverse_it) {
+                auto &scope = *scope_reverse_it;
+                auto find_res = std::find_if(
+                        m_variables.begin(),
+                        m_variables.end(),
+                        [name, &scope](auto val) {
+                            return iequal(val.variable_name, name) && val.scope == scope.full_name;
+                        });
+                if (find_res != m_variables.end()) {
+                    return *find_res;
+                }
+                if (scope.is_detached)
+                    break;
             }
-            if (scope.is_detached)
-                break;
         }
         t_variable variable{};
         variable.variable_name = name;
@@ -1232,7 +1303,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::analy
     using namespace sqlite_orm;
     auto file_id = file_of(sqf_ast_analyzer).id_pk;
 
-    // Find all variables which are only set once and never read
+#pragma region Find all variables which are only set once and never read
     for (auto &variable: m_variables) {
         for (auto it = m_references.begin(); it != m_references.end(); it++) {
             if (it->variable_fk != variable.id_pk || it->access != t_reference::access_flags::set ||
@@ -1263,8 +1334,8 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::analy
             }
         }
     }
-
-    // Find all variables which are never set
+#pragma endregion
+#pragma region Find all variables which are never set
     for (auto &variable: m_variables) {
         for (auto it = m_references.begin(); it != m_references.end(); it++) {
             if (it->variable_fk != variable.id_pk || it->access != t_reference::access_flags::get ||
@@ -1294,8 +1365,8 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::analy
             }
         }
     }
-
-    // Find all variables which are never set
+#pragma endregion
+#pragma region Find all variables which are differently named (cased) in different references
     for (auto &reference: m_references) {
         if (reference.is_magic_variable)
             continue;
@@ -1329,4 +1400,62 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::analy
             }
         }
     }
+#pragma endregion
+#pragma region Find all private variable which are shadowing other private variables
+    for (auto it = m_references.begin(); it != m_references.end(); it++) {
+        auto test_reference = *it;
+        if (test_reference.is_magic_variable)
+            continue;
+        if (!test_reference.is_declaration)
+            continue;
+        auto find_res = std::find_if(
+                m_variables.begin(),
+                m_variables.end(),
+                [&test_reference](const t_variable &var) {
+                    return var.id_pk == test_reference.variable_fk;
+                });
+        if (find_res == m_variables.end())
+            continue;
+        if (!is_private_variable(*find_res))
+            continue;
+        auto test_variable = *find_res;
+        auto shadowing_reference = std::find_if(
+                m_references.begin(),
+                it,
+                [&](const t_reference &ref) {
+                    if (ref.access != t_reference::access_flags::set
+                        || !ref.is_declaration) {
+                        return false;
+                    }
+                    auto find_res = std::find_if(
+                            m_variables.begin(),
+                            m_variables.end(),
+                            [&ref](const t_variable &var) {
+                                return var.id_pk == ref.variable_fk;
+                            });
+                    if (find_res == m_variables.end())
+                        return false;
+                    if (!is_private_variable(*find_res))
+                        return false;
+                    if (!iequal(find_res->variable_name, test_variable.variable_name))
+                        return false;
+                    if (find_res->scope.length() > test_variable.scope.length())
+                        return false;
+                    return std::equal(
+                            find_res->scope.begin(),
+                            find_res->scope.end(),
+                            test_variable.scope.begin());
+                });
+        if (shadowing_reference != it) {
+            m_diagnostics.push_back(diag_private_variable_is_shadowing_other_private_variable_009(
+                    file_id,
+                    test_variable,
+                    test_reference));
+            m_diagnostics.push_back(diag_private_variable_is_shadowed_by_another_private_variable_009(
+                    file_id,
+                    test_variable,
+                    *shadowing_reference));
+        }
+    }
+#pragma endregion
 }

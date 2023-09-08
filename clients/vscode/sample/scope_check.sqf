@@ -5,7 +5,6 @@ if (true) then {
 };
 diag_log _foo; // Should raise warning (not assigned)
 private _foo = 1; // Should raise information (not used)
-
 private _bar = 0;
 if (true) then {
     diag_log _bar;
