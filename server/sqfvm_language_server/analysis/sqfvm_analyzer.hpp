@@ -111,12 +111,14 @@ namespace sqfvm::language_server::analysis {
             m_runtime = factory.create([&](auto &msg) {
                 auto copy = msg;
                 copy.source_file_fk = m_file.id_pk;
-                auto decoded = decode_preprocessed_offset(msg.offset);
-                if (decoded.has_value()) {
-                    copy.line = decoded->resolved.line - /* lsp garbage random offset */ 1;
-                    copy.column = decoded->resolved.column;
-                    copy.offset = decoded->resolved.offset;
-                    copy.length = decoded->length;
+                if (!m_preprocessed_text.empty()) {
+                    auto decoded = decode_preprocessed_offset(msg.offset);
+                    if (decoded.has_value()) {
+                        copy.line = decoded->resolved.line - /* lsp garbage random offset */ 1;
+                        copy.column = decoded->resolved.column;
+                        copy.offset = decoded->resolved.offset;
+                        copy.length = decoded->length;
+                    }
                 }
                 report_diagnostic(copy);
             }, m_context, m_slspp_context);

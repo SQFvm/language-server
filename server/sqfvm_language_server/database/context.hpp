@@ -20,7 +20,7 @@ namespace sqfvm::language_server::database {
     namespace internal {
         struct t_db_generation {
             static constexpr const char *table_name = "tDbGeneration";
-            static const int expected_generation = 4;
+            static const int expected_generation = 5;
             int id_pk;
             int generation;
         };
@@ -111,6 +111,7 @@ namespace sqfvm::language_server::database {
                                make_column("is_suppressed", &t_diagnostic::is_suppressed),
                                foreign_key(&t_diagnostic::source_file_fk).references(&t_file::id_pk),
                                foreign_key(&t_diagnostic::file_fk).references(&t_file::id_pk)));
+            storage.busy_timeout(5000);
             return storage;
         }
     }

@@ -10,6 +10,10 @@
 
 void sqfvm::language_server::file_system_watcher::watch_directory(
         const std::filesystem::path &path) {
+    for (auto &ignored: m_ignored) {
+        if (path.string().starts_with(ignored.string()))
+            return;
+    }
     if (!std::filesystem::is_directory(path)) {
         throw std::runtime_error(path.string() + " is not a directory");
     }
@@ -123,4 +127,15 @@ bool sqfvm::language_server::file_system_watcher::unwatch(
     for (auto &p: to_unwatch)
         unwatch_directory(p);
     return !to_unwatch.empty();
+}
+
+void sqfvm::language_server::file_system_watcher::ignore(const std::filesystem::path &path) {
+    m_ignored.push_back(path);
+}
+
+void sqfvm::language_server::file_system_watcher::unignore(const std::filesystem::path &path) {
+    auto find_res = std::find(m_ignored.begin(), m_ignored.end(), path);
+    if (find_res == m_ignored.end())
+        return;
+    m_ignored.erase(find_res);
 }

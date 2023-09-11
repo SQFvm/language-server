@@ -24,6 +24,7 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     m_context = std::make_shared<database::context>(m_db_path);
     m_context->migrate();
     m_sqfvm_factory.add_mapping(uri.string(), "");
+    m_file_system_watcher.ignore(m_lsp_folder.parent_path());
     m_file_system_watcher.watch(uri);
     m_file_system_watcher.callback_add(
             [&](auto &path, bool is_directory) { file_system_item_added(path, is_directory); });

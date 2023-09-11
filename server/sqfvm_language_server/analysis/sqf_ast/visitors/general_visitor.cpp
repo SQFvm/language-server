@@ -349,17 +349,33 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::start
     // Push initial namespace
     push_namespace("missionNamespace");
 
-    t_reference reference{};
-    reference.line = 0;
-    reference.column = 0;
-    reference.offset = 0;
-    reference.length = 0;
-    reference.file_fk = file_of(a).id_pk;
-    auto variable = get_or_create_variable("_this");
-    reference.variable_fk = variable.id_pk;
-    reference.access = t_reference::access_flags::set;
-    reference.is_magic_variable = true;
-    m_references.push_back(reference);
+    {   // Push _this variable
+        t_reference reference{};
+        reference.line = 0;
+        reference.column = 0;
+        reference.offset = 0;
+        reference.length = 0;
+        reference.file_fk = file_of(a).id_pk;
+        auto variable = get_or_create_variable("_this");
+        reference.variable_fk = variable.id_pk;
+        reference.access = t_reference::access_flags::set;
+        reference.is_magic_variable = true;
+        m_references.push_back(reference);
+    }
+
+    {   // Push _fnc_scriptName variable
+        t_reference reference{};
+        reference.line = 0;
+        reference.column = 0;
+        reference.offset = 0;
+        reference.length = 0;
+        reference.file_fk = file_of(a).id_pk;
+        auto variable = get_or_create_variable("_fnc_scriptName");
+        reference.variable_fk = variable.id_pk;
+        reference.access = t_reference::access_flags::set;
+        reference.is_magic_variable = true;
+        m_references.push_back(reference);
+    }
 }
 
 void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::enter(

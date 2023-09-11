@@ -184,38 +184,40 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
         }
 #pragma endregion
 #pragma region Hovers
-        // Remove old hovers
-        storage.remove_all<database::tables::t_hover>(
-                where(c(&database::tables::t_hover::file_fk) == m_file.id_pk));
+        if (!m_preprocessed_text.empty()) {
+            // Remove old hovers
+            storage.remove_all<database::tables::t_hover>(
+                    where(c(&database::tables::t_hover::file_fk) == m_file.id_pk));
 
-        // Add new hovers
-        std::vector<database::tables::t_hover> hovers;
-        std::stringstream hover_text;
-        for (auto &it: m_hover_tuples) {
-            hover_text << "`";
-            hover_text << m_text.substr(it.raw_start, it.raw_end - it.raw_start);
-            hover_text << "`\n";
-            hover_text << "```sqf\n";
-            hover_text << m_preprocessed_text.substr(it.pp_start, it.pp_end - it.pp_start);
-            hover_text << "\n```\n";
+            // Add new hovers
+            std::vector<database::tables::t_hover> hovers;
+            std::stringstream hover_text;
+            for (auto &it: m_hover_tuples) {
+                hover_text << "`";
+                hover_text << m_text.substr(it.raw_start, it.raw_end - it.raw_start);
+                hover_text << "`\n";
+                hover_text << "```sqf\n";
+                hover_text << m_preprocessed_text.substr(it.pp_start, it.pp_end - it.pp_start);
+                hover_text << "\n```\n";
 
-            hovers.emplace_back(
-                    0,
-                    m_file.id_pk,
-                    it.start_line,
-                    it.start_column,
-                    it.end_line,
-                    it.end_column,
-                    hover_text.str());
-            hover_text.str("");
-        }
-        storage.insert_range(hovers.begin(), hovers.end());
-        for (auto &visitor: m_visitors) {
-            for (auto &it: visitor->m_hovers) {
-                if (it.file_fk == 0)
-                    it.file_fk = m_file.id_pk;
+                hovers.emplace_back(
+                        0,
+                        m_file.id_pk,
+                        it.start_line,
+                        it.start_column,
+                        it.end_line,
+                        it.end_column,
+                        hover_text.str());
+                hover_text.str("");
             }
-            storage.insert_range(visitor->m_hovers.begin(), visitor->m_hovers.end());
+            storage.insert_range(hovers.begin(), hovers.end());
+            for (auto &visitor: m_visitors) {
+                for (auto &it: visitor->m_hovers) {
+                    if (it.file_fk == 0)
+                        it.file_fk = m_file.id_pk;
+                }
+                storage.insert_range(visitor->m_hovers.begin(), visitor->m_hovers.end());
+            }
         }
 #pragma endregion
 #pragma region Diagnostics

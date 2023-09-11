@@ -13,6 +13,7 @@
 
 namespace sqfvm::language_server {
     class file_system_watcher {
+        std::vector<std::filesystem::path> m_ignored;
         std::unordered_map<std::filesystem::path, std::shared_ptr<Poco::DirectoryWatcher>> m_watchers;
         std::mutex m_watchers_mutex;
         std::function<void(const std::filesystem::path &, bool is_directory)> m_callback_add;
@@ -24,6 +25,10 @@ namespace sqfvm::language_server {
         void unwatch_directory(const std::filesystem::path &path);
 
     public:
+        void ignore(const std::filesystem::path &path);
+
+        void unignore(const std::filesystem::path &path);
+
         void watch(const std::filesystem::path &path);
 
         bool unwatch(const std::filesystem::path &path);
