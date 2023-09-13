@@ -15,6 +15,9 @@ namespace sqfvm::language_server::database::tables {
         // The file is deleted and should be removed from the database.
         bool is_deleted;
 
+        // The file is ignored and should be ignored by the language server.
+        bool is_ignored;
+
         // The primary key of this t_file
         uint64_t id_pk;
 

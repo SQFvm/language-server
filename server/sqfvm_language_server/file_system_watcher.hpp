@@ -29,6 +29,8 @@ namespace sqfvm::language_server {
 
         void unignore(const std::filesystem::path &path);
 
+        bool is_ignored(const std::filesystem::path &path);
+
         void watch(const std::filesystem::path &path);
 
         bool unwatch(const std::filesystem::path &path);

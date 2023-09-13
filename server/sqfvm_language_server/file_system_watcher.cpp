@@ -139,3 +139,11 @@ void sqfvm::language_server::file_system_watcher::unignore(const std::filesystem
         return;
     m_ignored.erase(find_res);
 }
+
+bool sqfvm::language_server::file_system_watcher::is_ignored(const std::filesystem::path &path) {
+    for (auto &ignored: m_ignored) {
+        if (path.string().starts_with(ignored.string()))
+            return true;
+    }
+    return false;
+}

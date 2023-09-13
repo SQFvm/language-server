@@ -26,6 +26,9 @@ namespace sqfvm::language_server {
         std::unordered_map<::lsp::data::document_uri, ::lsp::data::integer> m_versions;
         sqfvm_factory m_sqfvm_factory;
         file_system_watcher m_file_system_watcher;
+        std::mutex m_analyze_mutex;
+
+        void add_ignored_paths(const std::filesystem::path &workspace, const std::filesystem::path &lsp_folder);
 
         bool delete_file(const std::filesystem::path &file);
 

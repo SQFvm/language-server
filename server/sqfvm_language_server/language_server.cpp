@@ -24,7 +24,8 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     m_context = std::make_shared<database::context>(m_db_path);
     m_context->migrate();
     m_sqfvm_factory.add_mapping(uri.string(), "");
-    m_file_system_watcher.ignore(m_lsp_folder.parent_path());
+    m_file_system_watcher.ignore(uri / ".vscode");
+    add_ignored_paths(uri, m_lsp_folder);
     m_file_system_watcher.watch(uri);
     m_file_system_watcher.callback_add(
             [&](auto &path, bool is_directory) { file_system_item_added(path, is_directory); });
@@ -72,6 +73,8 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
         std::filesystem::recursive_directory_iterator iter_end;
         for (; iter != iter_end; iter++) {
             auto file_path = iter->path().lexically_normal();
+            if (m_file_system_watcher.is_ignored(file_path))
+                continue;
             if (m_analyzer_factory.has(file_path.extension().string())) {
                 auto last_write_time = iter->last_write_time();
                 uint64_t timestamp = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -211,6 +214,7 @@ void sqfvm::language_server::language_server::analyze_outdated_files() {
 
 void sqfvm::language_server::language_server::on_workspace_didChangeConfiguration(
         const ::lsp::data::did_change_configuration_params &params) {
+    // Path mappings
     m_sqfvm_factory.clear_workspace_mappings();
     if (params.settings.has_value() && params.settings->contains("sqfVmLanguageServer")) {
         auto settings = params.settings.value()["sqfVmLanguageServer"];
@@ -336,6 +340,7 @@ void sqfvm::language_server::language_server::on_textDocument_didOpen(
 
 void sqfvm::language_server::language_server::on_textDocument_didChange(
         const ::lsp::data::did_change_text_document_params &params) {
+    std::lock_guard<std::mutex> lock(m_analyze_mutex);
     m_versions[static_cast<::lsp::data::document_uri>(params.text_document.uri.full())] = params.text_document.version;
     auto path = std::filesystem::path(
             std::string(params.text_document.uri.path().begin(),
@@ -408,6 +413,48 @@ sqfvm::language_server::language_server::language_server() : m_sqfvm_factory(thi
             });
 }
 
+void sqfvm::language_server::language_server::add_ignored_paths(const std::filesystem::path &workspace, const std::filesystem::path &lsp_folder) {
+    auto ignore_list = lsp_folder / "fs-watcher-ignore.txt";
+    if (!exists(ignore_list))
+    {
+        auto file = std::ofstream(ignore_list);
+        file << "################################################################\n";
+        file << "### This file contains a list of paths to ignore changes of. ###\n";
+        file << "### The paths are relative to the workspace root.            ###\n";
+        file << "### The paths are separated by newlines.                     ###\n";
+        file << "### Note that this is not behaving like a .gitignore file,   ###\n";
+        file << "### and you cannot invert some paths by prefixing them with  ###\n";
+        file << "### a ! or use wildcards.                                    ###\n";
+        file << "### Any subfolder of a path is also ignored.                 ###\n";
+        file << "### Important: No leading or trailing whitespace is allowed  ###\n";
+        file << "###            on any line.                                  ###\n";
+        file << "### Changing anything in this file will have no effect until ###\n";
+        file << "### the language server is restarted.                        ###\n";
+        file << "### Keep in mind that already analyzed files will not be     ###\n";
+        file << "### re-analyzed OR removed from the database.                ###\n";
+        file << "################################################################\n";
+        file << lsp_folder.lexically_relative(workspace).string() << "\n";
+        file << ".vscode\n";
+        file << ".github\n";
+        file << ".git\n";
+        file << ".hemtt\n";
+        file << ".vscode\n";
+    }
+    std::ifstream file(ignore_list);
+    std::string line;
+    while (std::getline(file, line))
+    {
+        if (line.empty())
+            continue;
+        if (line[0] == '#')
+            continue;
+        auto path = workspace / line;
+        if (exists(path))
+            m_file_system_watcher.ignore(path);
+    }
+}
+
+
 bool sqfvm::language_server::language_server::delete_file(const std::filesystem::path &file) {
     auto file_opt = get_file_from_path(file.string(), false);
     if (!file_opt.has_value()) {
@@ -477,6 +524,17 @@ void sqfvm::language_server::language_server::analyse_file(
     } else {
         content = contents[0].content;
     }
+
+    bool file_ignored = m_file_system_watcher.is_ignored(file.path);
+    if (file.is_ignored != file_ignored) {
+        auto lFile = m_context->storage().get<database::tables::t_file>(file.id_pk);
+        lFile.is_ignored = file_ignored;
+        m_context->storage().update(lFile);
+        if (file_ignored) {
+            m_context->storage().remove_all<database::tables::t_diagnostic>(
+                    where(c(&database::tables::t_diagnostic::file_fk) == file.id_pk));
+        }
+    }
     auto analyzer_opt = m_analyzer_factory.get(
             extension,
             m_lsp_folder,
@@ -490,9 +548,12 @@ void sqfvm::language_server::language_server::analyse_file(
     window_log(::lsp::data::message_type::Log, [&](auto &sstream) {
         sstream << "Analyzing '" << file.path << "'";
     });
+
     try {
-        analyzer_opt.value()->analyze();
-        analyzer_opt.value()->commit();
+        if (!file_ignored) {
+            analyzer_opt.value()->analyze();
+            analyzer_opt.value()->commit();
+        }
     }
     catch (std::exception &e) {
         std::stringstream sstream;
@@ -586,6 +647,7 @@ void sqfvm::language_server::language_server::file_system_item_removed(
         bool is_directory) {
     if (is_subpath(path, m_lsp_folder.parent_path()))
         return;
+    std::lock_guard<std::mutex> lock(m_analyze_mutex);
     if (is_directory) {
         auto files = m_context->storage().get_all<database::tables::t_file>(
                 where(like(&database::tables::t_file::path, path.string() + "%")));
@@ -607,6 +669,7 @@ void sqfvm::language_server::language_server::file_system_item_added(
         bool is_directory) {
     if (is_subpath(path, m_lsp_folder.parent_path()))
         return;
+    std::lock_guard<std::mutex> lock(m_analyze_mutex);
     if (is_directory) {
         for (auto &p: std::filesystem::recursive_directory_iterator(path)) {
             if (std::filesystem::is_directory(p))
@@ -629,6 +692,7 @@ void sqfvm::language_server::language_server::file_system_item_modified(
         return;
     if (is_subpath(path, m_lsp_folder.parent_path()))
         return;
+    std::lock_guard<std::mutex> lock(m_analyze_mutex);
     if (iequal(path.filename().string(), "$PBOPREFIX$")) {
         add_or_update_pboprefix_mapping_logging(path);
         mark_all_files_as_outdated();

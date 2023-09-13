@@ -20,7 +20,7 @@ namespace sqfvm::language_server::database {
     namespace internal {
         struct t_db_generation {
             static constexpr const char *table_name = "tDbGeneration";
-            static const int expected_generation = 5;
+            static const int expected_generation = 6;
             int id_pk;
             int generation;
         };
@@ -38,6 +38,7 @@ namespace sqfvm::language_server::database {
                                make_column("id_pk", &t_file::id_pk, primary_key().autoincrement()),
                                make_column("last_changed", &t_file::last_changed),
                                make_column("path", &t_file::path),
+                               make_column("is_ignored", &t_file::is_ignored),
                                make_column("is_outdated", &t_file::is_outdated),
                                make_column("is_deleted", &t_file::is_deleted)),
                     make_table(t_hover::table_name,
