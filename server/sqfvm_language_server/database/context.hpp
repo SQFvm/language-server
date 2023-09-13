@@ -111,7 +111,6 @@ namespace sqfvm::language_server::database {
                                make_column("is_suppressed", &t_diagnostic::is_suppressed),
                                foreign_key(&t_diagnostic::source_file_fk).references(&t_file::id_pk),
                                foreign_key(&t_diagnostic::file_fk).references(&t_file::id_pk)));
-            storage.busy_timeout(5000);
             return storage;
         }
     }
@@ -186,7 +185,11 @@ namespace sqfvm::language_server::database {
         [[nodiscard]] storage_t &storage() { return m_storage; }
 
         // Returns the storage object
-        [[nodiscard]] const storage_t &storage() const { return m_storage; }
+        [[nodiscard]] const storage_t &storage() const {
+            // ToDo: Make this return multiple (named? always a new one?) sqlite databases and remove
+            // analysis lock in language_server.hpp/-.cpp
+            return m_storage;
+        }
 
         // Returns the path to the database
         [[nodiscard]] const std::filesystem::path &db_path() const { return m_db_path; }
