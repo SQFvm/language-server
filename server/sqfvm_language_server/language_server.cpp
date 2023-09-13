@@ -24,7 +24,6 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
     m_context = std::make_shared<database::context>(m_db_path);
     m_context->migrate();
     m_sqfvm_factory.add_mapping(uri.string(), "");
-    m_file_system_watcher.ignore(uri / ".vscode");
     add_ignored_paths(uri, m_lsp_folder);
     m_file_system_watcher.watch(uri);
     m_file_system_watcher.callback_add(
@@ -414,7 +413,7 @@ sqfvm::language_server::language_server::language_server() : m_sqfvm_factory(thi
 }
 
 void sqfvm::language_server::language_server::add_ignored_paths(const std::filesystem::path &workspace, const std::filesystem::path &lsp_folder) {
-    auto ignore_list = lsp_folder / "fs-watcher-ignore.txt";
+    auto ignore_list = lsp_folder / "ls-ignore.txt";
     if (!exists(ignore_list))
     {
         auto file = std::ofstream(ignore_list);
