@@ -67,3 +67,8 @@ at `<workspace>/.vscode/sqfvm-lsp/use_scripted_analyzers` (where `<workspace>` i
 After touching any other file managed by the language server, the language server will
 automatically generate template files for the scripted analyzers, including a documentation
 on how to use them.
+
+## Exclude files (or folders) from analysis
+Every workspace will have a file available at `<workspace>/.vscode/sqfvm-lsp/ls-ignore.txt` allowing to exclude files (and folders) from analysis.
+The file will be auto-generated if it is not existing.
+Further details are available in that file.
