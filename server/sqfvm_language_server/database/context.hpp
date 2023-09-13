@@ -155,8 +155,8 @@ namespace sqfvm::language_server::database {
 
         void migrate() {
             try {
-                if (!std::filesystem::exists(m_db_path)) {
-                    auto parent_path = m_db_path.parent_path();
+                auto parent_path = m_db_path.parent_path();
+                if (!std::filesystem::exists(parent_path)) {
                     std::filesystem::create_directories(parent_path);
                 }
                 m_sync_result = m_storage.sync_schema(false);

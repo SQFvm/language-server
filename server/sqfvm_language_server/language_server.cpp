@@ -712,6 +712,10 @@ void sqfvm::language_server::language_server::file_system_item_modified(
 
 void sqfvm::language_server::language_server::ensure_git_ignore_file_exists() {
     std::filesystem::path git_ignore_path = m_lsp_folder / ".gitignore";
+    auto parent_path = git_ignore_path.parent_path();
+    if (!std::filesystem::exists(git_ignore_path)) {
+        std::filesystem::create_directories(parent_path);
+    }
     if (!std::filesystem::exists(git_ignore_path)) {
         std::ofstream file(git_ignore_path);
         file << ".gitignore" << std::endl;
