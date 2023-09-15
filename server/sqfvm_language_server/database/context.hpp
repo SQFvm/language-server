@@ -20,7 +20,7 @@ namespace sqfvm::language_server::database {
     namespace internal {
         struct t_db_generation {
             static constexpr const char *table_name = "tDbGeneration";
-            static const int expected_generation = 6;
+            static const int expected_generation = 7;
             int id_pk;
             int generation;
         };
@@ -154,6 +154,25 @@ namespace sqfvm::language_server::database {
         }
 
         void migrate() {
+            // Sadly, sync_schema may fail if the database is filled with data under certain circumstances,
+            // preventing the handle_generation() call to be called ever, which is why this
+            // wonky two-step system is mandatory.
+
+
+            // Attempt generation migration. If this does not work, an exception is thrown
+            // that can be ignored because we first have to sync the schema.
+            try {
+                auto parent_path = m_db_path.parent_path();
+                if (!std::filesystem::exists(parent_path)) {
+                    std::filesystem::create_directories(parent_path);
+                }
+                handle_generation();
+            } catch (const std::exception &e) {
+                /* empty */
+            }
+
+            // Sync the schema and migrate generation.
+            // This is required to ensure the generation index is created and the database is too.
             try {
                 auto parent_path = m_db_path.parent_path();
                 if (!std::filesystem::exists(parent_path)) {

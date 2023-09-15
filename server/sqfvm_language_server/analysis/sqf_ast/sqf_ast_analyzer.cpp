@@ -75,14 +75,17 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
             auto visitor_index = static_cast<size_t>(visitor_diff);
             for (auto &visitor_variable: visitor->m_variables) {
                 if (visitor_variable.scope.length() > file_scope_name.length()
-                    && std::string_view(visitor_variable.scope.begin(),
-                                        visitor_variable.scope.begin() + file_scope_name.length()) ==
-                       file_scope_name) {
+                    && std::string_view(
+                        visitor_variable.scope.begin(),
+                        visitor_variable.scope.begin() + file_scope_name.length()) == file_scope_name) {
                     // This variable is in this file
-                    auto db_variable = std::find_if(db_file_variables.begin(), db_file_variables.end(),
-                                                    [&](auto &db_variable) {
-                                                        return db_variable.scope == visitor_variable.scope;
-                                                    });
+                    auto db_variable = std::find_if(
+                            db_file_variables.begin(),
+                            db_file_variables.end(),
+                            [&](auto &db_variable) {
+                                return db_variable.scope == visitor_variable.scope
+                                       && iequal(db_variable.variable_name, visitor_variable.variable_name);
+                            });
                     if (db_variable != db_file_variables.end()) {
                         variable_map[visitor_id_pair{
                                 .visitor_index = visitor_index,
@@ -193,6 +196,8 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
             std::vector<database::tables::t_hover> hovers;
             std::stringstream hover_text;
             for (auto &it: m_hover_tuples) {
+                if (std::filesystem::path(it.path) != m_file.path)
+                    continue;
                 hover_text << "`";
                 hover_text << m_text.substr(it.raw_start, it.raw_end - it.raw_start);
                 hover_text << "`\n";
@@ -344,8 +349,11 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::macro_resolved
         ::sqf::parser::preprocessor::impl_default::macro_resolved_data orig_end,
         size_t pp_start,
         size_t pp_end,
-        sqf::runtime::runtime &runtime, sqf::runtime::parser::preprocessor::context &local_fileinfo,
-        sqf::runtime::parser::preprocessor::context &original_fileinfo, const sqf::runtime::parser::macro &m,
+        sqf::runtime::runtime &runtime,
+        sqf::runtime::parser::preprocessor::context &local_fileinfo,
+        sqf::runtime::parser::preprocessor::context &original_fileinfo,
+        const sqf::runtime::parser::macro &m,
         const std::unordered_map<std::string, std::string> &param_map) {
-    m_hover_tuples.emplace_back(orig_start.offset, orig_end.offset, pp_start, pp_end, orig_start.line, orig_start.column, orig_end.line, orig_end.column);
+    m_hover_tuples.emplace_back(original_fileinfo.path.physical, orig_start.offset, orig_end.offset, pp_start, pp_end,
+                                orig_start.line, orig_start.column, orig_end.line, orig_end.column);
 }

@@ -15,6 +15,7 @@ namespace sqfvm::language_server::analysis::sqf_ast {
         friend class ast_visitor;
 
         struct hover_tuple {
+            std::string path;
             size_t raw_start;
             size_t raw_end;
             size_t pp_start;

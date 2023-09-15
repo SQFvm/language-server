@@ -13,6 +13,25 @@
 
 namespace lsp {
     namespace data {
+        /**
+         * Inlay hint kinds.
+         *
+         * @since 3.17.0
+         */
+        enum class inlay_hint_kind {
+            /**
+             * An inlay hint that for a type annotation.
+             */
+            Type = 1,
+
+            /**
+             * An inlay hint that is for a parameter.
+             */
+            Parameter = 2,
+        };
+
+
+#pragma region ResourceOperations
         enum class resource_operations {
             Empty = 0b000,
             /*
@@ -42,6 +61,8 @@ namespace lsp {
                     & static_cast<std::underlying_type<resource_operations>::type>(rhs)
             );
         }
+
+#pragma endregion
 
         enum class failure_handling {
             empty,

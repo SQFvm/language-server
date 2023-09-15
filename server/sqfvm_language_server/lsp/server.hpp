@@ -71,6 +71,11 @@ namespace lsp {
             return {};
         }
 
+        virtual std::optional<std::vector<lsp::data::inlay_hint>>
+        on_textDocument_inlayHint(const lsp::data::inlay_hint_params &params) {
+            return {};
+        }
+
         virtual std::optional<std::vector<lsp::data::folding_range>> on_textDocument_foldingRange(
                 const lsp::data::folding_range_params &params) {
             return {};

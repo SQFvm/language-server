@@ -437,7 +437,6 @@ void sqfvm::language_server::language_server::add_ignored_paths(const std::files
         file << ".github\n";
         file << ".git\n";
         file << ".hemtt\n";
-        file << ".vscode\n";
     }
     std::ifstream file(ignore_list);
     std::string line;
@@ -756,8 +755,86 @@ void sqfvm::language_server::language_server::ensure_git_ignore_file_exists() {
             }}
     };
     res.capabilities.hoverProvider = lsp::data::initialize_result::server_capabilities::hover_options{.workDoneProgress = false};
+    res.capabilities.inlayHintProvider = lsp::data::initialize_result::server_capabilities::inlay_hint_options{.work_done_progress = false, .resolve_provider = true};
 
     return res;
+}
+
+
+std::optional<std::vector<lsp::data::inlay_hint>>
+sqfvm::language_server::language_server::on_textDocument_inlayHint(const lsp::data::inlay_hint_params &params) {
+    using database::tables::t_reference;
+    auto path = std::filesystem::path(
+            std::string(params.text_document.uri.path().begin(),
+                        params.text_document.uri.path().end()))
+            .lexically_normal();
+    auto file_opt = get_file_from_path(path.string(), false);
+    if (!file_opt.has_value())
+        return std::nullopt;
+    auto file = file_opt.value();
+    auto references_in_range = m_context->storage().get_all<database::tables::t_reference>(
+            where(c(&database::tables::t_reference::file_fk) == file.id_pk
+                  and c(&database::tables::t_reference::line) >= params.range.start.line
+                  and c(&database::tables::t_reference::line) <= params.range.end.line
+                  and c(&database::tables::t_reference::column) >= params.range.start.character
+                  and c(&database::tables::t_reference::column) <= params.range.end.character));
+    std::unordered_map<uint64_t, std::vector<database::tables::t_reference>> variable_map{};
+    for (auto& reference : references_in_range) {
+        variable_map[reference.variable_fk].push_back(reference);
+    }
+    std::unordered_map<uint64_t, std::string> variable_types_string{};
+    std::stringstream sstream;
+    for (auto& [variable_id, references] : variable_map) {
+        sstream.str("");
+        auto variable = m_context->storage().get<database::tables::t_variable>(variable_id);
+        if (!variable.opt_file_fk.has_value()) {
+            sstream << "ERROR";
+        } else {
+            bool flag = false;
+            bool any = false;
+            for (auto& reference : references) {
+                if (reference.types == t_reference::type_flags::any) {
+                    any = true;
+                    break;
+                }
+                if ((reference.types | t_reference::type_flags::code) == t_reference::type_flags::code) { flag = true; sstream << (flag ? "code" : ", code"); };
+                if ((reference.types | t_reference::type_flags::scalar) == t_reference::type_flags::scalar) { flag = true; sstream << (flag ? "scalar" : ", scalar"); };
+                if ((reference.types | t_reference::type_flags::boolean) == t_reference::type_flags::boolean) { flag = true; sstream << (flag ? "boolean" : ", boolean"); };
+                if ((reference.types | t_reference::type_flags::object) == t_reference::type_flags::object) { flag = true; sstream << (flag ? "object" : ", object"); };
+                if ((reference.types | t_reference::type_flags::hashmap) == t_reference::type_flags::hashmap) { flag = true; sstream << (flag ? "hashmap" : ", hashmap"); };
+                if ((reference.types | t_reference::type_flags::array) == t_reference::type_flags::array) { flag = true; sstream << (flag ? "array" : ", array"); };
+                if ((reference.types | t_reference::type_flags::string) == t_reference::type_flags::string) { flag = true; sstream << (flag ? "string" : ", string"); };
+                if ((reference.types | t_reference::type_flags::nil) == t_reference::type_flags::nil) { flag = true; sstream << (flag ? "nil" : ", nil"); };
+            }
+            if (any) {
+                sstream.str("");
+                sstream << "any";
+            }
+        }
+        variable_types_string[variable_id] = sstream.str();
+    }
+    std::vector<lsp::data::inlay_hint> hints{};
+    for (auto& [variable_id, references] : variable_map) {
+        auto variable = m_context->storage().get<database::tables::t_variable>(variable_id);
+        if (!variable.opt_file_fk.has_value())
+            continue;
+        auto variable_type = variable_types_string[variable_id];
+        for (auto& reference : references) {
+            if (reference.line == params.range.start.line && reference.column == params.range.start.character) {
+                hints.push_back(lsp::data::inlay_hint{
+                        .position = lsp::data::position{
+                                .line = reference.line,
+                                .character = reference.column,
+                        },
+                        .label = {lsp::data::inlay_hint_label_part{
+                                .value = variable.variable_name,
+                        }},
+                        .kind = lsp::data::inlay_hint_kind::Type,
+                });
+            }
+        }
+    }
+    return hints;
 }
 
 std::optional<std::vector<std::variant<lsp::data::command, lsp::data::code_action>>>

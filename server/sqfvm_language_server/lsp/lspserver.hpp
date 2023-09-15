@@ -31,6 +31,7 @@ namespace lsp::data {
 
     using change_annotation_identifier = std::string;
     using document_uri = std::string;
+    using lsp_any = nlohmann::json;
 #pragma endregion
 #pragma region from_json
 
@@ -161,6 +162,11 @@ namespace lsp::data {
     template<>
     inline void from_json<diagnostic_severity>(const nlohmann::json &node, diagnostic_severity &t) {
         t = static_cast<diagnostic_severity>(node.get<int>());
+    }
+
+    template<>
+    inline void from_json<inlay_hint_kind>(const nlohmann::json &node, inlay_hint_kind &t) {
+        t = static_cast<inlay_hint_kind>(node.get<int>());
     }
 
     template<>
@@ -494,6 +500,11 @@ namespace lsp::data {
 
     template<>
     inline nlohmann::json to_json<diagnostic_severity>(const diagnostic_severity &t) {
+        return static_cast<int>(t);
+    }
+
+    template<>
+    inline nlohmann::json to_json<inlay_hint_kind>(const inlay_hint_kind &t) {
         return static_cast<int>(t);
     }
 
@@ -887,29 +898,48 @@ namespace lsp::data {
         }
     };
 
-    /**
-         * Represents a reference to a command.
-         * Provides a title which will be used to represent a command in the UI.
-         * Commands are identified by a string identifier.
-         * The recommended way to handle commands is to implement their execution on the server side
-         * if the client and server provides the corresponding capabilities.
-         * Alternatively the tool extension code could handle the command.
-         * The protocol currently does not specify a set of well-known commands.
-         */
 
+    struct location {
+        uri uri;
+        range range{};
+
+        static location from_json(const nlohmann::json &node) {
+            location res;
+            data::from_json(node, "uri", res.uri);
+            data::from_json(node, "range", res.range);
+            return res;
+        }
+
+        [[nodiscard]] nlohmann::json to_json() const {
+            nlohmann::json json;
+            data::set_json(json, "uri", uri);
+            data::set_json(json, "range", range);
+            return json;
+        }
+    };
+
+    /**
+     * Represents a reference to a command.
+     * Provides a title which will be used to represent a command in the UI.
+     * Commands are identified by a string identifier.
+     * The recommended way to handle commands is to implement their execution on the server side
+     * if the client and server provides the corresponding capabilities.
+     * Alternatively the tool extension code could handle the command.
+     * The protocol currently does not specify a set of well-known commands.
+     */
     struct command {
         /**
-             * Title of the command, like `save`.
-             */
+         * Title of the command, like `save`.
+         */
         std::string title;
         /**
-             * The identifier of the actual command handler.
-             */
+         * The identifier of the actual command handler.
+         */
         std::string command_identifier;
         /**
-             * Arguments that the command handler should be
-             * invoked with.
-             */
+         * Arguments that the command handler should be
+         * invoked with.
+         */
         std::optional<std::vector<nlohmann::json>> arguments;
 
         static command from_json(const nlohmann::json &node) {
@@ -933,6 +963,68 @@ namespace lsp::data {
             if (arguments.has_value()) {
                 json["arguments"] = arguments.value();
             }
+            return json;
+        }
+    };
+
+    /**
+     * An inlay hint label part allows for interactive and composite labels
+     * of inlay hints.
+     *
+     * @since 3.17.0
+     */
+    struct inlay_hint_label_part {
+
+        /**
+         * The value of this label part.
+         */
+        std::string value;
+
+        /**
+         * The tooltip text when you hover over this label part. Depending on
+         * the client capability `inlayHint.resolveSupport` clients might resolve
+         * this property late using the resolve request.
+         */
+        std::optional<markup_content> tooltip;
+
+        /**
+         * An optional source code location that represents this
+         * label part.
+         *
+         * The editor will use this location for the hover and for code navigation
+         * features: This part will become a clickable link that resolves to the
+         * definition of the symbol at the given location (not necessarily the
+         * location itself), it shows the hover that shows at the given location,
+         * and it shows a context menu with further code navigation commands.
+         *
+         * Depending on the client capability `inlayHint.resolveSupport` clients
+         * might resolve this property late using the resolve request.
+         */
+        std::optional<location> location;
+
+        /**
+         * An optional command for this label part.
+         *
+         * Depending on the client capability `inlayHint.resolveSupport` clients
+         * might resolve this property late using the resolve request.
+         */
+        std::optional<command> command;
+
+        static inlay_hint_label_part from_json(const nlohmann::json &node) {
+            inlay_hint_label_part res;
+            data::from_json(node, "value", res.value);
+            data::from_json(node, "tooltip", res.tooltip);
+            data::from_json(node, "location", res.location);
+            data::from_json(node, "value", res.value);
+            return res;
+        }
+
+        [[nodiscard]] nlohmann::json to_json() const {
+            nlohmann::json json;
+            data::set_json(json, "value", value);
+            data::set_json(json, "tooltip", tooltip);
+            data::set_json(json, "location", location);
+            data::set_json(json, "command", command);
             return json;
         }
     };
@@ -1333,26 +1425,6 @@ namespace lsp::data {
             data::set_json(json, "changes", changes);
             data::set_json(json, "documentChanges", document_changes);
             data::set_json(json, "changeAnnotations", change_annotations);
-            return json;
-        }
-    };
-
-
-    struct location {
-        uri uri;
-        range range{};
-
-        static location from_json(const nlohmann::json &node) {
-            location res;
-            data::from_json(node, "uri", res.uri);
-            data::from_json(node, "range", res.range);
-            return res;
-        }
-
-        [[nodiscard]] nlohmann::json to_json() const {
-            nlohmann::json json;
-            data::set_json(json, "uri", uri);
-            data::set_json(json, "range", range);
             return json;
         }
     };
@@ -1787,19 +1859,19 @@ namespace lsp::data {
     };
 
     /**
-         * Represents a collection of [completion items](#CompletionItem) to be presented
-         * in the editor.
-         */
+     * Represents a collection of [completion items](#CompletionItem) to be presented
+     * in the editor.
+     */
     struct completion_list {
         /**
-            * This list it not complete. Further typing should result in recomputing
-            * this list.
-            */
+        * This list it not complete. Further typing should result in recomputing
+        * this list.
+        */
         bool isIncomplete;
 
         /**
-            * The completion items.
-            */
+        * The completion items.
+        */
         std::vector<completion_item> items;
 
         static completion_list from_json(const nlohmann::json &node) {
@@ -1946,6 +2018,29 @@ namespace lsp::data {
                 nlohmann::json to_json() const {
                     nlohmann::json json;
                     data::set_json(json, "workDoneProgress", workDoneProgress);
+                    return json;
+                }
+            };
+
+            struct inlay_hint_options {
+                std::optional<bool> work_done_progress;
+                /**
+                 * The server provides support to resolve additional
+                 * information for an inlay hint item.
+                 */
+                std::optional<bool> resolve_provider;
+
+                static inlay_hint_options from_json(const nlohmann::json &node) {
+                    inlay_hint_options res;
+                    data::from_json(node, "resolveProvider", res.resolve_provider);
+                    data::from_json(node, "workDoneProgress", res.work_done_progress);
+                    return res;
+                }
+
+                nlohmann::json to_json() const {
+                    nlohmann::json json;
+                    data::set_json(json, "resolveProvider", resolve_provider);
+                    data::set_json(json, "workDoneProgress", work_done_progress);
                     return json;
                 }
             };
@@ -2471,13 +2566,20 @@ namespace lsp::data {
             std::optional<completion_options> completionProvider;
 
             /**
-                    * The server provides hover support.
-                    *
-                    * Implementors note: Technically, this should support `boolean | HoverOptions` for backwards compatibility ... but we ignore that simply because
-                    *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
-                    *                    a server.
-                    */
+            * The server provides hover support.
+            *
+            * Implementors note: Technically, this should support `boolean | HoverOptions` for backwards compatibility ... but we ignore that simply because
+            *                    it already is hard enough to provide this shitfest of a protocol. No need to make it even harder to implement
+            *                    a server.
+            */
             std::optional<hover_options> hoverProvider;
+
+            /**
+             * The server provides inlay hints.
+             *
+             * @since 3.17.0
+             */
+            std::optional<inlay_hint_options> inlayHintProvider;
 
             /**
                     * The server provides signature help support.
@@ -2686,6 +2788,7 @@ namespace lsp::data {
                 data::from_json(node, "executeCommandProvider", res.executeCommandProvider);
                 data::from_json(node, "selectionRangeProvider", res.selectionRangeProvider);
                 data::from_json(node, "workspaceSymbolProvider", res.workspaceSymbolProvider);
+                data::from_json(node, "inlayHintProvider", res.inlayHintProvider);
                 data::from_json(node, "workspace", res.workspace);
                 res.experimental = node.contains("experimental") ? node["experimental"] : nlohmann::json(nullptr);
                 return res;
@@ -2716,6 +2819,7 @@ namespace lsp::data {
                 data::set_json(json, "executeCommandProvider", executeCommandProvider);
                 data::set_json(json, "selectionRangeProvider", selectionRangeProvider);
                 data::set_json(json, "workspaceSymbolProvider", workspaceSymbolProvider);
+                data::set_json(json, "inlayHintProvider", inlayHintProvider);
                 data::set_json(json, "workspace", workspace);
                 if (experimental.has_value()) {
                     json["experimental"] = *experimental;
@@ -4342,6 +4446,101 @@ namespace lsp::data {
             return json;
         }
     };
+    /**
+     * Inlay hint information.
+     *
+     * @since 3.17.0
+     */
+    struct inlay_hint {
+        /**
+         * The position of this hint.
+         */
+        position position = {};
+
+        /**
+         * The label of this hint. A human readable string or an array of
+         * InlayHintLabelPart label parts.
+         *
+         * *Note* that neither the string nor the label part can be empty.
+         */
+        std::vector<inlay_hint_label_part> label;
+
+        /**
+         * The kind of this hint. Can be omitted in which case the client
+         * should fall back to a reasonable default.
+         */
+        std::optional<inlay_hint_kind> kind;
+
+        /**
+         * Optional text edits that are performed when accepting this inlay hint.
+         *
+         * *Note* that edits are expected to change the document so that the inlay
+         * hint (or its nearest variant) is now part of the document and the inlay
+         * hint itself is now obsolete.
+         *
+         * Depending on the client capability `inlayHint.resolveSupport` clients
+         * might resolve this property late using the resolve request.
+         */
+        std::optional<std::vector<text_edit>> text_edits;
+
+        /**
+         * The tooltip text when you hover over this item.
+         *
+         * Depending on the client capability `inlayHint.resolveSupport` clients
+         * might resolve this property late using the resolve request.
+         */
+        std::optional<markup_content> tooltip;
+
+        /**
+         * Render padding before the hint.
+         *
+         * Note: Padding should use the editor's background color, not the
+         * background color of the hint itself. That means padding can be used
+         * to visually align/separate an inlay hint.
+         */
+        std::optional<bool> padding_left;
+
+        /**
+         * Render padding after the hint.
+         *
+         * Note: Padding should use the editor's background color, not the
+         * background color of the hint itself. That means padding can be used
+         * to visually align/separate an inlay hint.
+         */
+        std::optional<bool> padding_right;
+
+        /**
+         * A data entry field that is preserved on an inlay hint between
+         * a `textDocument/inlayHint` and a `inlayHint/resolve` request.
+         */
+        std::optional<lsp_any> data;
+
+        static inlay_hint from_json(const nlohmann::json &node) {
+            inlay_hint res;
+            data::from_json(node, "position", res.position);
+            data::from_json(node, "label", res.label);
+            data::from_json(node, "kind", res.kind);
+            data::from_json(node, "textEdits", res.text_edits);
+            data::from_json(node, "tooltip", res.tooltip);
+            data::from_json(node, "paddingLeft", res.padding_left);
+            data::from_json(node, "paddingRight", res.padding_right);
+            data::from_json(node, "data", res.data);
+            return res;
+        }
+
+        nlohmann::json to_json() const {
+            nlohmann::json json;
+            data::set_json(json, "position", position);
+            data::set_json(json, "label", label);
+            data::set_json(json, "kind", kind);
+            data::set_json(json, "textEdits", text_edits);
+            data::set_json(json, "tooltip", tooltip);
+            data::set_json(json, "paddingLeft", padding_left);
+            data::set_json(json, "paddingRight", padding_right);
+            data::set_json(json, "data", data);
+            return json;
+        }
+    };
     struct hover {
         /**
          * The hover's content
@@ -4623,6 +4822,38 @@ namespace lsp::data {
             data::set_json(json, "textDocument", textDocument);
             data::set_json(json, "position", position);
             data::set_json(json, "context", context);
+            return json;
+        }
+    };
+
+    struct inlay_hint_params {
+        /**
+        * An optional token that a server can use to report work done progress.
+        */
+        std::optional<std::string> work_done_token;
+        /**
+         * The text document.
+         */
+        text_document_identifier text_document;
+
+        /**
+         * The visible document range for which inlay hints should be computed.
+         */
+        range range;
+
+        static inlay_hint_params from_json(const nlohmann::json &node) {
+            inlay_hint_params res;
+            data::from_json(node, "workDoneToken", res.work_done_token);
+            data::from_json(node, "textDocument", res.text_document);
+            data::from_json(node, "range", res.range);
+            return res;
+        }
+
+        nlohmann::json to_json() const {
+            nlohmann::json json;
+            data::set_json(json, "workDoneToken", work_done_token);
+            data::set_json(json, "textDocument", text_document);
+            data::set_json(json, "range", range);
             return json;
         }
     };

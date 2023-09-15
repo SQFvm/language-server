@@ -185,7 +185,20 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 }
                 catch (const std::exception &e) {
                     std::stringstream sstream;
-                    sstream << "rpc call 'textDocument/codeAction' failed with: '" << e.what() << "'.";
+                    sstream << "rpc call 'textDocument/hover' failed with: '" << e.what() << "'.";
+                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                }
+            });
+    m_rpc.register_method(
+            "textDocument/inlayHint", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
+                try {
+                    auto params = data::inlay_hint_params::from_json(msg.params.value());
+                    auto res = on_textDocument_inlayHint(params);
+                    rpc.send({msg.id, to_json(res)});
+                }
+                catch (const std::exception &e) {
+                    std::stringstream sstream;
+                    sstream << "rpc call 'textDocument/inlayHint' failed with: '" << e.what() << "'.";
                     window_logMessage(::lsp::data::message_type::Log, sstream.str());
                 }
             });

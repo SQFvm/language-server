@@ -23,7 +23,7 @@ namespace {
                 .offset = reference.offset,
                 .length = reference.length,
                 .severity = t_diagnostic::info,
-                .message = "Private variable '" + variable.variable_name + "' is never used",
+                .message = "Value of private variable '" + variable.variable_name + "' is never used",
                 .content = variable.variable_name,
                 .code = "VV-001",
         };
@@ -357,6 +357,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::start
         reference.length = 0;
         reference.file_fk = file_of(a).id_pk;
         auto variable = get_or_create_variable("_this");
+        variable.opt_file_fk = file_of(a).id_pk;
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
         reference.is_magic_variable = true;
@@ -371,6 +372,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::start
         reference.length = 0;
         reference.file_fk = file_of(a).id_pk;
         auto variable = get_or_create_variable("_fnc_scriptName");
+        variable.opt_file_fk = file_of(a).id_pk;
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
         reference.is_magic_variable = true;
@@ -434,6 +436,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::enter
                 } else {
                     auto variable_name = first_child.token.contents;
                     auto variable = get_or_create_variable(sqf_destringify(variable_name));
+                    variable.opt_file_fk = file_of(a).id_pk;
                     auto reference = make_reference(a, first_child, variable, t_reference::access_flags::set);
                     reference.is_declaration = true;
                     m_references.push_back(reference);
@@ -495,26 +498,19 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::enter
             }
             break;
         }
-        case ::sqf::parser::sqf::bison::astkind::IDENT: {
-            expression_handle_needless_parentheses(a, node, parent_nodes);
-            if (m_assignment_candidate.has_value()) {
-                m_assignment_candidate->id_pk = m_references.size() + 1;
-                m_references.push_back(*m_assignment_candidate);
-                m_assignment_candidate = {};
-            }
-        } // Fallthrough
-        case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT:
+            // case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT: // Not handled as ASSIGNMENT is not referring to it's ident
+        case ::sqf::parser::sqf::bison::astkind::IDENT:
         case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL: {
-            auto is_declaration = node.kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL
-                                  || (parent_nodes.size() > 1
-                                      && parent_nodes.back()->kind ==
-                                         ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL);
+            auto is_declaration = node.kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL;
             auto reference = make_reference(a, node);
             auto variable = get_or_create_variable(node.token.contents, is_declaration);
+            if (is_private_variable(node.token.contents))
+                variable.opt_file_fk = file_of(a).id_pk;
             reference.variable_fk = variable.id_pk;
 
+            auto is_left_side = is_left_side_of_assignment(parent_nodes, node);
             // Check if we are on the left side of an assignment
-            if (is_left_side_of_assignment(parent_nodes, node)) {
+            if (is_left_side) {
                 // Yes - We set this IDENT so put it into temp for later evaluation in parent or the code following
                 reference.is_declaration = is_declaration;
                 reference.access = t_reference::access_flags::set;
@@ -524,6 +520,15 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::enter
                 reference.access = t_reference::access_flags::get;
                 reference.id_pk = m_references.size() + 1;
                 m_references.push_back(reference);
+            }
+            if (!is_left_side
+                && node.kind == sqf::parser::sqf::bison::astkind::IDENT) {
+                expression_handle_needless_parentheses(a, node, parent_nodes);
+                if (m_assignment_candidate.has_value()) {
+                    m_assignment_candidate->id_pk = m_references.size() + 1;
+                    m_references.push_back(*m_assignment_candidate);
+                    m_assignment_candidate = {};
+                }
             }
             break;
         }
@@ -552,7 +557,10 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
     // Right side always must be a string
     if (right_side.kind == sqf::parser::sqf::bison::astkind::STRING) {
         auto reference = make_reference(a, right_side);
-        auto variable = get_or_create_variable(sqf_destringify(right_side.token.contents));
+        auto destringified = sqf_destringify(right_side.token.contents);
+        auto variable = get_or_create_variable(destringified);
+        if (is_private_variable(destringified))
+            variable.opt_file_fk = file_of(a).id_pk;
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::get;
         m_references.push_back(reference);
@@ -669,7 +677,10 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
     }
     if (variable_node.has_value()) {
         auto reference = make_reference(a, variable_node.value());
-        auto variable = get_or_create_variable(sqf_destringify(variable_node->token.contents));
+        auto destringified = sqf_destringify(variable_node->token.contents);
+        auto variable = get_or_create_variable(destringified);
+        if (is_private_variable(destringified))
+            variable.opt_file_fk = file_of(a).id_pk;
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
         m_references.push_back(reference);
@@ -968,7 +979,11 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
     }
     for (auto &variable_node: variable_nodes) {
         auto reference = make_reference(a, variable_node);
-        auto variable = get_or_create_variable(sqf_destringify(variable_node.token.contents));
+        auto destringified = sqf_destringify(variable_node.token.contents);
+        if (destringified.empty())
+            continue; // empty strings are ignored in params
+        auto variable = get_or_create_variable(destringified);
+        variable.opt_file_fk = file_of(a).id_pk;
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
         m_references.push_back(reference);
@@ -1019,6 +1034,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
         auto reference = make_reference(a, variable_node);
         reference.is_declaration = true;
         auto variable = get_or_create_variable(sqf_destringify(variable_node.token.contents));
+        variable.opt_file_fk = file_of(a).id_pk;
         reference.variable_fk = variable.id_pk;
         reference.types = database::tables::t_reference::type_flags::nil;
         reference.access = t_reference::access_flags::set;
@@ -1167,6 +1183,7 @@ std::string sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor
         auto reference = make_reference(a, node);
         reference.is_declaration = true;
         auto variable = get_or_create_variable("_this");
+        variable.opt_file_fk = file_of(a).id_pk;
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
         reference.is_magic_variable = true;
@@ -1202,6 +1219,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::add_m
                 auto reference = make_reference(a, node);
                 reference.is_declaration = true;
                 auto variable = get_or_create_variable(magic_variable);
+                variable.opt_file_fk = file_of(a).id_pk;
                 reference.variable_fk = variable.id_pk;
                 reference.access = t_reference::access_flags::set;
                 reference.is_magic_variable = true;
