@@ -49,7 +49,10 @@ namespace sqfvm::language_server::analysis::sqf_ast::visitors {
                 const database::tables::t_variable &variable,
                 const database::tables::t_reference::access_flags &access);
 
-        [[nodiscard]] database::tables::t_variable get_or_create_variable(std::string_view name, bool is_declaration = false);
+        [[nodiscard]] database::tables::t_variable get_or_create_variable(
+                sqf_ast_analyzer &a,
+                std::string_view name,
+                bool is_declaration = false);
 
         std::string push_scope(
                 sqf_ast_analyzer &a,

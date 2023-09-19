@@ -13,6 +13,18 @@ namespace sqfvm::language_server::analysis::sqf_ast {
 
     class sqf_ast_analyzer : public sqfvm_analyzer {
         friend class ast_visitor;
+    public:
+        // Internal struct scoped public due to the need of std::hash support across multiple functions in cpp.
+        struct visitor_id_pair {
+            size_t visitor_index;
+            uint64_t id;
+
+            bool operator==(const visitor_id_pair &other) const {
+                return visitor_index == other.visitor_index
+                       && id == other.id;
+            }
+        };
+    private:
 
         struct hover_tuple {
             std::string path;
@@ -46,6 +58,20 @@ namespace sqfvm::language_server::analysis::sqf_ast {
         void insert(
                 database::context::storage_t &storage,
                 const database::tables::t_reference &copy) const;
+
+
+
+        void commit_private_variable(
+                std::unordered_map<visitor_id_pair, uint64_t> &variable_map,
+                database::context::storage_t &storage,
+                std::vector<database::tables::t_variable> &db_file_variables,
+                std::vector<database::tables::t_variable> &file_variables_mapped,
+                size_t visitor_index,
+                database::tables::t_variable &visitor_variable) const;
+        void commit_non_private_variable(
+                std::unordered_map<visitor_id_pair, uint64_t> &variable_map, database::context::storage_t &storage,
+                std::vector<database::tables::t_variable> &file_variables_mapped, size_t visitor_index,
+                database::tables::t_variable &visitor_variable) const;
 
     protected:
         void report_diagnostic(const database::tables::t_diagnostic &diagnostic) override {

@@ -28,6 +28,15 @@ namespace sqfvm::language_server {
         file_system_watcher m_file_system_watcher;
         std::mutex m_analyze_mutex;
 
+        database::context::operations::errlogfnc_t context_err_log() {
+            return [this](const std::string &message) {
+                window_logMessage(
+                        ::lsp::data::message_type::Error,
+                        message
+                );
+            };
+        }
+
         void add_ignored_paths(const std::filesystem::path &workspace, const std::filesystem::path &lsp_folder);
 
         bool delete_file(const std::filesystem::path &file);
@@ -99,6 +108,7 @@ namespace sqfvm::language_server {
 
     public:
         language_server();
+        language_server(jsonrpc&& rpc);
 
         void ensure_git_ignore_file_exists();
 

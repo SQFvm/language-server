@@ -22,12 +22,17 @@
 namespace lsp {
     class server {
 
-    private:
         bool m_die;
+        void register_methods();
     public:
         jsonrpc m_rpc;
 
-        server();
+        server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::skip), m_die(false) {
+            register_methods();
+        }
+        server(jsonrpc&& rpc) : m_rpc(std::move(rpc)), m_die(false) {
+            register_methods();
+        }
 
         void listen();
 
@@ -119,6 +124,7 @@ namespace lsp {
         void window_logMessage(const lsp::data::log_message_params &params) {
             m_rpc.send({{}, "window/logMessage", params.to_json()});
         }
+
     };
 }
 

@@ -5,7 +5,7 @@
 #include "server.hpp"
 
 
-lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::skip), m_die(false) {
+void lsp::server::register_methods() {
     m_rpc.register_method(
             "initialize", [&](jsonrpc &rpc, const jsonrpc::rpcmessage &msg) {
                 try {
@@ -17,7 +17,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'initialize' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -34,7 +34,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/didOpen' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -46,7 +46,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/didChange' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -58,7 +58,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/willSave' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -71,7 +71,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/willSaveWaitUntil' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -83,7 +83,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/didSave' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -95,7 +95,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/didClose' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -108,7 +108,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/completion' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -121,7 +121,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/foldingRange' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -134,7 +134,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/documentColor' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -147,7 +147,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/references' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -160,7 +160,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/colorPresentation' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -173,7 +173,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/codeAction' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -186,7 +186,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/hover' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -199,7 +199,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'textDocument/inlayHint' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
     m_rpc.register_method(
@@ -211,7 +211,7 @@ lsp::server::server() : m_rpc(std::cin, std::cout, jsonrpc::detach, jsonrpc::ski
                 catch (const std::exception &e) {
                     std::stringstream sstream;
                     sstream << "rpc call 'workspace/didChangeConfiguration' failed with: '" << e.what() << "'.";
-                    window_logMessage(::lsp::data::message_type::Log, sstream.str());
+                    window_logMessage(data::message_type::Log, sstream.str());
                 }
             });
 }

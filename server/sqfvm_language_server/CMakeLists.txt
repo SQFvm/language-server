@@ -8,7 +8,8 @@ add_executable(sqfvm_language_server
         lsp/jsonrpc.hpp
         lsp/lspserver.hpp
         language_server.hpp
-        language_server.cpp
+        language_server.logic.cpp
+        language_server.lsp.cpp
         main.cpp
         main.hpp
         uri.hpp
@@ -49,6 +50,7 @@ add_executable(sqfvm_language_server
         analysis/sqfvm_analyzer.cpp
         analysis/file_analyzer.hpp
         analysis/db_analyzer.hpp
+        lsp/lspserver.cpp
 )
 
 # Set C++ Version

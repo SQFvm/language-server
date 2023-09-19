@@ -356,8 +356,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::start
         reference.offset = 0;
         reference.length = 0;
         reference.file_fk = file_of(a).id_pk;
-        auto variable = get_or_create_variable("_this");
-        variable.opt_file_fk = file_of(a).id_pk;
+        auto variable = get_or_create_variable(a, "_this");
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
         reference.is_magic_variable = true;
@@ -371,8 +370,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::start
         reference.offset = 0;
         reference.length = 0;
         reference.file_fk = file_of(a).id_pk;
-        auto variable = get_or_create_variable("_fnc_scriptName");
-        variable.opt_file_fk = file_of(a).id_pk;
+        auto variable = get_or_create_variable(a, "_fnc_scriptName");
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
         reference.is_magic_variable = true;
@@ -435,8 +433,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::enter
                             ::sqf::parser::sqf::bison::astkind::STRING));
                 } else {
                     auto variable_name = first_child.token.contents;
-                    auto variable = get_or_create_variable(sqf_destringify(variable_name));
-                    variable.opt_file_fk = file_of(a).id_pk;
+                    auto variable = get_or_create_variable(a, sqf_destringify(variable_name));
                     auto reference = make_reference(a, first_child, variable, t_reference::access_flags::set);
                     reference.is_declaration = true;
                     m_references.push_back(reference);
@@ -503,9 +500,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::enter
         case ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL: {
             auto is_declaration = node.kind == ::sqf::parser::sqf::bison::astkind::ASSIGNMENT_LOCAL;
             auto reference = make_reference(a, node);
-            auto variable = get_or_create_variable(node.token.contents, is_declaration);
-            if (is_private_variable(node.token.contents))
-                variable.opt_file_fk = file_of(a).id_pk;
+            auto variable = get_or_create_variable(a, node.token.contents, is_declaration);
             reference.variable_fk = variable.id_pk;
 
             auto is_left_side = is_left_side_of_assignment(parent_nodes, node);
@@ -558,9 +553,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
     if (right_side.kind == sqf::parser::sqf::bison::astkind::STRING) {
         auto reference = make_reference(a, right_side);
         auto destringified = sqf_destringify(right_side.token.contents);
-        auto variable = get_or_create_variable(destringified);
-        if (is_private_variable(destringified))
-            variable.opt_file_fk = file_of(a).id_pk;
+        auto variable = get_or_create_variable(a, destringified);
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::get;
         m_references.push_back(reference);
@@ -628,7 +621,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
     }
     if (variable_node.has_value()) {
         auto reference = make_reference(a, variable_node.value());
-        auto variable = get_or_create_variable(sqf_destringify(variable_node->token.contents));
+        auto variable = get_or_create_variable(a, sqf_destringify(variable_node->token.contents));
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::get;
         m_references.push_back(reference);
@@ -678,9 +671,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
     if (variable_node.has_value()) {
         auto reference = make_reference(a, variable_node.value());
         auto destringified = sqf_destringify(variable_node->token.contents);
-        auto variable = get_or_create_variable(destringified);
-        if (is_private_variable(destringified))
-            variable.opt_file_fk = file_of(a).id_pk;
+        auto variable = get_or_create_variable(a, destringified);
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
         m_references.push_back(reference);
@@ -982,8 +973,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
         auto destringified = sqf_destringify(variable_node.token.contents);
         if (destringified.empty())
             continue; // empty strings are ignored in params
-        auto variable = get_or_create_variable(destringified);
-        variable.opt_file_fk = file_of(a).id_pk;
+        auto variable = get_or_create_variable(a, destringified);
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
         m_references.push_back(reference);
@@ -1033,8 +1023,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::expre
     for (auto &variable_node: variable_nodes) {
         auto reference = make_reference(a, variable_node);
         reference.is_declaration = true;
-        auto variable = get_or_create_variable(sqf_destringify(variable_node.token.contents));
-        variable.opt_file_fk = file_of(a).id_pk;
+        auto variable = get_or_create_variable(a, sqf_destringify(variable_node.token.contents));
         reference.variable_fk = variable.id_pk;
         reference.types = database::tables::t_reference::type_flags::nil;
         reference.access = t_reference::access_flags::set;
@@ -1114,7 +1103,6 @@ t_reference sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor
         const ::sqf::parser::sqf::bison::astnode &node) {
 
     t_reference reference{};
-    reference.source_file_fk = file_of(a).id_pk;
     reference.file_fk = file_id_of(a, node);
     reference.line = node.token.line;
     reference.column = node.token.column;
@@ -1182,8 +1170,7 @@ std::string sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor
         // ToDo: implement properly (not every {} scope has _this)
         auto reference = make_reference(a, node);
         reference.is_declaration = true;
-        auto variable = get_or_create_variable("_this");
-        variable.opt_file_fk = file_of(a).id_pk;
+        auto variable = get_or_create_variable(a, "_this");
         reference.variable_fk = variable.id_pk;
         reference.access = t_reference::access_flags::set;
         reference.is_magic_variable = true;
@@ -1218,8 +1205,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::add_m
             for (auto &magic_variable: magic_variables) {
                 auto reference = make_reference(a, node);
                 reference.is_declaration = true;
-                auto variable = get_or_create_variable(magic_variable);
-                variable.opt_file_fk = file_of(a).id_pk;
+                auto variable = get_or_create_variable(a, magic_variable);
                 reference.variable_fk = variable.id_pk;
                 reference.access = t_reference::access_flags::set;
                 reference.is_magic_variable = true;
@@ -1285,6 +1271,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::pop_s
 }
 
 t_variable sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor::get_or_create_variable(
+        sqf_ast_analyzer &a,
         std::string_view name,
         bool is_declaration) {
     if (is_private_variable(name)) {
@@ -1307,6 +1294,7 @@ t_variable sqfvm::language_server::analysis::sqf_ast::visitors::general_visitor:
         }
         t_variable variable{};
         variable.variable_name = name;
+        variable.opt_file_fk = file_of(a).id_pk;
         variable.id_pk = m_variables.size() + 1;
         variable.scope = m_scope_stack.back().full_name;
         m_variables.push_back(variable);

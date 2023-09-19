@@ -3,7 +3,7 @@
 // Import the module and reference it with the alias vscode in your code below
 
 import * as vscode from "vscode";
-import * as languageClient from "vscode-languageclient";
+import * as languageClient from "vscode-languageclient/node";
 import * as path from "path";
 import * as fs from "fs";
 
@@ -59,7 +59,6 @@ async function activateLanguageServer(context: vscode.ExtensionContext) {
             configurationSection: "sqfVmLanguageServer",
             // Notify the server about file changes to '.clientrc files contain in the workspace
             fileEvents: [
-                vscode.workspace.createFileSystemWatcher("**/.clientrc"),
                 vscode.workspace.createFileSystemWatcher("**/.sqf"),
                 vscode.workspace.createFileSystemWatcher("**/.sqc"),
             ]
@@ -68,11 +67,11 @@ async function activateLanguageServer(context: vscode.ExtensionContext) {
 
     // Create the language client and start the client.
     client = new languageClient.LanguageClient("sqfVmLanguageServer", "SQF-VM Language Server", serverOptions, clientOptions);
-    let disposable = client.start();
+    await client.start();
 
     // Push the disposable to the context's subscriptions so that the 
     // client can be deactivated on extension deactivation
-    context.subscriptions.push(disposable);
+    context.subscriptions.push(client);
     OpenSelected.activate(context);
     OpenRpt.activate(context);
     AlignEquals.activate(context);

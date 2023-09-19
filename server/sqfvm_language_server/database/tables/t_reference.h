@@ -20,6 +20,7 @@ namespace sqfvm::language_server::database::tables {
             string = 0x0040,
             nil = 0x0080,
 
+            all = code | scalar | boolean | object | hashmap | array | string | nil,
             any = 0xFFFF,
         };
         enum class access_flags {

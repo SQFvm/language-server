@@ -16,15 +16,6 @@
 
 namespace {
 
-    struct visitor_id_pair {
-        size_t visitor_index;
-        uint64_t id;
-
-        bool operator==(const visitor_id_pair &other) const {
-            return visitor_index == other.visitor_index
-                   && id == other.id;
-        }
-    };
 
     // from boost (functional/hash):
     // see http://www.boost.org/doc/libs/1_35_0/doc/html/hash/combine.html template
@@ -35,8 +26,8 @@ namespace {
 }
 namespace std {
     template<>
-    struct hash<visitor_id_pair> {
-        size_t operator()(visitor_id_pair const &v) const {
+    struct hash<sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::visitor_id_pair> {
+        size_t operator()(sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::visitor_id_pair const &v) const {
             size_t seed = 0;
             hash_combine(seed, v.visitor_index);
             hash_combine(seed, v.id);
@@ -44,13 +35,15 @@ namespace std {
         }
     };
 }
+using namespace sqlite_orm;
 
 void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
-    using namespace sqlite_orm;
     std::unordered_map<visitor_id_pair, uint64_t> variable_map{};
 
     auto &storage = m_context.storage();
+#if !defined(_DEBUG)
     storage.begin_transaction();
+#endif
 
     try {
 
@@ -74,59 +67,24 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
             auto visitor_diff = visitor_it - m_visitors.begin();
             auto visitor_index = static_cast<size_t>(visitor_diff);
             for (auto &visitor_variable: visitor->m_variables) {
-                if (visitor_variable.scope.length() > file_scope_name.length()
+                if (visitor_variable.scope.length() >= file_scope_name.length()
                     && std::string_view(
                         visitor_variable.scope.begin(),
                         visitor_variable.scope.begin() + file_scope_name.length()) == file_scope_name) {
-                    // This variable is in this file
-                    auto db_variable = std::find_if(
-                            db_file_variables.begin(),
-                            db_file_variables.end(),
-                            [&](auto &db_variable) {
-                                return db_variable.scope == visitor_variable.scope
-                                       && iequal(db_variable.variable_name, visitor_variable.variable_name);
-                            });
-                    if (db_variable != db_file_variables.end()) {
-                        variable_map[visitor_id_pair{
-                                .visitor_index = visitor_index,
-                                .id = visitor_variable.id_pk
-                        }] = db_variable->id_pk;
-                        file_variables_mapped.push_back(*db_variable);
-                    } else {
-                        auto copy = visitor_variable;
-                        copy.id_pk = 0;
-                        // Variable does not exist
-                        auto insert_res = storage.insert(copy);
-                        variable_map[visitor_id_pair{
-                                .visitor_index = visitor_index,
-                                .id = visitor_variable.id_pk
-                        }] = insert_res;
-                    }
+                    commit_private_variable(
+                            variable_map,
+                            storage,
+                            db_file_variables,
+                            file_variables_mapped,
+                            visitor_index,
+                            visitor_variable);
                 } else {
-                    // This variable is not in this file
-                    std::optional<database::tables::t_variable> db_variable = {};
-                    auto result = storage.get_all<database::tables::t_variable>(
-                            where((c(&database::tables::t_variable::scope) == visitor_variable.scope)
-                                  and
-                                  (c(&database::tables::t_variable::variable_name) == visitor_variable.variable_name)));
-                    db_variable = result.empty() ? std::nullopt : std::optional(result[0]);
-                    if (db_variable.has_value()) {
-                        // Variable already exists
-                        variable_map[visitor_id_pair{
-                                .visitor_index = visitor_index,
-                                .id = visitor_variable.id_pk
-                        }] = db_variable->id_pk;
-                        file_variables_mapped.push_back(*db_variable);
-                    } else {
-                        // Variable does not exist
-                        auto copy = visitor_variable;
-                        copy.id_pk = 0;
-                        auto insert_res = storage.insert(copy);
-                        variable_map[visitor_id_pair{
-                                .visitor_index = visitor_index,
-                                .id = visitor_variable.id_pk
-                        }] = insert_res;
-                    }
+                    commit_non_private_variable(
+                            variable_map,
+                            storage,
+                            file_variables_mapped,
+                            visitor_index,
+                            visitor_variable);
                 }
             }
         }
@@ -153,12 +111,30 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
             auto &visitor = *visitor_it;
             auto visitor_diff = visitor_it - m_visitors.begin();
             for (auto &visitor_reference: visitor->m_references) {
-                auto copy = visitor_reference;
-                copy.id_pk = 0;
-                copy.variable_fk = variable_map[visitor_id_pair{
+                auto visitor_pair = visitor_id_pair{
                         .visitor_index = static_cast<size_t>(visitor_diff),
                         .id = visitor_reference.variable_fk
-                }];
+                };
+                if (variable_map.find(visitor_pair) == variable_map.end()) {
+                    std::stringstream sstream;
+                    sstream << "Variable not found" << "\n";
+                    sstream << "    visitor_index: " << visitor_pair.visitor_index << "\n";
+                    sstream << "    id: " << visitor_pair.id << "\n";
+                    sstream << "    variable_map.size(): " << variable_map.size() << "\n";
+                    sstream << "    variable_map: " << "\n";
+                    for (auto &it: variable_map) {
+                        sstream << "        visitor_index: " << it.first.visitor_index << "\n";
+                        sstream << "        id: " << it.first.id << "\n";
+                        sstream << "        value: " << it.second << "\n";
+                    }
+                    auto str = sstream.str();
+                    throw std::runtime_error(str);
+                }
+                auto variable_id = variable_map[visitor_pair];
+                auto copy = visitor_reference;
+                copy.id_pk = 0;
+                copy.source_file_fk = m_file.id_pk;
+                copy.variable_fk = variable_id;
                 insert(storage, copy);
             }
         }
@@ -255,14 +231,80 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
         m_file.is_outdated = false;
         storage.update(m_file);
 
+#if !defined(_DEBUG)
         storage.commit();
+#endif
     }
     catch (std::exception &e) {
+#if !defined(_DEBUG)
         storage.rollback();
+#endif
         throw e;
     }
 
 
+}
+
+
+void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit_private_variable(
+        std::unordered_map<visitor_id_pair, uint64_t> &variable_map,
+        database::context::storage_t &storage,
+        std::vector<database::tables::t_variable> &db_file_variables,
+        std::vector<database::tables::t_variable> &file_variables_mapped,
+        size_t visitor_index,
+        database::tables::t_variable &visitor_variable) const {
+    auto visitor_pair = visitor_id_pair{
+            .visitor_index = visitor_index,
+            .id = visitor_variable.id_pk
+    };
+    // This variable is in this file
+    auto db_variable = std::find_if(
+            db_file_variables.begin(),
+            db_file_variables.end(),
+            [&](auto &db_variable) {
+                return db_variable.scope == visitor_variable.scope
+                       && iequal(db_variable.variable_name, visitor_variable.variable_name);
+            });
+    if (db_variable != db_file_variables.end()) {
+        variable_map[visitor_pair] = db_variable->id_pk;
+        file_variables_mapped.push_back(*db_variable);
+    } else {
+        auto copy = visitor_variable;
+        copy.id_pk = 0;
+        // Variable does not exist
+        auto insert_res = storage.insert(copy);
+        variable_map[visitor_pair] = insert_res;
+    }
+}
+
+void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit_non_private_variable(
+        std::unordered_map<visitor_id_pair, uint64_t> &variable_map,
+        database::context::storage_t &storage,
+        std::vector<database::tables::t_variable> &file_variables_mapped,
+        size_t visitor_index,
+        database::tables::t_variable &visitor_variable) const {
+    auto visitor_pair = visitor_id_pair{
+            .visitor_index = visitor_index,
+            .id = visitor_variable.id_pk
+    };
+    // This variable is not in this file
+    std::optional<database::tables::t_variable> db_variable = {};
+    auto result = storage.get_all<database::tables::t_variable>(
+            where((c(&database::tables::t_variable::scope) == visitor_variable.scope)
+                  and
+                  (c(&database::tables::t_variable::variable_name) == visitor_variable.variable_name)));
+    db_variable = result.empty() ? std::nullopt : std::optional(result[0]);
+    if (db_variable.has_value()) {
+        // Variable already exists
+        variable_map[visitor_pair] = db_variable->id_pk;
+        file_variables_mapped.push_back(*db_variable);
+    } else {
+        // Variable does not exist
+        auto copy = visitor_variable;
+        copy.id_pk = 0;
+        auto insert_res = storage.insert(copy);
+        variable_map[visitor_pair] = insert_res;
+    }
 }
 
 void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::insert(

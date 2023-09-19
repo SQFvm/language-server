@@ -17,6 +17,7 @@
 #include <functional>
 #include <variant>
 #include <optional>
+#include <sstream>
 
 #include "nlohmann/json.hpp"
 
@@ -24,70 +25,82 @@
 #define JSONRPC_DUMP_CHAT_TO_FILE
 #endif
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
+
 #include <fstream>
 #include <filesystem>
 #include <stdexcept>
+
 #endif
 
-class jsonrpc
-{
+class jsonrpc {
     static constexpr size_t buffersize = 1024 * 4;
-    static constexpr const char* newline = "\n";
+    static constexpr const char *newline = "\n";
 public:
-    struct rpcmessage
-    {
+    struct rpcmessage {
         std::string protocol_version;
-        std::string id;
+        std::optional<size_t> id;
         std::string method;
         std::optional<nlohmann::json> result;
         std::optional<nlohmann::json> params;
 
-        [[maybe_unused]] rpcmessage() : protocol_version("2.0"), id({}), method({}), result(), params() { }
-        [[maybe_unused]] rpcmessage(std::string id, std::string method) : protocol_version("2.0"), id(std::move(id)), method(std::move(method)), result(), params() { }
-        [[maybe_unused]] rpcmessage(std::string id, std::string method, nlohmann::json params) : protocol_version("2.0"), id(std::move(id)), method(std::move(method)), result(), params(params) { }
-        [[maybe_unused]] rpcmessage(std::string id, nlohmann::json result) : protocol_version("2.0"), id(std::move(id)), method({}), result(result), params() { }
+        [[maybe_unused]] rpcmessage() : protocol_version("2.0"), id({}), method({}), result(), params() {}
 
-        [[nodiscard]] nlohmann::json serialize() const
-        {
-            nlohmann::json res = { { "jsonrpc", protocol_version } };
-            if (result.has_value())
-            {
+        [[maybe_unused]] rpcmessage(std::optional<size_t> id, std::string method) : protocol_version("2.0"), id(id),
+                                                                                    method(std::move(method)), result(),
+                                                                                    params() {}
+
+        [[maybe_unused]] rpcmessage(std::optional<size_t> id, std::string method, nlohmann::json params)
+                : protocol_version("2.0"), id(id), method(std::move(method)), result(), params(params) {}
+
+        [[maybe_unused]] rpcmessage(std::optional<size_t> id, nlohmann::json result) : protocol_version("2.0"), id(id),
+                                                                                       method({}), result(result),
+                                                                                       params() {}
+
+        [[nodiscard]] nlohmann::json serialize() const {
+            nlohmann::json res = {{"jsonrpc", protocol_version}};
+            if (result.has_value()) {
                 res["result"] = *result;
             }
-            if (params.has_value())
-            {
+            if (params.has_value()) {
                 res["params"] = *params;
             }
-            if (!id.empty())
-            {
-                res["id"] = id;
+            if (id.has_value()) {
+                res["id"] = id.value();
             }
-            if (!method.empty())
-            {
+            if (!method.empty()) {
                 res["method"] = method;
             }
             return res;
         }
-        static rpcmessage deserialize(const nlohmann::json& json)
-        {
+
+        static rpcmessage deserialize(const nlohmann::json &json) {
             rpcmessage res;
             res.protocol_version = json.contains("jsonrpc") ? json["jsonrpc"].get<std::string>() : std::string();
-            res.id = json.contains("id") ? (json["id"].is_string() ? json["id"].get<std::string>() : json["id"].dump()) : std::string();
+            if (json.contains("id")) {
+                if (json["id"].is_string()) {
+                    auto id_string = json["id"].get<std::string>();
+                    res.id = std::stoull(id_string);
+                } else if (json["id"].is_number()) {
+                    res.id = json["id"].get<size_t>();
+                } else {
+                    res.id = std::nullopt;
+                }
+            } else {
+                res.id = std::nullopt;
+            }
             res.method = json.contains("method") ? json["method"].get<std::string>() : std::string();
             res.result = json.contains("result") ? json["result"] : std::optional<nlohmann::json>{};
             res.params = json.contains("params") ? json["params"] : std::optional<nlohmann::json>{};
             return res;
         }
     };
-    struct rpcframe
-    {
-        enum class header_kind
-        {
+
+    struct rpcframe {
+        enum class header_kind {
             other,
             content_length
         };
-        struct header_value_pair
-        {
+        struct header_value_pair {
             std::string key;
             std::string value;
             header_kind kind = header_kind::other;
@@ -95,25 +108,23 @@ public:
         std::vector<header_value_pair> headers;
         rpcmessage message;
     };
-    enum destruct_strategy
-    {
+    enum destruct_strategy {
         detach,
         join
     };
-    enum parse_error_strategy
-    {
+    enum parse_error_strategy {
         exception,
         skip
     };
-    using mthd = std::function<void(jsonrpc& jsonrpc, const rpcmessage& msg)>;
+    using mthd = std::function<void(jsonrpc &jsonrpc, const rpcmessage &msg)>;
 private:
     std::mutex m_read_mutex;
     std::mutex m_write_mutex;
-    std::istream& m_in;
-    std::ostream& m_out;
+    std::istream &m_in;
+    std::ostream &m_out;
     std::atomic<size_t> m_counter;
-    bool* m_read_terminate;
-    bool* m_write_terminate;
+    bool *m_read_terminate;
+    bool *m_write_terminate;
     std::thread m_read_thread;
     std::thread m_write_thread;
     destruct_strategy m_destruct_strategy;
@@ -123,49 +134,60 @@ private:
     std::queue<rpcframe> m_qout;
     std::unordered_map<std::string, mthd> m_methods;
 public:
-    jsonrpc(std::istream& sin, std::ostream& sout, destruct_strategy destruct, parse_error_strategy parse_error) :
-        m_in(sin),
-        m_out(sout),
-        m_read_terminate(new bool(false)),
-        m_write_terminate(new bool(false)),
-        m_read_thread(&jsonrpc::method_read, this),
-        m_write_thread(&jsonrpc::method_write, this),
-        m_destruct_strategy(destruct),
-        m_parse_error_strategy(parse_error)
-    {
+    jsonrpc(std::istream &sin, std::ostream &sout, destruct_strategy destruct, parse_error_strategy parse_error) :
+            m_in(sin),
+            m_out(sout),
+            m_read_terminate(new bool(false)),
+            m_write_terminate(new bool(false)),
+            m_read_thread(&jsonrpc::method_read, this),
+            m_write_thread(&jsonrpc::method_write, this),
+            m_destruct_strategy(destruct),
+            m_parse_error_strategy(parse_error) {
     }
-    ~jsonrpc()
-    {
+
+    ~jsonrpc() {
         *m_read_terminate = true;
         *m_write_terminate = true;
-        switch (m_destruct_strategy)
-        {
+        switch (m_destruct_strategy) {
             case detach:
-            m_read_thread.detach();
-            m_write_thread.detach();
-            break;
+                m_read_thread.detach();
+                m_write_thread.detach();
+                break;
             case join:
-            m_read_thread.join();
-            m_write_thread.join();
-            break;
+                m_read_thread.join();
+                m_write_thread.join();
+                break;
         }
     }
 
-    void register_method(const std::string& name, mthd callback)
-    {
+    jsonrpc(const jsonrpc &) = delete;
+
+    jsonrpc(jsonrpc &&source) noexcept:
+            m_in(source.m_in),
+            m_out(source.m_out),
+            m_counter(source.m_counter.load()),
+            m_read_terminate(source.m_read_terminate),
+            m_write_terminate(source.m_write_terminate),
+            m_read_thread(std::move(source.m_read_thread)),
+            m_write_thread(std::move(source.m_write_thread)),
+            m_destruct_strategy(source.m_destruct_strategy),
+            m_parse_error_strategy(source.m_parse_error_strategy),
+            m_qin(std::move(source.m_qin)),
+            m_qout(std::move(source.m_qout)),
+            m_methods(std::move(source.m_methods)) {}
+
+    void register_method(const std::string &name, mthd callback) {
         m_methods[name] = std::move(callback);
     }
 
 
     // Attempts to handle a single input frame.
     // Returns true if a frame was dequeued and false if not.
-    bool handle_single_message()
-    {
+    bool handle_single_message() {
         rpcframe frame;
         {
             std::lock_guard lock(m_read_mutex);
-            if (m_qin.empty())
-            {
+            if (m_qin.empty()) {
                 return false;
             }
             frame = m_qin.front();
@@ -178,11 +200,11 @@ public:
         mthd(*this, frame.message);
         return true;
     }
-    void send(const rpcmessage& msg)
-    {
+
+    void send(const rpcmessage &msg) {
         rpcframe frame;
         frame.message = msg;
-        frame.headers.push_back({ "Content-Type", "application/json-rpc;charset=utf-8", rpcframe::header_kind::other });
+        frame.headers.push_back({"Content-Type", "application/json-rpc;charset=utf-8", rpcframe::header_kind::other});
         {
             std::lock_guard lock(m_write_mutex);
             m_qout.push(frame);
@@ -190,9 +212,8 @@ public:
     }
 
 private:
-    void method_read()
-    {
-        bool* terminate = m_read_terminate;
+    void method_read() {
+        bool *terminate = m_read_terminate;
         char buffer[buffersize];
         std::vector<char> message_buffer;
         size_t content_length = 0;
@@ -201,103 +222,90 @@ private:
         std::filesystem::path p("jsonrpc-read-dump.txt");
         p = std::filesystem::absolute(p);
         std::fstream dbg_dump(p, std::fstream::out);
-        if (!dbg_dump.good())
-        {
+        if (!dbg_dump.good()) {
             throw std::runtime_error("Failed to open dump file");
         }
 #endif
         rpcframe frame;
         rpcframe::header_value_pair header;
-        enum estate { read_header, read_header_content, read_content };
+        enum estate {
+            read_header, read_header_content, read_content
+        };
         estate state = read_header;
 
-        while (!*terminate)
-        {
-            switch (state)
-            {
-                case read_header:
-                {
+        while (!*terminate) {
+            switch (state) {
+                case read_header: {
                     m_in.read(buffer, 1);
                     auto c = buffer[0];
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
                     dbg_dump << c;
                     dbg_dump.flush();
 #endif
-                    if (c == ':')
-                    {
+                    if (c == ':') {
                         state = read_header_content;
                         header.key = std::string(message_buffer.begin(), message_buffer.end());
                         message_buffer.clear();
-                        if (header.key == "Content-Length")
-                        {
+                        if (header.key == "Content-Length") {
                             header.kind = rpcframe::header_kind::content_length;
-                        }
-                        else
-                        {
+                        } else {
                             header.kind = rpcframe::header_kind::other;
                         }
-                    }
-                    else if (c == '\n')
-                    {
-                        auto findres = std::find_if(frame.headers.begin(), frame.headers.end(), [](rpcframe::header_value_pair& header) -> bool { return header.kind == rpcframe::header_kind::content_length; });
-                        if (findres == frame.headers.end())
-                        {
-                            switch (m_parse_error_strategy)
-                            {
+                    } else if (c == '\n') {
+                        auto findres = std::find_if(frame.headers.begin(), frame.headers.end(),
+                                                    [](rpcframe::header_value_pair &header) -> bool {
+                                                        return header.kind == rpcframe::header_kind::content_length;
+                                                    });
+                        if (findres == frame.headers.end()) {
+                            switch (m_parse_error_strategy) {
                                 case jsonrpc::exception:
-                                throw std::runtime_error("No Content-Length header passed");
+                                    throw std::runtime_error("No Content-Length header passed");
                                 case jsonrpc::skip:
-                                frame = {};
-                                continue;
+                                    frame = {};
+                                    continue;
                             }
                         }
-                        auto content_length_res = std::from_chars(findres->value.data(), findres->value.data() + findres->value.size(), content_length);
-                        if (content_length_res.ec == std::errc::invalid_argument)
-                        {
-                            switch (m_parse_error_strategy)
-                            {
+                        auto content_length_res = std::from_chars(findres->value.data(),
+                                                                  findres->value.data() + findres->value.size(),
+                                                                  content_length);
+                        if (content_length_res.ec == std::errc::invalid_argument) {
+                            switch (m_parse_error_strategy) {
                                 case jsonrpc::exception:
-                                throw std::runtime_error("Failed to parse Content-Length");
+                                    throw std::runtime_error("Failed to parse Content-Length");
                                 case jsonrpc::skip:
-                                frame = {};
-                                continue;
+                                    frame = {};
+                                    continue;
                             }
                         }
                         state = read_content;
                         message_buffer.clear();
-                    }
-                    else
-                    {
+                    } else {
                         message_buffer.push_back(c);
                     }
-                } break;
-                case read_header_content:
-                {
+                }
+                    break;
+                case read_header_content: {
                     m_in.read(buffer, 1);
                     auto c = buffer[0];
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
                     dbg_dump << c;
                     dbg_dump.flush();
 #endif
-                    if (c == '\n')
-                    {
+                    if (c == '\n') {
                         state = read_header;
                         std::vector<char>::difference_type off = 0;
                         for (; off < message_buffer.size() && std::isspace(message_buffer[off]) && off >= 0; off++);
                         header.value = std::string(message_buffer.begin() + off, message_buffer.end());
                         frame.headers.push_back(header);
                         message_buffer.clear();
-                    }
-                    else
-                    {
+                    } else {
                         message_buffer.push_back(c);
                     }
 
-                } break;
-                case read_content:
-                {
-                    if (content_length == 0)
-                    {
+                }
+                    break;
+                case read_content: {
+                    if (content_length == 0) {
                         auto data = std::string(message_buffer.begin(), message_buffer.end());
                         message_buffer.clear();
                         state = read_header;
@@ -307,9 +315,7 @@ private:
                             m_qin.push(frame);
                         }
                         frame = {};
-                    }
-                    else
-                    {
+                    } else {
                         auto read = m_in.read(buffer, std::min(content_length, buffersize)).gcount();
                         message_buffer.insert(message_buffer.end(), buffer, buffer + read);
                         content_length -= read;
@@ -318,40 +324,36 @@ private:
                         dbg_dump.flush();
 #endif
                     }
-                } break;
+                }
+                    break;
             }
         }
 
         delete terminate;
     }
-    void method_write()
-    {
-        bool* terminate = m_write_terminate;
+
+    void method_write() {
+        bool *terminate = m_write_terminate;
 
 #ifdef JSONRPC_DUMP_CHAT_TO_FILE
         std::filesystem::path p("jsonrpc-write-dump.txt");
         p = std::filesystem::absolute(p);
         std::fstream dbg_dump(p, std::fstream::out);
-        if (!dbg_dump.good())
-        {
+        if (!dbg_dump.good()) {
             throw std::runtime_error("Failed to open dump file");
         }
 #endif
 
-        while (!*terminate)
-        {
+        while (!*terminate) {
             bool queue_empty;
 
             {
                 std::lock_guard lock(m_write_mutex);
                 queue_empty = m_qout.empty();
             }
-            if (queue_empty)
-            {
+            if (queue_empty) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-            else
-            {
+            } else {
                 rpcframe frame;
 
                 // Dequeue single frame
@@ -370,10 +372,8 @@ private:
                 dbg_dump << "Content-Length: " << dumped.size() << newline;
                 dbg_dump.flush();
 #endif
-                for (const auto& header : frame.headers)
-                {
-                    if (header.kind == rpcframe::header_kind::content_length)
-                    {
+                for (const auto &header: frame.headers) {
+                    if (header.kind == rpcframe::header_kind::content_length) {
                         continue;
                     }
                     m_out << header.key << ": " << header.value << newline;

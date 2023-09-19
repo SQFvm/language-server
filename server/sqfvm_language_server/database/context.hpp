@@ -219,6 +219,79 @@ namespace sqfvm::language_server::database {
                 bool create_if_not_exists = false);
 
         void db_clear();
+
+        struct operations {
+            using errlogfnc_t = std::function<void(const std::string &)>;
+            using success_t = bool;
+            using abort_t = bool;
+
+            [[nodiscard]] static success_t mark_all_files_as_deleted(
+                    context &self,
+                    const errlogfnc_t &fnc);
+
+            [[nodiscard]] static std::pair<success_t, std::optional<tables::t_file>> find_file_by_path(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    std::filesystem::path fpath);
+
+            [[nodiscard]] static std::pair<success_t, std::optional<tables::t_file>> find_file_by_id(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    uint64_t id);
+
+            [[nodiscard]] static success_t update(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    tables::t_file file);
+
+            [[nodiscard]] static success_t insert(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    tables::t_file file);
+
+            [[nodiscard]] static success_t insert(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    tables::t_file_history file_history);
+
+            [[nodiscard]] static success_t delete_files_flagged_with_is_deleted(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc);
+
+            [[nodiscard]] static success_t for_each_file_not_outdated(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    const std::function<abort_t(const tables::t_file &)> &fnc2);
+
+            [[nodiscard]] static success_t for_each_file_outdated_and_not_deleted(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    const std::function<abort_t(const tables::t_file &)> &fnc2);
+
+            [[nodiscard]] static std::pair<success_t, std::vector<tables::t_reference>> find_all_references_by_file_and_line(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    const tables::t_file &file,
+                    uint64_t line,
+                    bool exclude_magical);
+
+            [[nodiscard]] static std::pair<success_t, std::vector<tables::t_reference>> find_all_references_by_file_and_line(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    uint64_t file_id,
+                    uint64_t line,
+                    bool exclude_magical);
+
+            [[nodiscard]] static std::pair<success_t, std::vector<tables::t_reference>> get_all_variables_of_variable(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    const tables::t_variable &variable);
+
+            [[nodiscard]] static std::pair<success_t, std::vector<tables::t_reference>> get_all_variables_of_variable(
+                    context &self,
+                    const context::operations::errlogfnc_t &fnc,
+                    uint64_t variable_id);
+        };
     };
 }
 
