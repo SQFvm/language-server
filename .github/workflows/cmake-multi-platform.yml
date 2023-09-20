@@ -169,12 +169,25 @@ jobs:
           
       - name: Install YARN
         run: npm install -g yarn
+        
       - name: Install VCSE
         run: npm install -g @vscode/vsce
         
       - name: NPM Install
         working-directory: ./clients/vscode
         run: npm install
+        
+      - name: NPM Upgrade
+        working-directory: ./clients/vscode
+        run: npm upgrade
+        
+      - name: YARN Install
+        working-directory: ./clients/vscode
+        run: yarn install
+        
+      - name: YARN Upgrade
+        working-directory: ./clients/vscode
+        run: yarn upgrade
         
       - name: YARN Compile
         working-directory: ./clients/vscode
