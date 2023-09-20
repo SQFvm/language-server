@@ -118,6 +118,9 @@
         "test": "mocha --require ts-node/register --timeout 3600000 test/**/*.test.ts"
     },
     "devDependencies": {
+        "@types/glob": "^8.1.0",
+        "@types/node": "^20.6.2",
+        "@types/vscode": "^1.43.0",
         "typescript": "^5.2.2"
     },
     "dependencies": {
