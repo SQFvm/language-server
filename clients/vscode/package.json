@@ -3,7 +3,7 @@
     "displayName": "SQF-VM Language Server",
     "description": "",
     "icon": "assets/icon.png",
-    "version": "0.2.18",
+    "version": "0.2.19",
     "publisher": "SQF-VM",
     "repository": {
         "type": "git",
@@ -118,12 +118,6 @@
         "test": "mocha --require ts-node/register --timeout 3600000 test/**/*.test.ts"
     },
     "devDependencies": {
-        "@types/glob": "^8.1.0",
-        "@types/mocha": "^10.0.1",
-        "@types/node": "^20.6.2",
-        "@types/vscode": "^1.43.0",
-        "mocha": "^10.2.0",
-        "tslint": "^6.1.0",
         "typescript": "^5.2.2"
     },
     "dependencies": {

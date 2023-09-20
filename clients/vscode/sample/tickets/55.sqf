@@ -1,3 +1,4 @@
 private _testvar = "AbC";
-_testvar = "ABC";
-diag_log _testvar;  
+_testvar = toLower _testvar;
+_testvar = 1;
+diag_log _testvar;
