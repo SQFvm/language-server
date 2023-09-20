@@ -290,6 +290,10 @@ std::optional<::lsp::data::completion_list> sqfvm::language_server::language_ser
 std::optional<std::vector<lsp::data::inlay_hint>>
 sqfvm::language_server::language_server::on_textDocument_inlayHint(const lsp::data::inlay_hint_params &params) {
     using database::tables::t_reference;
+    auto line_start = params.range.start.line + 1;
+    auto line_end = params.range.end.line + 1;
+    auto column_start = params.range.start.character;
+    auto column_end = params.range.end.character;
     auto path = std::filesystem::path(
             std::string(params.text_document.uri.path().begin(),
                         params.text_document.uri.path().end()))
@@ -300,10 +304,12 @@ sqfvm::language_server::language_server::on_textDocument_inlayHint(const lsp::da
     auto file = file_opt.value();
     auto references_in_range = m_context->storage().get_all<database::tables::t_reference>(
             where(c(&database::tables::t_reference::file_fk) == file.id_pk
-                  and c(&database::tables::t_reference::line) >= params.range.start.line
-                  and c(&database::tables::t_reference::line) <= params.range.end.line
-                  and c(&database::tables::t_reference::column) >= params.range.start.character
-                  and c(&database::tables::t_reference::column) <= params.range.end.character));
+                  and c(&database::tables::t_reference::line) >= line_start
+                  and c(&database::tables::t_reference::line) <= line_end
+                  and (c(&database::tables::t_reference::line) != line_start
+                       or c(&database::tables::t_reference::column) >= column_start)
+                  and (c(&database::tables::t_reference::line) != line_end
+                       or c(&database::tables::t_reference::column) <= column_end)));
     std::unordered_map<uint64_t, std::vector<database::tables::t_reference>> variable_map{};
     for (auto &reference: references_in_range) {
         if (reference.is_magic_variable)
@@ -313,7 +319,8 @@ sqfvm::language_server::language_server::on_textDocument_inlayHint(const lsp::da
     std::unordered_map<uint64_t, std::string> variable_types_string{};
     std::stringstream sstream;
     for (auto &[variable_id, references]: variable_map) {
-        sstream.str(": ");
+        sstream.str("");
+        sstream << ": ";
         auto variable = m_context->storage().get<database::tables::t_variable>(variable_id);
         if (!variable.opt_file_fk.has_value()) {
             sstream << "ERROR";
@@ -328,39 +335,40 @@ sqfvm::language_server::language_server::on_textDocument_inlayHint(const lsp::da
             if (final_type == t_reference::type_flags::none
                 || final_type == t_reference::type_flags::all
                 || final_type == t_reference::type_flags::any) {
+                // ToDo: Track this properly, allowing for not always having "any" as type
+                continue; // Skip for now to prevent any from being reported
                 sstream << "any";
-            }
-            else {
+            } else {
                 bool flag = false;
-                if ((final_type | t_reference::type_flags::code) == t_reference::type_flags::code) {
+                if ((final_type & t_reference::type_flags::code) == t_reference::type_flags::code) {
                     sstream << (!flag ? "code" : ", code");
                     flag = true;
                 }
-                if ((final_type | t_reference::type_flags::scalar) == t_reference::type_flags::scalar) {
+                if ((final_type & t_reference::type_flags::scalar) == t_reference::type_flags::scalar) {
                     sstream << (!flag ? "scalar" : ", scalar");
                     flag = true;
                 }
-                if ((final_type | t_reference::type_flags::boolean) == t_reference::type_flags::boolean) {
+                if ((final_type & t_reference::type_flags::boolean) == t_reference::type_flags::boolean) {
                     sstream << (!flag ? "boolean" : ", boolean");
                     flag = true;
                 }
-                if ((final_type | t_reference::type_flags::object) == t_reference::type_flags::object) {
+                if ((final_type & t_reference::type_flags::object) == t_reference::type_flags::object) {
                     sstream << (!flag ? "object" : ", object");
                     flag = true;
                 }
-                if ((final_type | t_reference::type_flags::hashmap) == t_reference::type_flags::hashmap) {
+                if ((final_type & t_reference::type_flags::hashmap) == t_reference::type_flags::hashmap) {
                     sstream << (!flag ? "hashmap" : ", hashmap");
                     flag = true;
                 }
-                if ((final_type | t_reference::type_flags::array) == t_reference::type_flags::array) {
+                if ((final_type & t_reference::type_flags::array) == t_reference::type_flags::array) {
                     sstream << (!flag ? "array" : ", array");
                     flag = true;
                 }
-                if ((final_type | t_reference::type_flags::string) == t_reference::type_flags::string) {
+                if ((final_type & t_reference::type_flags::string) == t_reference::type_flags::string) {
                     sstream << (!flag ? "string" : ", string");
                     flag = true;
                 }
-                if ((final_type | t_reference::type_flags::nil) == t_reference::type_flags::nil) {
+                if ((final_type & t_reference::type_flags::nil) == t_reference::type_flags::nil) {
                     sstream << (!flag ? "nil" : ", nil");
                     flag = true;
                 }
@@ -375,10 +383,6 @@ sqfvm::language_server::language_server::on_textDocument_inlayHint(const lsp::da
             continue;
         auto variable_type = variable_types_string[variable_id];
         for (auto &reference: references) {
-            auto line_start = params.range.start.line + 1;
-            auto line_end = params.range.end.line + 1;
-            auto column_start = params.range.start.character;
-            auto column_end = params.range.end.character;
             if (line_start > reference.line || reference.line > line_end)
                 continue;
             if (line_start == reference.line && reference.column < column_start)
@@ -389,7 +393,7 @@ sqfvm::language_server::language_server::on_textDocument_inlayHint(const lsp::da
             hints.push_back(lsp::data::inlay_hint{
                     .position = lsp::data::position{
                             .line = reference.line - 1,
-                            .character = reference.column + variable.variable_name.length(),
+                            .character = reference.column + reference.length,
                     },
                     .label = {
                             // lsp::data::inlay_hint_label_part{.value = variable.variable_name},
