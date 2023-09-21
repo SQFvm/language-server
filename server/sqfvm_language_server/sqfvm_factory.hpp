@@ -60,6 +60,21 @@ namespace sqfvm::language_server {
             }
         }
 
+        /*
+         * Returns a vector of pairs of physical and virtual paths.
+         * The physical path is the path on the local file system.
+         * The virtual path is the path that is used in the sqfvm runtime.
+         *
+         * @return A vector of pairs of physical (0) and virtual (1) paths.
+         */
+        [[nodiscard]] std::vector<std::pair<std::string, std::string>> get_mappings() const {
+            std::vector<std::pair<std::string, std::string>> result;
+            for (const auto& tuple : m_mappings) {
+                result.emplace_back(tuple.mapping.physical, tuple.mapping.virtual_);
+            }
+            return result;
+        }
+
         [[nodiscard]] std::shared_ptr<sqf::runtime::runtime> create(
                 const std::function<void(const sqfvm::language_server::database::tables::t_diagnostic &)>& log,
                 database::context &context,

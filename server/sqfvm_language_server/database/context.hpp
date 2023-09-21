@@ -20,7 +20,7 @@ namespace sqfvm::language_server::database {
     namespace internal {
         struct t_db_generation {
             static constexpr const char *table_name = "tDbGeneration";
-            static const int expected_generation = 9;
+            static const int expected_generation = 10;
             int id_pk;
             int generation;
         };

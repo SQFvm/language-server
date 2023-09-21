@@ -399,6 +399,7 @@ void sqfvm::language_server::language_server::file_system_item_removed(
     } else if (iequal(path.filename().string(), "$PBOPREFIX$")) {
         remove_pboprefix_mapping(path);
         mark_all_files_as_outdated();
+        debug_print_sqfvm_vpath_start_parameters();
     } else {
         if (!delete_file(path))
             return;
@@ -421,6 +422,7 @@ void sqfvm::language_server::language_server::file_system_item_added(
     } else if (iequal(path.filename().string(), "$PBOPREFIX$")) {
         add_or_update_pboprefix_mapping_logging(path);
         mark_all_files_as_outdated();
+        debug_print_sqfvm_vpath_start_parameters();
     } else {
         mark_file_as_outdated(path);
     }
@@ -438,6 +440,7 @@ void sqfvm::language_server::language_server::file_system_item_modified(
     if (iequal(path.filename().string(), "$PBOPREFIX$")) {
         add_or_update_pboprefix_mapping_logging(path);
         mark_all_files_as_outdated();
+        debug_print_sqfvm_vpath_start_parameters();
     } else {
         auto file_opt = get_file_from_path(path.string(), true);
         if (!file_opt.has_value()) {

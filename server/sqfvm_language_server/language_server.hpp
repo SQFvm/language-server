@@ -56,6 +56,8 @@ namespace sqfvm::language_server {
                 std::string contents,
                 bool is_external = false);
 
+        void debug_print_sqfvm_vpath_start_parameters();
+
         void file_system_item_added(const std::filesystem::path &path,
                                     bool is_directory);
 

@@ -102,6 +102,7 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
             }
         }
     }
+    debug_print_sqfvm_vpath_start_parameters();
 
     if (!database::context::operations::for_each_file_not_outdated(
             *m_context,
@@ -406,6 +407,16 @@ sqfvm::language_server::language_server::on_textDocument_inlayHint(const lsp::da
     return hints;
 }
 
+void sqfvm::language_server::language_server::debug_print_sqfvm_vpath_start_parameters() {
+    window_log(lsp::data::message_type::Log, [&](auto& sstream) {
+        sstream << "SQF-VM VPath start parameters: ";
+        for (auto& [physical, virtual_]: m_sqfvm_factory.get_mappings()) {
+            if (physical.empty() || virtual_.empty())
+                continue;
+            sstream << " -v \"" << physical << "|" << virtual_ << "\"";
+        }
+    });
+}
 std::optional<std::vector<std::variant<lsp::data::command, lsp::data::code_action>>>
 sqfvm::language_server::language_server::on_textDocument_codeAction(const lsp::data::code_action_params &params) {
     using namespace lsp::data;
