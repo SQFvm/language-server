@@ -833,8 +833,8 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                         s.m_visitor->m_code_actions.push_back(
                                 {
                                         .code_action = t_code_action{
-                                                .identifier = code_action_identifier,
                                                 .kind = code_action_kind,
+                                                .identifier = code_action_identifier,
                                         },
                                         .changes = changes
                                 }
@@ -873,6 +873,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                                         .markdown = markdown
                                 }
                         );
+                        return {};
                     }));
 }
 

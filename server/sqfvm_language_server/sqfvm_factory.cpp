@@ -104,7 +104,7 @@ std::shared_ptr<sqf::runtime::runtime> sqfvm::language_server::sqfvm_factory::cr
             } else if (args[1] == "line") {
                 slspp->push_disable_line(file_context.path.physical, file_context.line + line_offset, error_code);
             } else if (args[1] == "file") {
-                slspp->push_disable_file(file_context.path.physical, error_code);
+                slspp->push_disable_file(error_code);
             }
         }
         return std::nullopt;
