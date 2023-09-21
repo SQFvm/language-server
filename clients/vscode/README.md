@@ -44,17 +44,22 @@ Just install the extension and you should be able to run it from the get-go.
 
 # FAQ
 ## Enable/Disable a problem
-Note: `ERROR-CODE` in the following samples is the code reported by the language server (eg. `VV-001`)
+Note: `XYZ-1234` in the following samples is the code reported by th   e language server (eg. `VV-001`)
 
-To disable a warning for the line following, use
-`#pragma sls disable line ERROR-CODE`
-This will surpress the error code for the next line.
-To disable (and later enable) an error code on a long span, use
-```sqf
-#pragma sls disable ERROR-CODE
-// [...]
-#pragma sls enable ERROR-CODE
-```
+- To disable a warning for the line following, use
+  `#pragma sls disable line XYZ-1234`
+  This will surpress the error code for the next line.
+  Note that this is scoped to only the file and does not affect any `#include "..."` ones
+
+- To disable (and later enable) an error code on a long span, use
+  ```sqf
+  #pragma sls disable XYZ-1234
+  // [...]
+  #pragma sls enable XYZ-1234
+  ```
+  Note that this is scoped to only the file and does not affect any `#include "..."` ones
+
+- To disable an error for the whole file processing pipeline (which also takes into account any error raised in `#include "..."` files), use `#pragma sls disable line XYZ-1234`
 
 ## Scripted analyzers
 The language server supports scripted analyzers.

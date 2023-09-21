@@ -212,7 +212,10 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
                 it.file_fk = m_file.id_pk;
             if (it.source_file_fk == 0)
                 it.source_file_fk = m_file.id_pk;
-            it.is_suppressed = !m_slspp_context->can_report(it.code, it.line);
+            std::string path = it.file_fk == m_file.id_pk
+                               ? m_file.path
+                               : m_context.storage().get<database::tables::t_file>(it.file_fk).path;
+            it.is_suppressed = !m_slspp_context->can_report(it.code, path, it.line);
         }
         storage.insert_range(m_diagnostics.begin(), m_diagnostics.end());
         for (auto &visitor: m_visitors) {
@@ -221,7 +224,10 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
                     it.file_fk = m_file.id_pk;
                 if (it.source_file_fk == 0)
                     it.source_file_fk = m_file.id_pk;
-                it.is_suppressed = !m_slspp_context->can_report(it.code, it.line);
+                std::string path = it.file_fk == m_file.id_pk
+                                   ? m_file.path
+                                   : m_context.storage().get<database::tables::t_file>(it.file_fk).path;
+                it.is_suppressed = !m_slspp_context->can_report(it.code, path, it.line);
             }
             storage.insert_range(visitor->m_diagnostics.begin(), visitor->m_diagnostics.end());
         }
