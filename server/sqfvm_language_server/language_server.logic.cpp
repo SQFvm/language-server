@@ -108,11 +108,11 @@ void sqfvm::language_server::language_server::push_file_history(
             *m_context,
             context_err_log(),
             database::tables::t_file_history{
-            .file_fk = file.id_pk,
-            .content = std::move(contents),
-            .time_stamp_created = time_stamp,
-            .is_external = is_external,
-    });
+                    .file_fk = file.id_pk,
+                    .content = std::move(contents),
+                    .time_stamp_created = time_stamp,
+                    .is_external = is_external,
+            });
 }
 
 
@@ -269,6 +269,10 @@ void sqfvm::language_server::language_server::delete_file(sqfvm::language_server
             where(c(&t_variable::opt_file_fk) == file.id_pk));
     m_context->storage().remove_all<t_file_history>(
             where(c(&t_file_history::file_fk) == file.id_pk));
+    m_context->storage().remove_all<t_file_include>(
+            where(c(&t_file_include::file_included_in_fk) == file.id_pk
+                  or c(&t_file_include::file_included_fk) == file.id_pk
+                  or c(&t_file_include::source_file_fk) == file.id_pk));
     m_context->storage().remove_all<t_hover>(
             where(c(&t_hover::file_fk) == file.id_pk));
     m_context->storage().remove_all<t_variable>(
@@ -345,8 +349,7 @@ void sqfvm::language_server::language_server::analyse_file(
         }
     }
     // if extension is either .cpp or .ext, skip the file at the given path unless it's filename is either config.cpp or description.ext
-    if ((extension == ".cpp" || extension == ".ext"))
-    {
+    if ((extension == ".cpp" || extension == ".ext")) {
         auto filename = std::filesystem::path(file.path).filename().string();
         if (!iequal(filename, "config.cpp") && !iequal(filename, "description.ext"))
             return;
