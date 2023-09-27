@@ -222,6 +222,16 @@ void sqfvm::language_server::language_server::delete_file(sqfvm::language_server
 void sqfvm::language_server::language_server::mark_related_files_as_outdated(
         const sqfvm::language_server::database::tables::t_file &file) {
     std::set<uint64_t> outdated_file_ids{};
+
+    auto includes = m_context->storage().get_all<database::tables::t_file_include>(
+            where(c(&database::tables::t_file_include::file_included_fk) == file.id_pk));
+    for (const auto &include: includes) {
+        outdated_file_ids.insert(include.file_included_in_fk);
+        auto file_included_in = m_context->storage().get<database::tables::t_file>(include.file_included_in_fk);
+        mark_related_files_as_outdated(file_included_in);
+    }
+
+
     auto variables = m_context->storage().get_all<database::tables::t_variable>(
             where(c(&database::tables::t_variable::opt_file_fk) == file.id_pk
                   and c(&database::tables::t_variable::scope) == "missionNamespace"));

@@ -17,6 +17,7 @@ void sqfvm::language_server::database::context::db_clear() {
     m_storage.remove_all<t_code_action_change>();
     m_storage.remove_all<t_code_action>();
     m_storage.remove_all<t_hover>();
+    m_storage.remove_all<t_file_include>();
     m_storage.remove_all<t_file_history>();
     m_storage.remove_all<t_file>();
 }

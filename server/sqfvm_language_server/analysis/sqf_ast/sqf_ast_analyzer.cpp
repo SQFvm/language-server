@@ -201,6 +201,30 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::commit() {
             }
         }
 #pragma endregion
+#pragma region Includes
+        if (!m_preprocessed_text.empty()) {
+            // Remove old includes
+            storage.remove_all<database::tables::t_file_include>(
+                    where(c(&database::tables::t_file_include::source_file_fk) == m_file.id_pk));
+
+            // Add new includes
+            std::vector<database::tables::t_file_include> file_includes;
+            for (auto &it: m_file_include) {
+                auto included_path_file = m_context.db_get_file_from_path(it.included_path);
+                if (!included_path_file.has_value())
+                    continue;
+                auto source_path_file = m_context.db_get_file_from_path(it.source_path);
+                if (!source_path_file.has_value())
+                    continue;
+                file_includes.emplace_back(
+                        0,
+                        included_path_file->id_pk,
+                        source_path_file->id_pk,
+                        m_file.id_pk);
+            }
+            storage.insert_range(file_includes.begin(), file_includes.end());
+        }
+#pragma endregion
 #pragma region Diagnostics
         // Remove old diagnostics
         storage.remove_all<database::tables::t_diagnostic>(
@@ -402,6 +426,20 @@ void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::macro_resolved
         sqf::runtime::parser::preprocessor::context &original_fileinfo,
         const sqf::runtime::parser::macro &m,
         const std::unordered_map<std::string, std::string> &param_map) {
-    m_hover_tuples.emplace_back(original_fileinfo.path.physical, orig_start.offset, orig_end.offset, pp_start, pp_end,
-                                orig_start.line, orig_start.column, orig_end.line, orig_end.column);
+    m_hover_tuples.emplace_back(
+            original_fileinfo.path.physical,
+            orig_start.offset,
+            orig_end.offset,
+            pp_start,
+            pp_end,
+            orig_start.line,
+            orig_start.column,
+            orig_end.line,
+            orig_end.column);
+}
+
+void sqfvm::language_server::analysis::sqf_ast::sqf_ast_analyzer::file_included(
+        sqf::runtime::parser::preprocessor::context &included_fileinfo,
+        sqf::runtime::parser::preprocessor::context &source_fileinfo) {
+    m_file_include.emplace_back(included_fileinfo.path.physical, source_fileinfo.path.physical);
 }

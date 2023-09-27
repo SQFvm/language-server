@@ -47,6 +47,9 @@ void sqfvm::language_server::analysis::sqfvm_analyzer::analyze() {
         macro_resolved(orig_start, orig_end, pp_start, pp_end, runtime, local_fileinfo, original_fileinfo, m,
                        param_map);
     });
+    casted->file_included([&](auto & included_fileinfo, auto & source_fileinfo) {
+       file_included(included_fileinfo, source_fileinfo);
+    });
 
     auto preprocessed_opt = preprocessor.preprocess(*m_runtime, m_text, {m_file.path, {}, {}});
     if (!preprocessed_opt.has_value()) {

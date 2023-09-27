@@ -42,6 +42,10 @@ namespace sqfvm::language_server::analysis {
                 const ::sqf::runtime::parser::macro &m,
                 const std::unordered_map<std::string, std::string> &param_map) {};
 
+        virtual void file_included(
+                ::sqf::runtime::parser::preprocessor::context &included_fileinfo,
+                ::sqf::runtime::parser::preprocessor::context &source_fileinfo) {};
+
         struct decoded_offset {
             ::sqf::parser::preprocessor::impl_default::macro_resolved_data resolved;
             size_t length;

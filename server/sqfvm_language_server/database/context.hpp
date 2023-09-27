@@ -14,13 +14,14 @@
 #include "tables/t_reference.h"
 #include "tables/t_variable.h"
 #include "orm_mappings.hpp"
+#include "tables/t_file_include.h"
 
 namespace sqfvm::language_server::database {
 
     namespace internal {
         struct t_db_generation {
             static constexpr const char *table_name = "tDbGeneration";
-            static const int expected_generation = 10;
+            static const int expected_generation = 11;
             int id_pk;
             int generation;
         };
@@ -57,6 +58,13 @@ namespace sqfvm::language_server::database {
                                make_column("is_external", &t_file_history::is_external),
                                make_column("time_stamp_created", &t_file_history::time_stamp_created),
                                foreign_key(&t_file_history::file_fk).references(&t_file::id_pk)),
+                    make_table(t_file_include::table_name,
+                               make_column("id_pk", &t_file_include::id_pk, primary_key().autoincrement()),
+                               make_column("file_included_fk", &t_file_include::file_included_fk),
+                               make_column("file_included_in_fk", &t_file_include::file_included_in_fk),
+                               make_column("source_file_fk", &t_file_include::source_file_fk),
+                               foreign_key(&t_file_include::file_included_fk).references(&t_file::id_pk),
+                               foreign_key(&t_file_include::file_included_in_fk).references(&t_file::id_pk)),
                     make_table(t_code_action::table_name,
                                make_column("id_pk", &t_code_action::id_pk, primary_key().autoincrement()),
                                make_column("file_fk", &t_code_action::file_fk),

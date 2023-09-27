@@ -37,8 +37,13 @@ namespace sqfvm::language_server::analysis::sqf_ast {
             uint64_t end_line;
             uint64_t end_column;
         };
+        struct include_tuple {
+            std::string included_path;
+            std::string source_path;
+        };
         std::vector<database::tables::t_diagnostic> m_diagnostics;
         std::vector<hover_tuple> m_hover_tuples;
+        std::vector<include_tuple> m_file_include;
         std::vector<ast_visitor *> m_visitors;
         std::vector<const ::sqf::parser::sqf::bison::astnode *> m_descend_ast_nodes;
         std::filesystem::path m_ls_path;
@@ -86,6 +91,10 @@ namespace sqfvm::language_server::analysis::sqf_ast {
                 ::sqf::runtime::parser::preprocessor::context &original_fileinfo,
                 const ::sqf::runtime::parser::macro &m,
                 const std::unordered_map<std::string, std::string> &param_map) override;
+
+        void file_included(
+                ::sqf::runtime::parser::preprocessor::context &included_fileinfo,
+                ::sqf::runtime::parser::preprocessor::context &source_fileinfo) override;
 
     public:
         sqf_ast_analyzer(
