@@ -1,6 +1,7 @@
 #include "language_server.hpp"
 
 #include "analysis/sqf_ast/sqf_ast_analyzer.hpp"
+#include "analysis/config_ast/config_ast_analyzer.hpp"
 
 
 #include <string_view>
@@ -130,6 +131,34 @@ sqfvm::language_server::language_server::language_server() : m_sqfvm_factory(thi
                         std::move(text),
                         ls_path);
             });
+    m_analyzer_factory.set(
+            ".ext", [](
+                    auto ls_path,
+                    auto db_path,
+                    auto &factory,
+                    auto file,
+                    auto text) -> std::unique_ptr<analysis::analyzer> {
+                return std::make_unique<analysis::config_ast::config_ast_analyzer>(
+                        db_path,
+                        file,
+                        factory,
+                        std::move(text),
+                        ls_path);
+            });
+    m_analyzer_factory.set(
+            ".cpp", [](
+                    auto ls_path,
+                    auto db_path,
+                    auto &factory,
+                    auto file,
+                    auto text) -> std::unique_ptr<analysis::analyzer> {
+                return std::make_unique<analysis::config_ast::config_ast_analyzer>(
+                        db_path,
+                        file,
+                        factory,
+                        std::move(text),
+                        ls_path);
+            });
 }
 
 sqfvm::language_server::language_server::language_server(jsonrpc &&rpc) : server(std::move(rpc)),
@@ -142,6 +171,34 @@ sqfvm::language_server::language_server::language_server(jsonrpc &&rpc) : server
                     auto file,
                     auto text) -> std::unique_ptr<analysis::analyzer> {
                 return std::make_unique<analysis::sqf_ast::sqf_ast_analyzer>(
+                        db_path,
+                        file,
+                        factory,
+                        std::move(text),
+                        ls_path);
+            });
+    m_analyzer_factory.set(
+            ".ext", [](
+                    auto ls_path,
+                    auto db_path,
+                    auto &factory,
+                    auto file,
+                    auto text) -> std::unique_ptr<analysis::analyzer> {
+                return std::make_unique<analysis::config_ast::config_ast_analyzer>(
+                        db_path,
+                        file,
+                        factory,
+                        std::move(text),
+                        ls_path);
+            });
+    m_analyzer_factory.set(
+            ".cpp", [](
+                    auto ls_path,
+                    auto db_path,
+                    auto &factory,
+                    auto file,
+                    auto text) -> std::unique_ptr<analysis::analyzer> {
+                return std::make_unique<analysis::config_ast::config_ast_analyzer>(
                         db_path,
                         file,
                         factory,
@@ -287,6 +344,14 @@ void sqfvm::language_server::language_server::analyse_file(
                     where(c(&database::tables::t_diagnostic::file_fk) == file.id_pk));
         }
     }
+    // if extension is either .cpp or .ext, skip the file at the given path unless it's filename is either config.cpp or description.ext
+    if ((extension == ".cpp" || extension == ".ext"))
+    {
+        auto filename = std::filesystem::path(file.path).filename().string();
+        if (!iequal(filename, "config.cpp") && !iequal(filename, "description.ext"))
+            return;
+    }
+
     auto analyzer_opt = m_analyzer_factory.get(
             extension,
             m_lsp_folder,

@@ -21,10 +21,13 @@
     "activationEvents": [
         "onLanguage:sqf",
         "onLanguage:sqc",
+        "onLanguage:cpp",
+        "onLanguage:ext",
         "onCommand:sqfVmLanguageServer.openFilePath",
         "onCommand:sqfVmLanguageServer.openRpt",
         "onCommand:sqfVmLanguageServer.alignEquals",
-        "workspaceContains:**/*.sqf"
+        "workspaceContains:**/*.sqf",
+        "workspaceContains:**/*.sqc"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -46,6 +49,11 @@
                 "language": "sqc",
                 "scopeName": "source.sqc",
                 "path": "./grammar/sqc.gram.json"
+            },
+            {
+                "language": "cppext",
+                "scopeName": "source.cppext",
+                "path": "./grammar/cppext.gram.json"
             }
         ],
         "commands": [
@@ -85,6 +93,17 @@
                     ".sqc"
                 ],
                 "configuration": "./grammar/sqc.configuration.json"
+            },
+            {
+                "id": "cppext",
+                "aliases": [
+                    "Real Virtuality configuration"
+                ],
+                "extensions": [
+                    ".cpp",
+                    ".ext"
+                ],
+                "configuration": "./grammar/cppext.configuration.json"
             }
         ],
         "configuration": {

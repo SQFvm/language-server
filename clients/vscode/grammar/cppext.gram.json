@@ -1,0 +1,114 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "cppext",
+	"patterns": [
+		{ "include": "#all" }
+	],
+	"repository": {
+		"all": {
+			"patterns": [
+				{ "include": "#keywords" },
+				{ "include": "#string" },
+				{ "include": "#string-interpolated" },
+				{ "include": "#block" },
+				{ "include": "#array" },
+				{ "include": "#comment" }
+			]
+		},
+		"comment": {
+			"name": "comment.cppext",
+			"patterns": [{
+				"include": "#comment-block"
+			}, {
+				"include": "#comment-line"
+			}]
+		},
+		"comment-block": {
+			"begin": "/\\*",
+			"end": "\\*/",
+			"name": "comment.block.cppext"
+		},
+		"comment-line": {
+			"match": "(\\/\\/).*$\\n?",
+			"name": "comment.line.cppext"
+		},
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.cppext",
+				"match": "\\b(class)\\b"
+			}]
+		},
+		"block": {
+			"begin": "\\{",
+			"beginCaptures": {
+				"0": {
+					"name": "meta.brace.curly.cppext"
+				}
+			},
+			"end": "\\}",
+			"endCaptures": {
+				"0": {
+					"name": "meta.brace.curly.cppext"
+				}
+			},
+			"name": "meta.block.cppext",
+			"patterns": [{ "include": "#all" }]
+		},
+		"array": {
+			"begin": "\\[",
+			"beginCaptures": {
+				"0": {
+					"name": "meta.brace.square.cppext"
+				}
+			},
+			"end": "\\]",
+			"endCaptures": {
+				"0": {
+					"name": "meta.brace.square.cppext"
+				}
+			},
+			"name": "meta.array.literal.cppext",
+			"patterns": [{ "include": "#all" }]
+		},
+		"string": {
+			"name": "string.quoted.double.cppext",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.cppext",
+					"match": "\"\"."
+				}
+			]
+		},
+		"string-interpolated": {
+			"name": "string.quoted.double.cppext",
+			"begin": "\\$\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.cppext",
+					"match": "\"\"."
+				},
+				{
+					"name": "constant.character.escape.cppext",
+					"match": "\\{\\{"
+				},
+				{
+					"name": "constant.character.escape.cppext",
+					"match": "\\}\\}"
+				},
+				{ "include": "#string-interpolated-escape"}
+			]
+		},
+		"string-interpolated-escape": {
+			"name": "meta.interpolation.cppext",
+			"begin": "\\{",
+			"end": "\\}",
+			"patterns": [
+				{ "include": "#all"}
+			]
+		}
+	},
+	"scopeName": "source.cppext"
+}

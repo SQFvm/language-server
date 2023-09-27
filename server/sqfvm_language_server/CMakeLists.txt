@@ -52,6 +52,7 @@ add_executable(sqfvm_language_server
         analysis/db_analyzer.hpp
         lsp/lspserver.cpp
         database/tables/t_file_include.h
+        analysis/config_ast/visitors/general_visitor.cpp
 )
 
 # Set C++ Version

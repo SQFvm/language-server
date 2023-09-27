@@ -8,3 +8,9 @@ class CfgPatches {
         requiredaddons[] = {};
     };
 };
+
+class foo;
+class foo;
+
+class noBase : foo{};
+class noBase : bar{};
