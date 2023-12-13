@@ -4,3 +4,6 @@
 [submodule "server/extern/json"]
 	path = server/extern/json
 	url = https://github.com/nlohmann/json.git
+[submodule "server/vcpkg"]
+	path = server/vcpkg
+	url = https://github.com/Microsoft/vcpkg.git

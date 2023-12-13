@@ -14,7 +14,7 @@ ToDo
 0.  Clone this repository using `git clone REPOSITORY --recursive`
 1.  Download NodeJS
 2.  Download Visual Studio Code
-3.  Download Visual Studio Community 2019 (or later) on Windows or vcpkg on Linux
+3.  Download Visual Studio Community 2019 (or later) on Windows
 4.  Download CMake
 5.  Open a terminal and execute `npm install yarn --global` (installs yarn globally)
 6.  Open `/client/vscode` in Visual Studio Code
