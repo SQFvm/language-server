@@ -14,17 +14,18 @@ ToDo
 0.  Clone this repository using `git clone REPOSITORY --recursive`
 1.  Download NodeJS
 2.  Download Visual Studio Code
-3.  Download Visual Studio Community 2019 (or later)
+3.  Download Visual Studio Community 2019 (or later) on Windows or vcpkg on Linux
 4.  Download CMake
 5.  Open a terminal and execute `npm install yarn --global` (installs yarn globally)
 6.  Open `/client/vscode` in Visual Studio Code
 7.  Inside Visual Studio Code, open the terminal (View --> Terminal) and execute `yarn install`
 8.  Execute `yarn run compile` inside that terminal
 9.  Open a terminal inside of `server/`
-10. Run `cmake CMakeLists.txt`
-11. Open `sqfvm_language_server.sln`
-12. Right click `sqfvm_language_server` project inside the `Solution Explorer` and hit Build and wait for it to finish
-13. Inside Visual Studio Code, hit F5
+10. (On Linux) Run `vcpkg install`
+11. Run `cmake CMakeLists.txt`
+12. Open `sqfvm_language_server.sln`
+13. Right click `sqfvm_language_server` project inside the `Solution Explorer` and hit Build and wait for it to finish
+14. Inside Visual Studio Code, hit F5
 
 # Credits
 [Armitxes](https://github.com/Armitxes/VSCode_SQF) - SQF Grammar file
