@@ -9,6 +9,7 @@
 #include <vector>
 #include <set>
 #include <sstream>
+#include <date/tz.h>
 
 using namespace std::string_view_literals;
 using namespace sqlite_orm;
@@ -68,7 +69,7 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
             if (m_analyzer_factory.has(file_path.extension().string())) {
                 auto last_write_time = iter->last_write_time();
                 uint64_t timestamp = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::clock_cast<std::chrono::system_clock>(last_write_time).time_since_epoch())
+                        date::clock_cast<std::chrono::system_clock>(last_write_time).time_since_epoch())
                         .count();
 
                 auto [op_success, file] = database::context::operations::find_file_by_path(*m_context,
