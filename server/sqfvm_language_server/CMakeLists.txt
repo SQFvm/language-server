@@ -71,6 +71,11 @@ find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(SqliteOrm CONFIG REQUIRED)
 find_package(Poco REQUIRED COMPONENTS Foundation)
 
+if (UNIX AND NOT APPLE )
+    find_package(date CONFIG REQUIRED)
+    target_link_libraries(sqfvm_language_server PRIVATE date::date date::date-tz)
+endif()
+
 target_link_libraries(sqfvm_language_server PRIVATE slibsqfvm)
 target_link_libraries(sqfvm_language_server PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(sqfvm_language_server PRIVATE unofficial::sqlite3::sqlite3)
