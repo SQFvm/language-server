@@ -74,6 +74,7 @@ find_package(Poco REQUIRED COMPONENTS Foundation)
 if(CMAKE_COMPILER_IS_GNUCC)
     find_package(date CONFIG REQUIRED)
     target_link_libraries(sqfvm_language_server PRIVATE date::date date::date-tz)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 endif()
 
 target_link_libraries(sqfvm_language_server PRIVATE slibsqfvm)
