@@ -8,7 +8,6 @@
 #include "../slspp_context.hpp"
 #include "../sqfvm_analyzer.hpp"
 #include "../../sqfvm_factory.hpp"
-#include "ast_visitor.hpp"
 #include <string_view>
 #include <utility>
 
@@ -17,6 +16,9 @@ namespace sqf::parser::config::bison
     struct astnode;
 }
 namespace sqfvm::language_server::analysis::config_ast {
+
+    class ast_visitor;
+
     class config_ast_analyzer : public sqfvm_analyzer {
         friend class ast_visitor;
     public:
