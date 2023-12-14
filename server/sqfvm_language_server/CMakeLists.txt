@@ -71,7 +71,7 @@ find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(SqliteOrm CONFIG REQUIRED)
 find_package(Poco REQUIRED COMPONENTS Foundation)
 
-if (UNIX AND NOT APPLE )
+if(CMAKE_COMPILER_IS_GNUCC)
     find_package(date CONFIG REQUIRED)
     target_link_libraries(sqfvm_language_server PRIVATE date::date date::date-tz)
 endif()
