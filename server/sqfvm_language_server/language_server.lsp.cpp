@@ -9,8 +9,9 @@
 #include <vector>
 #include <set>
 #include <sstream>
+#if defined(__GNUC__)
 #include <date/tz.h>
-
+#endif
 using namespace std::string_view_literals;
 using namespace sqlite_orm;
 
@@ -69,9 +70,13 @@ void sqfvm::language_server::language_server::after_initialize(const ::lsp::data
             if (m_analyzer_factory.has(file_path.extension().string())) {
                 auto last_write_time = iter->last_write_time();
                 uint64_t timestamp = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
+#if defined(__GNUC__)
                         date::clock_cast<std::chrono::system_clock>(last_write_time).time_since_epoch())
                         .count();
-
+#else
+                        std::chrono::clock_cast<std::chrono::system_clock>(last_write_time).time_since_epoch())
+                        .count();
+#endif
                 auto [op_success, file] = database::context::operations::find_file_by_path(*m_context,
                                                                                            context_err_log(),
                                                                                            file_path);
