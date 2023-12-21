@@ -354,3 +354,6 @@ build/git_sha1\.cpp
 
 *.diagsession
 git_sha1.cpp
+
+#vcpkg installed packages
+**/vcpkg_installed/

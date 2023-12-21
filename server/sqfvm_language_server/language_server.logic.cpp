@@ -11,6 +11,10 @@
 #include <set>
 #include <sstream>
 
+#if defined(__GNUC__)
+#include <date/tz.h>
+#endif
+
 using namespace std::string_view_literals;
 using namespace sqlite_orm;
 
@@ -317,8 +321,13 @@ void sqfvm::language_server::language_server::mark_related_files_as_outdated(
 void sqfvm::language_server::language_server::analyse_file(
         const sqfvm::language_server::database::tables::t_file &file) {
     uint64_t timestamp = (uint64_t) std::chrono::duration_cast<std::chrono::milliseconds>(
+#if defined(__GNUC__)
+            date::clock_cast<std::chrono::system_clock>(last_write_time(std::filesystem::path(file.path)))
+                    .time_since_epoch())
+#else
             std::chrono::clock_cast<std::chrono::system_clock>(last_write_time(std::filesystem::path(file.path)))
                     .time_since_epoch())
+#endif 
             .count();
     // Create analyzer
     auto extension = std::filesystem::path(file.path).extension().string();

@@ -16,6 +16,9 @@ namespace sqf::parser::config::bison
     struct astnode;
 }
 namespace sqfvm::language_server::analysis::config_ast {
+
+    class ast_visitor;
+
     class config_ast_analyzer : public sqfvm_analyzer {
         friend class ast_visitor;
     public:

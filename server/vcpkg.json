@@ -1,19 +1,28 @@
 {
-  "name" : "sqfvm-language-server",
-  "version-string" : "1.0.0",
-  "builtin-baseline" : "8b04a7bd93bef991818fc372bb83ce00ec1c1c16",
-  "supports" : "windows & (x64 | x86) ",
-  "dependencies" : [ {
-    "name" : "nlohmann-json",
-    "version>=" : "3.11.2"
-  }, {
-    "name" : "sqlite-orm",
-    "version>=" : "1.8.2"
-  }, {
-    "name" : "sqlite3",
-    "version>=" : "3.42.0#1"
-  }, {
-    "name" : "poco",
-    "version>=" : "1.12.4#4"
-  } ]
+  "name": "sqfvm-language-server",
+  "version-string": "1.0.0",
+  "builtin-baseline": "8b04a7bd93bef991818fc372bb83ce00ec1c1c16",
+  "supports": "windows & (x64 | x86) ",
+  "dependencies": [
+    {
+      "name": "nlohmann-json",
+      "version>=": "3.11.2"
+    },
+    {
+      "name": "sqlite-orm",
+      "version>=": "1.8.2"
+    },
+    {
+      "name": "sqlite3",
+      "version>=": "3.42.0#1"
+    },
+    {
+      "name": "poco",
+      "version>=": "1.12.4#4"
+    },
+    {
+      "name": "date",
+      "version>=": "3.0.1"
+    }
+  ]
 }

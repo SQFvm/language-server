@@ -537,8 +537,8 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                     "lineOf",
                     t_astnode(),
                     "Returns the line of the given AST node.",
-                    [](auto &runtime, auto &right) -> sqf::runtime::value {
-                        auto d_node = right.data<d_astnode>();
+                    [](auto &runtime, value::cref &right) -> sqf::runtime::value {
+                        std::shared_ptr<d_astnode> d_node = right.data<d_astnode>();
                         return {d_node->node().token.line};
                     }
             ));
@@ -547,8 +547,8 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                     "columnOf",
                     t_astnode(),
                     "Returns the column of the given AST node.",
-                    [](auto &runtime, auto &right) -> sqf::runtime::value {
-                        auto d_node = right.data<d_astnode>();
+                    [](auto &runtime, value::cref &right) -> sqf::runtime::value {
+                        std::shared_ptr<d_astnode> d_node = right.data<d_astnode>();
                         return {d_node->node().token.column};
                     }
             ));
@@ -557,8 +557,8 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                     "offsetOf",
                     t_astnode(),
                     "Returns the offset of the given AST node.",
-                    [](auto &runtime, auto &right) -> sqf::runtime::value {
-                        auto d_node = right.data<d_astnode>();
+                    [](auto &runtime, value::cref &right) -> sqf::runtime::value {
+                        std::shared_ptr<d_astnode> d_node = right.data<d_astnode>();
                         return {d_node->node().token.offset};
                     }
             ));
@@ -567,8 +567,8 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                     "contentOf",
                     t_astnode(),
                     "Returns the content of the given AST node.",
-                    [](auto &runtime, auto &right) -> sqf::runtime::value {
-                        auto d_node = right.data<d_astnode>();
+                    [](auto &runtime, value::cref &right) -> sqf::runtime::value {
+                        std::shared_ptr<d_astnode> d_node = right.data<d_astnode>();
                         return {std::string(d_node->node().token.contents.begin(),
                                             d_node->node().token.contents.end())};
                     }
@@ -578,8 +578,8 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                     "pathOf",
                     t_astnode(),
                     "Returns the path of the given AST node.",
-                    [](auto &runtime, auto &right) -> sqf::runtime::value {
-                        auto d_node = right.data<d_astnode>();
+                    [](auto &runtime, value::cref &right) -> sqf::runtime::value {
+                        std::shared_ptr<d_astnode> d_node = right.data<d_astnode>();
                         return {*d_node->node().token.path};
                     }
             ));
@@ -588,8 +588,8 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                     "typeOf",
                     t_astnode(),
                     "Returns the type of the given AST node.",
-                    [](auto &runtime, auto &right) -> sqf::runtime::value {
-                        auto d_node = right.data<d_astnode>();
+                    [](auto &runtime, value::cref &right) -> sqf::runtime::value {
+                        std::shared_ptr<d_astnode> d_node = right.data<d_astnode>();
                         auto kind = to_string_view(d_node->node().kind);
                         return {std::string(kind.begin(), kind.end())};
                     }
@@ -599,7 +599,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                     "childrenOf",
                     t_astnode(),
                     "Returns the children of the given AST node.",
-                    [](auto &runtime, auto &right) -> sqf::runtime::value {
+                    [](auto &runtime, value::cref &right) -> sqf::runtime::value {
                         auto d_node = right.data<d_astnode>();
                         auto children = d_node->node().children;
                         std::vector<sqf::runtime::value> result;
@@ -617,7 +617,7 @@ void sqfvm::language_server::analysis::sqf_ast::visitors::scripted_visitor::init
                     "fileOf",
                     t_astnode(),
                     "Returns the file for the AST node.",
-                    [](auto &runtime, auto &right) -> sqf::runtime::value {
+                    [](sqf::runtime::runtime &runtime, value::cref &right) -> sqf::runtime::value {
                         // file is an array [id, path]
                         auto d_node = right.data<d_astnode>();
                         auto &s = runtime.storage<storage>();
